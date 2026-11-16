@@ -23,6 +23,7 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'category' => 'required|string',
+            'weight' => 'nullable|numeric|min:0',
             'short_description' => 'nullable|string',
             'units' => 'array',
             'units.*.unit_type' => 'required|string',
@@ -35,6 +36,7 @@ class AdminController extends Controller
             'slug' => Str::slug($request->name) . '-' . rand(100, 999),
             'sku' => 'SKU-' . rand(10000, 99999),
             'category' => $request->category,
+            'weight' => $request->weight ?? 0, // <-- ADDED
             'short_description' => $request->short_description ?? '',
             'image_url' => $request->image_url ?? '', 
             'is_active' => true,
@@ -70,6 +72,7 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'category' => 'required|string',
+            'weight' => 'nullable|numeric|min:0',
             'short_description' => 'nullable|string',
             'units' => 'array',
         ]);
@@ -78,6 +81,7 @@ class AdminController extends Controller
             'name' => $request->name,
             'slug' => Str::slug($request->name) . '-' . $product->id,
             'category' => $request->category,
+            'weight' => $request->weight ?? 0, // <-- ADDED
             'short_description' => $request->short_description ?? '',
             'image_url' => $request->image_url ?? '', 
         ]);

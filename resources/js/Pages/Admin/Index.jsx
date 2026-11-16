@@ -19,6 +19,7 @@ export default function AdminIndex({ products }) {
         id: null,
         name: '',
         category: 'Hardware',
+        weight: '', // <-- ADDED
         short_description: '',
         image_url: '', 
         units: [],
@@ -28,7 +29,7 @@ export default function AdminIndex({ products }) {
 
     const resetForm = () => {
         productForm.setData({
-            id: null, name: '', category: 'Hardware', short_description: '', image_url: '', units: []
+            id: null, name: '', category: 'Hardware', weight: '', short_description: '', image_url: '', units: []
         });
         productForm.clearErrors();
     };
@@ -67,6 +68,7 @@ export default function AdminIndex({ products }) {
             id: product.id,
             name: product.name,
             category: product.category,
+            weight: product.weight || '', // <-- ADDED
             short_description: product.short_description || '',
             image_url: product.image_url || '',
             units: mappedUnits,
@@ -162,7 +164,8 @@ export default function AdminIndex({ products }) {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            {/* UPDATED TO 3 COLUMNS */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Category</label>
                                     <select
@@ -175,21 +178,34 @@ export default function AdminIndex({ products }) {
                                     </select>
                                 </div>
                                 <div>
+                                    <label className="block text-sm font-medium mb-1">Weight (KG)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={productForm.data.weight}
+                                        onChange={(e) => productForm.setData('weight', e.target.value)}
+                                        className="w-full bg-brand-input rounded-lg px-4 py-2.5 text-sm"
+                                        placeholder="e.g. 50"
+                                    />
+                                </div>
+                                <div>
                                     <label className="block text-sm font-medium mb-1">Image URL</label>
                                     <input
                                         type="text"
                                         value={productForm.data.image_url}
                                         onChange={(e) => productForm.setData('image_url', e.target.value)}
                                         className="w-full bg-brand-input rounded-lg px-4 py-2.5 text-sm"
-                                        placeholder="https://res.cloudinary.com/..."
+                                        placeholder="https://..."
                                     />
-                                    {productForm.data.image_url && (
-                                        <div className="mt-2">
-                                            <img src={productForm.data.image_url} alt="Preview" className="h-16 w-16 object-cover rounded-lg border border-brand-border" />
-                                        </div>
-                                    )}
                                 </div>
                             </div>
+                            
+                            {/* Image Preview (Full width below the inputs) */}
+                            {productForm.data.image_url && (
+                                <div>
+                                    <img src={productForm.data.image_url} alt="Preview" className="h-16 w-16 object-cover rounded-lg border border-brand-border" />
+                                </div>
+                            )}
 
                             <div>
                                 <label className="block text-sm font-medium mb-1">Short Description</label>
@@ -293,7 +309,8 @@ export default function AdminIndex({ products }) {
                                 <img src={p.image_url || 'https://via.placeholder.com/100'} alt={p.name} className="w-16 h-16 rounded-lg object-cover bg-gray-50 flex-shrink-0" />
                                 <div className="flex-1 pr-16">
                                     <h3 className="font-bold text-sm text-brand-dark">{p.name}</h3>
-                                    <p className="text-xs text-gray-500">{p.category} &middot; {p.sku}</p>
+                                    {/* ADDED WEIGHT DISPLAY */}
+                                    <p className="text-xs text-gray-500">{p.category} &middot; {p.sku} &middot; {p.weight || 0} KG</p>
                                     
                                     <div className="mt-3 space-y-1.5">
                                         {p.units.length === 0 ? (

@@ -15,8 +15,9 @@ class Product extends Model
         'description', 
         'short_description',
         'image', 
-        'image_url', // <-- THIS WAS MISSING
+        'image_url',
         'category', 
+        'weight',
         'brand', 
         'kebs_certified', 
         'grade',
