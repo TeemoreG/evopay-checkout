@@ -17,7 +17,7 @@ const paymentMethods = [
 export default function CheckoutIndex() {
     const { items, setQty, removeItem } = useCart();
     const [isProcessing, setIsProcessing] = useState(false);
-    const [distanceKm, setDistanceKm] = useState(3); 
+    const [distanceKm, setDistanceKm] = useState(0); // <-- CHANGED TO 0 BY DEFAULT
 
     const [form, setForm] = useState({
         customer: { name: '', phone: '', email: '' },
@@ -209,7 +209,7 @@ export default function CheckoutIndex() {
                                 <span className="font-medium text-brand-dark">{formatKES(subtotal)}</span>
                             </div>
                             
-                            {/* DELIVERY BREAKDOWN ADDED HERE */}
+                            {/* DELIVERY BREAKDOWN */}
                             <div className="flex justify-between items-start">
                                 <span className="text-gray-500">Delivery</span>
                                 <div className="text-right">
