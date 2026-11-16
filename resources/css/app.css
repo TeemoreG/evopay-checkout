@@ -1,0 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+
+    /* Brand palette (from parking site) */
+    --color-brand-primary: #E05A26;
+    --color-brand-secondary: #F48356;
+    --color-brand-dark: #1A1A1A;
+    --color-brand-light: #F9FAFB;
+    --color-brand-border: #E5E7EB;
+    --color-brand-input: #E8EDF2;
+    --color-brand-blue: #2563EB;
+    --color-brand-blue-hover: #1D4ED8;
+
+    --radius-lg: 0.5rem;
+    --radius-md: calc(0.5rem - 2px);
+    --radius-sm: calc(0.5rem - 4px);
+}
+
+@layer base {
+    html, body, #app {
+        @apply h-full bg-white text-brand-dark antialiased font-sans;
+        letter-spacing: -0.01em;
+    }
+    h1, h2, h3, h4 {
+        @apply tracking-tight;
+    }
+    input, textarea, select {
+        @apply focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary;
+    }
+}
