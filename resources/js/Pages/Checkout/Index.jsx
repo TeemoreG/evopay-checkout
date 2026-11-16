@@ -9,9 +9,9 @@ const formatKES = (v) =>
     'KSh ' + Number(v).toLocaleString('en-KE', { minimumFractionDigits: 0 });
 
 const paymentMethods = [
-    { key: 'mpesa', label: 'M-Pesa', subtitle: 'Pay via STK push', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1781875182/Mpesa_bvcz8v.png', disabled: false },
-    { key: 'card', label: 'Card', subtitle: 'Visa / Mastercard', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1789069363/visa-mastercard-logos_mpvf6q.jpg', disabled: false },
-    { key: 'airtel', label: 'Airtel Money', subtitle: 'Coming soon', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1789463153/422-4221364_send-cash-to-ghana-airtel-logo-new-hd_scmhh9.png', disabled: true },
+    { key: 'mpesa', label: 'M-Pesa', subtitle: 'STK push', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1781875182/Mpesa_bvcz8v.png', disabled: false },
+    { key: 'card', label: 'Card', subtitle: 'Visa / MC', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1789069363/visa-mastercard-logos_mpvf6q.jpg', disabled: false },
+    { key: 'airtel', label: 'Airtel', subtitle: 'Soon', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1789463153/422-4221364_send-cash-to-ghana-airtel-logo-new-hd_scmhh9.png', disabled: true },
 ];
 
 export default function CheckoutIndex() {
@@ -33,7 +33,7 @@ export default function CheckoutIndex() {
 
     const subtotal = items.reduce((n, i) => n + i.lineTotal, 0);
     const totalWeight = items.reduce((acc, item) => acc + (item.qty * 50), 0); 
-    const weightFee = Math.ceil(totalWeight / 50) * 30;
+    const weightFee = Math.ceil(totalWeight / 50) * 20;
     const distanceFee = distanceKm * 50;
     const totalDeliveryFee = form.delivery_method === 'pickup' ? 0 : (weightFee + distanceFee);
     const total = subtotal + totalDeliveryFee;
@@ -148,18 +148,20 @@ export default function CheckoutIndex() {
                         </div>
                     </Section>
 
-                    {/* PAYMENT METHOD */}
+                    {/* PAYMENT METHOD - Updated for Row form on mobile */}
                     <Section title="Payment method">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3">
                             {paymentMethods.map((pm) => (
-                                <button key={pm.key} type="button" disabled={pm.disabled} onClick={() => setForm(f => ({ ...f, payment_method: pm.key }))} className={`text-left rounded-xl border p-4 transition relative flex flex-col items-center justify-center gap-3 ${pm.disabled ? 'border-brand-border bg-gray-50 opacity-60 cursor-not-allowed' : form.payment_method === pm.key ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/25' : 'border-brand-border bg-white hover:border-brand-primary'}`}>
-                                    <div className="h-10 w-full flex items-center justify-center"><img src={pm.image} alt={pm.label} className="max-h-full max-w-[80%] object-contain" /></div>
-                                    <div className="text-center">
-                                        <p className="font-bold text-sm text-brand-dark">{pm.label}</p>
-                                        <p className="text-[11px] text-gray-500 mt-0.5">{pm.subtitle}</p>
+                                <button key={pm.key} type="button" disabled={pm.disabled} onClick={() => setForm(f => ({ ...f, payment_method: pm.key }))} className={`text-left rounded-xl border p-2 sm:p-4 transition relative flex flex-col items-center justify-center ${pm.disabled ? 'border-brand-border bg-gray-50 opacity-60 cursor-not-allowed' : form.payment_method === pm.key ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/25' : 'border-brand-border bg-white hover:border-brand-primary'}`}>
+                                    <div className="h-8 sm:h-10 w-full flex items-center justify-center mb-1 sm:mb-3">
+                                        <img src={pm.image} alt={pm.label} className="max-h-full max-w-[80%] object-contain" />
                                     </div>
-                                    {pm.disabled && <span className="absolute top-2 right-2 text-[9px] bg-gray-200 text-brand-dark px-1.5 py-0.5 rounded font-bold uppercase">Soon</span>}
-                                    {!pm.disabled && form.payment_method === pm.key && <span className="absolute top-2 right-2 bg-brand-primary text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold">✓</span>}
+                                    <div className="text-center w-full">
+                                        <p className="font-bold text-[10px] sm:text-sm text-brand-dark truncate">{pm.label}</p>
+                                        <p className="text-[9px] sm:text-[11px] text-gray-500 mt-0.5 truncate">{pm.subtitle}</p>
+                                    </div>
+                                    {pm.disabled && <span className="absolute top-1 right-1 sm:top-2 sm:right-2 text-[7px] sm:text-[9px] bg-gray-200 text-brand-dark px-1 sm:px-1.5 py-0.5 rounded font-bold uppercase">Soon</span>}
+                                    {!pm.disabled && form.payment_method === pm.key && <span className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-brand-primary text-white rounded-full w-3 h-3 sm:w-4 sm:h-4 flex items-center justify-center text-[8px] sm:text-[10px] font-bold">✓</span>}
                                 </button>
                             ))}
                         </div>
