@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 import MainLayout from '../../Layouts/MainLayout';
 import { useCart } from '../../Stores/cart';
+import GoogleAddressInput from '../../Components/GoogleAddressInput'; // <-- IMPORTED HERE
 import axios from 'axios';
 
 const formatKES = (v) =>
@@ -25,8 +26,8 @@ export default function CheckoutIndex() {
             lat: null, 
             lng: null, 
             placeId: '',
-            landmark: '', // Added Landmark
-            notes: ''     // Added Delivery Notes
+            landmark: '',
+            notes: ''
         },
         payment_method: 'mpesa',
         delivery_method: 'standard',
@@ -51,6 +52,13 @@ export default function CheckoutIndex() {
     const submit = async (e) => {
         e.preventDefault();
         if (items.length === 0) return;
+        
+        // Ensure they selected an address if it's not pickup
+        if (form.delivery_method === 'standard' && !form.delivery.formatted) {
+            alert("Please select a delivery address.");
+            return;
+        }
+
         setIsProcessing(true);
 
         try {
@@ -103,8 +111,29 @@ export default function CheckoutIndex() {
                     <Section title="Delivery address">
                         <div>
                             <label className="block text-sm font-medium text-brand-dark mb-1.5">Search your address <span className="text-red-500">*</span></label>
-                            <input id="google-address-input" placeholder="Start typing your address…" className="w-full rounded-lg bg-brand-input border border-transparent px-4 py-3 text-sm placeholder-gray-500" readOnly />
-                            <p className="mt-1.5 text-xs text-gray-500">Powered by Google · Verified before delivery</p>
+                            
+                            {/* GOOGLE AUTOCOMPLETE COMPONENT */}
+                            <GoogleAddressInput 
+                                onAddressSelect={(address) => {
+                                    setForm(f => ({ ...f, delivery: { ...f.delivery, ...address } }));
+                                    // Mocking distance for now (random between 2km and 15km)
+                                    setDistanceKm(Math.floor(Math.random() * 15) + 2); 
+                                }} 
+                            />
+
+                            {/* Visual Confirmation */}
+                            {form.delivery.formatted && (
+                                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-start gap-2">
+                                    <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <div>
+                                        <p className="text-xs font-semibold text-green-800">Confirmed Address:</p>
+                                        <p className="text-sm text-green-700">{form.delivery.formatted}</p>
+                                        {form.delivery.lat && (
+                                            <p className="text-[10px] text-green-600 mt-1">GPS: {form.delivery.lat.toFixed(4)}, {form.delivery.lng.toFixed(4)}</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="mt-4 grid sm:grid-cols-2 gap-4">
