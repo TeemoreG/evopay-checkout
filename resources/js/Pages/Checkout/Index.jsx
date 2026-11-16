@@ -1,4 +1,4 @@
-import { Link, router } from '@inertiajs/react'; // Added router
+import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import MainLayout from '../../Layouts/MainLayout';
 import { useCart } from '../../Stores/cart';
@@ -15,8 +15,9 @@ const paymentMethods = [
 ];
 
 export default function CheckoutIndex() {
-    const { items, setQty, removeItem, clear } = useCart(); // Added clear
+    const { items, setQty, removeItem, clear } = useCart();
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isWaitingForPin, setIsWaitingForPin] = useState(false); 
     const [distanceKm, setDistanceKm] = useState(0);
 
     const [form, setForm] = useState({
@@ -32,7 +33,6 @@ export default function CheckoutIndex() {
     const updateDelivery = (key, value) => setForm((f) => ({ ...f, delivery: { ...f.delivery, [key]: value } }));
 
     const subtotal = items.reduce((n, i) => n + i.lineTotal, 0);
-    
     const totalWeight = items.reduce((acc, item) => acc + (item.qty * (item.weight || 0)), 0); 
     const weightFee = totalWeight * 20;
     const distanceFee = distanceKm * 50;
@@ -61,21 +61,61 @@ export default function CheckoutIndex() {
             });
 
             if (response.data.status === 'redirect') {
-                // CARD PAYMENTS (MPGS)
                 window.location.href = response.data.url;
             } else if (response.data.status === 'pending') {
-                // M-PESA STK PUSH SUCCESSFUL
-                alert(response.data.message);
-                clear(); // Empty the cart
-                router.visit('/checkout/success'); // Send to success page to wait for payment
+                setIsWaitingForPin(true);
+                setIsProcessing(false);
+                pollOrderStatus(response.data.order_id);
             }
         } catch (error) {
             console.error(error);
             alert(error.response?.data?.error || 'Payment failed to initialize.');
-        } finally {
             setIsProcessing(false);
         }
     };
+
+    const pollOrderStatus = (orderId) => {
+        let attempts = 0;
+        const maxAttempts = 20; // 20 x 3s = 60 seconds timeout
+
+        const interval = setInterval(async () => {
+            attempts++;
+            try {
+                const res = await axios.get(`/checkout/status/${orderId}`);
+                
+                if (res.data.status === 'paid') {
+                    clearInterval(interval);
+                    clear(); // Empty cart
+                    router.visit('/checkout/success');
+                } else if (res.data.status === 'failed') {
+                    clearInterval(interval);
+                    setIsWaitingForPin(false);
+                    alert('Payment failed or cancelled. Please try again.');
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(interval);
+                    setIsWaitingForPin(false);
+                    alert('Payment timeout. Please check your phone or try again.');
+                }
+            } catch (error) {
+                console.error("Polling error", error);
+            }
+        }, 3000);
+    };
+
+    if (isWaitingForPin) {
+        return (
+            <MainLayout minimal>
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <div className="w-20 h-20 border-4 border-brand-primary border-t-transparent rounded-full animate-spin mb-6"></div>
+                    <h2 className="text-2xl font-bold text-brand-dark mb-2">Waiting for M-Pesa PIN</h2>
+                    <p className="text-gray-500 max-w-sm">
+                        An STK Push has been sent to <strong>{form.customer.phone}</strong>. Please enter your M-Pesa PIN to complete the payment.
+                    </p>
+                    <p className="text-xs text-gray-400 mt-6">Do not close this page.</p>
+                </div>
+            </MainLayout>
+        );
+    }
 
     return (
         <MainLayout minimal>
@@ -88,13 +128,12 @@ export default function CheckoutIndex() {
             </div>
 
             <form onSubmit={submit} className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
-                {/* LEFT COLUMN (FORMS) */}
                 <div className="lg:col-span-2 space-y-4 md:space-y-6">
                     {/* CONTACT */}
                     <Section title="Contact details">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <Field label="Full name" required value={form.customer.name} onChange={(e) => updateCustomer('name', e.target.value)} placeholder="e.g. John Kamau" error={errors['customer.name']} />
-                            <Field label="Phone number" required value={form.customer.phone} onChange={(e) => updateCustomer('phone', e.target.value)} placeholder="+254 7XX XXX XXX" error={errors['customer.phone']} />
+                            <Field label="Phone number" required value={form.customer.phone} onChange={(e) => updateCustomer('phone', e.target.value)} placeholder="e.g. 0712345678" error={errors['customer.phone']} />
                             <div className="sm:col-span-2">
                                 <Field label="Email (optional)" type="email" value={form.customer.email} onChange={(e) => updateCustomer('email', e.target.value)} placeholder="you@example.com" error={errors['customer.email']} />
                             </div>
@@ -173,7 +212,6 @@ export default function CheckoutIndex() {
                     </Section>
                 </div>
 
-                {/* RIGHT COLUMN (SUMMARY) */}
                 <aside className="lg:col-span-1 lg:sticky lg:top-28 mt-6 lg:mt-0">
                     <div className="bg-white rounded-2xl border border-brand-border p-5 md:p-6 shadow-sm">
                         <h2 className="text-lg font-bold text-brand-dark mb-4">Your Cart</h2>

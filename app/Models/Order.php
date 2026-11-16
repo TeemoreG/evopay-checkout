@@ -12,6 +12,7 @@ class Order extends Model
         'status',
         'payment_method',
         'mpgs_session_id',
+        'mpesa_request_id', // <-- ADDED
         'items',
         'customer',
         'delivery',
