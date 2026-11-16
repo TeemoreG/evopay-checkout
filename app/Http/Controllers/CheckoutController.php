@@ -7,7 +7,6 @@ use App\Services\MpgsService;
 use App\Services\MpesaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Http;
 
 class CheckoutController extends Controller
 {
@@ -30,7 +29,7 @@ class CheckoutController extends Controller
         // 1. Calculate Real Distance & Delivery Fee
         if ($data['delivery_method'] === 'standard' && !empty($data['delivery']['lat'])) {
             $distanceKm = $this->calculateDistance(
-                -1.2664, 36.7657, // Evopay HQ (Kabarsiran Ave)
+                -1.2673, 36.7623, // Evopay HQ (Kabarsiran Gardens)
                 $data['delivery']['lat'], 
                 $data['delivery']['lng']
             );
@@ -100,7 +99,7 @@ class CheckoutController extends Controller
         return response()->json(['status' => 'error', 'message' => 'Invalid payment method'], 400);
     }
 
-    // NEW: Live distance calculation endpoint
+    // Live distance calculation endpoint for the frontend
     public function getDistance(Request $request)
     {
         $request->validate([
@@ -109,7 +108,7 @@ class CheckoutController extends Controller
         ]);
 
         $distanceKm = $this->calculateDistance(
-            -1.2664, 36.7657, // Evopay HQ
+            -1.2673, 36.7623, // Evopay HQ (Kabarsiran Gardens)
             $request->lat, 
             $request->lng
         );
@@ -119,7 +118,7 @@ class CheckoutController extends Controller
         ]);
     }
 
-    // Polling endpoint for the frontend
+    // Polling endpoint for the frontend (M-Pesa)
     public function checkStatus(Order $order)
     {
         return response()->json([
@@ -161,43 +160,29 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Calculate driving distance using Google Routes API
+     * Calculate straight-line distance using Haversine Formula
+     * (Accurate for short local deliveries without API costs)
      */
     private function calculateDistance($lat1, $lon1, $lat2, $lon2)
     {
-        $apiKey = env('GOOGLE_MAPS_API_KEY');
-        
-        $url = "https://routes.googleapis.com/directions/v2:computeRoutes";
+        // Radius of the Earth in kilometers
+        $earthRadius = 6371;
 
-        $payload = [
-            "origin" => [
-                "location" => [
-                    "latLng" => ["latitude" => $lat1, "longitude" => $lon1]
-                ]
-            ],
-            "destination" => [
-                "location" => [
-                    "latLng" => ["latitude" => $lat2, "longitude" => $lon2]
-                ]
-            ],
-            "travelMode" => "DRIVE",
-            "routingPreference" => "TRAFFIC_AWARE"
-        ];
+        // Convert degrees to radians
+        $latFrom = deg2rad($lat1);
+        $lonFrom = deg2rad($lon1);
+        $latTo = deg2rad($lat2);
+        $lonTo = deg2rad($lon2);
 
-        $response = Http::withHeaders([
-            'Content-Type' => 'application/json',
-            'X-Goog-Api-Key' => $apiKey,
-            'X-Goog-FieldMask' => 'routes.distanceMeters'
-        ])->post($url, $payload);
+        $latDelta = $latTo - $latFrom;
+        $lonDelta = $lonTo - $lonFrom;
 
-        if ($response->successful()) {
-            $data = $response->json();
-            if (isset($data['routes'][0]['distanceMeters'])) {
-                return $data['routes'][0]['distanceMeters'] / 1000;
-            }
-        }
+        // Haversine formula math
+        $angle = 2 * asin(sqrt(pow(sin($latDelta / 2), 2) + cos($latFrom) * cos($latTo) * pow(sin($lonDelta / 2), 2)));
 
-        \Log::error('Google Routes API Error: ' . $response->body());
-        return 0;
+        $distance = $angle * $earthRadius;
+
+        // Add a 20% buffer to account for actual road driving
+        return $distance * 1.2; 
     }
 }
