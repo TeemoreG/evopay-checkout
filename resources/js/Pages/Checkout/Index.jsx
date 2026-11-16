@@ -32,9 +32,11 @@ export default function CheckoutIndex() {
     const updateDelivery = (key, value) => setForm((f) => ({ ...f, delivery: { ...f.delivery, [key]: value } }));
 
     const subtotal = items.reduce((n, i) => n + i.lineTotal, 0);
-    const totalWeight = items.reduce((acc, item) => acc + (item.qty * 50), 0); 
-    const weightFee = Math.ceil(totalWeight / 50) * 20;
-    const distanceFee = distanceKm * 50;
+    
+    // DYNAMIC WEIGHT & DISTANCE LOGIC
+    const totalWeight = items.reduce((acc, item) => acc + (item.qty * (item.weight || 0)), 0); 
+    const weightFee = totalWeight * 20; // KSh 20 per KG
+    const distanceFee = distanceKm * 50; // KSh 50 per KM
     const totalDeliveryFee = form.delivery_method === 'pickup' ? 0 : (weightFee + distanceFee);
     const total = subtotal + totalDeliveryFee;
 
@@ -148,7 +150,7 @@ export default function CheckoutIndex() {
                         </div>
                     </Section>
 
-                    {/* PAYMENT METHOD - Updated for Row form on mobile */}
+                    {/* PAYMENT METHOD */}
                     <Section title="Payment method">
                         <div className="grid grid-cols-3 gap-2 sm:gap-3">
                             {paymentMethods.map((pm) => (
@@ -206,14 +208,24 @@ export default function CheckoutIndex() {
                                 <span className="text-gray-500">Subtotal</span>
                                 <span className="font-medium text-brand-dark">{formatKES(subtotal)}</span>
                             </div>
-                            <div className="flex justify-between items-center">
+                            
+                            {/* DELIVERY BREAKDOWN ADDED HERE */}
+                            <div className="flex justify-between items-start">
                                 <span className="text-gray-500">Delivery</span>
-                                {form.delivery_method === 'pickup' ? (
-                                    <span className="font-medium text-brand-primary">Free</span>
-                                ) : (
-                                    <span className="font-medium text-brand-dark">{formatKES(totalDeliveryFee)}</span>
-                                )}
+                                <div className="text-right">
+                                    {form.delivery_method === 'pickup' ? (
+                                        <span className="font-medium text-brand-primary">Free</span>
+                                    ) : (
+                                        <>
+                                            <span className="font-medium text-brand-dark">{formatKES(totalDeliveryFee)}</span>
+                                            <div className="text-[10px] text-gray-400 mt-0.5">
+                                                Weight: {totalWeight} KG | Distance: {distanceKm} KM
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
                             </div>
+
                             <div className="flex justify-between pt-3 border-t border-brand-border mt-3 text-base">
                                 <span className="font-bold text-brand-dark">Total</span>
                                 <span className="font-extrabold text-brand-primary text-xl">{formatKES(total)}</span>
