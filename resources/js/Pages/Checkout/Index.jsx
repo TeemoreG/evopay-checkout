@@ -19,6 +19,7 @@ export default function CheckoutIndex() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [isWaitingForPin, setIsWaitingForPin] = useState(false); 
     const [distanceKm, setDistanceKm] = useState(0);
+    const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
 
     const [form, setForm] = useState({
         customer: { name: '', phone: '', email: '' },
@@ -39,12 +40,39 @@ export default function CheckoutIndex() {
     const totalDeliveryFee = form.delivery_method === 'pickup' ? 0 : (weightFee + distanceFee);
     const total = subtotal + totalDeliveryFee;
 
+    // NEW: Real Distance Calculation function
+    const handleAddressSelect = async (address) => {
+        setForm(f => ({ ...f, delivery: { ...f.delivery, ...address } }));
+        
+        if (address.lat && address.lng) {
+            setIsCalculatingDistance(true);
+            try {
+                const res = await axios.post('/checkout/distance', {
+                    lat: address.lat,
+                    lng: address.lng
+                });
+                setDistanceKm(res.data.distance_km);
+            } catch (error) {
+                console.error("Failed to get distance", error);
+                // Fallback to a default if Google API fails
+                setDistanceKm(5);
+            } finally {
+                setIsCalculatingDistance(false);
+            }
+        }
+    };
+
     const submit = async (e) => {
         e.preventDefault();
         if (items.length === 0) return;
         
         if (form.delivery_method === 'standard' && !form.delivery.formatted) {
             alert("Please select a delivery address.");
+            return;
+        }
+        
+        if (isCalculatingDistance) {
+            alert("Please wait while we calculate your delivery distance.");
             return;
         }
 
@@ -76,7 +104,7 @@ export default function CheckoutIndex() {
 
     const pollOrderStatus = (orderId) => {
         let attempts = 0;
-        const maxAttempts = 20; // 20 x 3s = 60 seconds timeout
+        const maxAttempts = 20;
 
         const interval = setInterval(async () => {
             attempts++;
@@ -85,7 +113,7 @@ export default function CheckoutIndex() {
                 
                 if (res.data.status === 'paid') {
                     clearInterval(interval);
-                    clear(); // Empty cart
+                    clear();
                     router.visit('/checkout/success');
                 } else if (res.data.status === 'failed') {
                     clearInterval(interval);
@@ -129,7 +157,6 @@ export default function CheckoutIndex() {
 
             <form onSubmit={submit} className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
                 <div className="lg:col-span-2 space-y-4 md:space-y-6">
-                    {/* CONTACT */}
                     <Section title="Contact details">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <Field label="Full name" required value={form.customer.name} onChange={(e) => updateCustomer('name', e.target.value)} placeholder="e.g. John Kamau" error={errors['customer.name']} />
@@ -140,19 +167,18 @@ export default function CheckoutIndex() {
                         </div>
                     </Section>
 
-                    {/* ADDRESS */}
                     <Section title="Delivery address">
                         <div>
                             <label className="block text-sm font-medium text-brand-dark mb-1.5">Search your address <span className="text-red-500">*</span></label>
                             
-                            <GoogleAddressInput 
-                                onAddressSelect={(address) => {
-                                    setForm(f => ({ ...f, delivery: { ...f.delivery, ...address } }));
-                                    setDistanceKm(Math.floor(Math.random() * 15) + 2); 
-                                }} 
-                            />
+                            {/* UPDATED TO USE handleAddressSelect */}
+                            <GoogleAddressInput onAddressSelect={handleAddressSelect} />
 
-                            {form.delivery.formatted && (
+                            {isCalculatingDistance && (
+                                <p className="text-xs text-brand-primary mt-2 animate-pulse">Calculating real driving distance...</p>
+                            )}
+
+                            {form.delivery.formatted && !isCalculatingDistance && (
                                 <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-start gap-2">
                                     <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                                     <div>
@@ -169,7 +195,6 @@ export default function CheckoutIndex() {
                         </div>
                     </Section>
 
-                    {/* DELIVERY METHOD */}
                     <Section title="Delivery method">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <button type="button" onClick={() => setForm(f => ({ ...f, delivery_method: 'standard' }))} className={`text-left rounded-xl border p-4 transition relative ${form.delivery_method === 'standard' ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/25' : 'border-brand-border bg-white hover:border-brand-primary'}`}>
@@ -192,7 +217,6 @@ export default function CheckoutIndex() {
                         </div>
                     </Section>
 
-                    {/* PAYMENT METHOD */}
                     <Section title="Payment method">
                         <div className="grid grid-cols-3 gap-2 sm:gap-3">
                             {paymentMethods.map((pm) => (
@@ -257,7 +281,9 @@ export default function CheckoutIndex() {
                                         <span className="font-medium text-brand-primary">Free</span>
                                     ) : (
                                         <>
-                                            <span className="font-medium text-brand-dark">{formatKES(totalDeliveryFee)}</span>
+                                            <span className="font-medium text-brand-dark">
+                                                {isCalculatingDistance ? '...' : formatKES(totalDeliveryFee)}
+                                            </span>
                                             <div className="text-[10px] text-gray-400 mt-0.5">
                                                 Weight: {totalWeight} KG | Distance: {distanceKm} KM
                                             </div>
@@ -268,12 +294,14 @@ export default function CheckoutIndex() {
 
                             <div className="flex justify-between pt-3 border-t border-brand-border mt-3 text-base">
                                 <span className="font-bold text-brand-dark">Total</span>
-                                <span className="font-extrabold text-brand-primary text-xl">{formatKES(total)}</span>
+                                <span className="font-extrabold text-brand-primary text-xl">
+                                    {isCalculatingDistance ? '...' : formatKES(total)}
+                                </span>
                             </div>
                         </div>
 
-                        <button type="submit" disabled={items.length === 0 || isProcessing} className="mt-6 w-full bg-brand-dark text-white py-4 rounded-xl font-bold text-sm hover:bg-black disabled:opacity-40 transition">
-                            {isProcessing ? 'Initializing Payment...' : `Pay · ${formatKES(total)}`}
+                        <button type="submit" disabled={items.length === 0 || isProcessing || isCalculatingDistance} className="mt-6 w-full bg-brand-dark text-white py-4 rounded-xl font-bold text-sm hover:bg-black disabled:opacity-40 transition">
+                            {isProcessing ? 'Initializing Payment...' : isCalculatingDistance ? 'Calculating Distance...' : `Pay · ${formatKES(total)}`}
                         </button>
 
                         <Link href="/" className="mt-4 block text-center text-sm text-gray-500 hover:text-brand-primary font-medium">← Continue Shopping</Link>

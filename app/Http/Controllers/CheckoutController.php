@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Services\MpgsService;
-use App\Services\MpesaService; // <-- ADDED
+use App\Services\MpesaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
@@ -37,7 +37,7 @@ class CheckoutController extends Controller
 
             // Dynamic Weight Math: KSh 20 per KG + KSh 50 per KM
             $totalWeight = collect($data['items'])->reduce(function($acc, $item) {
-                return $acc + ($item['qty'] * ($item['weight'] ?? 0));
+                return $acc + ($item['qty'] * (float)($item['weight'] ?? 0));
             }, 0);
 
             $weightFee = $totalWeight * 20;
@@ -84,10 +84,7 @@ class CheckoutController extends Controller
         // 4. Handle M-Pesa (STK PUSH)
         if ($data['payment_method'] === 'mpesa') {
             try {
-                // Trigger STK Push using the phone number from the customer form
                 $response = $mpesa->stkPush($data['customer']['phone'], $total, $order->order_number);
-                
-                // Save the CheckoutRequestID to the order so we can match it in the callback
                 $order->update(['mpesa_request_id' => $response['CheckoutRequestID']]); 
 
                 return response()->json([
@@ -101,6 +98,25 @@ class CheckoutController extends Controller
         }
 
         return response()->json(['status' => 'error', 'message' => 'Invalid payment method'], 400);
+    }
+
+    // NEW: Live distance calculation endpoint
+    public function getDistance(Request $request)
+    {
+        $request->validate([
+            'lat' => 'required|numeric',
+            'lng' => 'required|numeric',
+        ]);
+
+        $distanceKm = $this->calculateDistance(
+            -1.2664, 36.7657, // Evopay HQ
+            $request->lat, 
+            $request->lng
+        );
+
+        return response()->json([
+            'distance_km' => round($distanceKm, 1)
+        ]);
     }
 
     // Polling endpoint for the frontend
