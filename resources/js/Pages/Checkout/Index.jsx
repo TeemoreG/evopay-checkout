@@ -33,7 +33,7 @@ export default function CheckoutIndex() {
     const updateDelivery = (key, value) => setForm((f) => ({ ...f, delivery: { ...f.delivery, [key]: value } }));
 
     const subtotal = items.reduce((n, i) => n + i.lineTotal, 0);
-    const totalWeight = items.reduce((acc, item) => acc + (item.qty * (item.weight || 0)), 0); 
+    const totalWeight = items.reduce((acc, item) => acc + (item.qty * parseFloat(item.weight || 0)), 0);  
     const weightFee = totalWeight * 20;
     const distanceFee = distanceKm * 50;
     const totalDeliveryFee = form.delivery_method === 'pickup' ? 0 : (weightFee + distanceFee);

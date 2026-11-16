@@ -54,8 +54,8 @@ export default function ProductShow({ product, units }) {
         addItem({
             productId: product.id,
             productName: product.name,
-            image_url: product.image_url,     // <-- CRITICAL
-            weight: product.weight || 0,      // <-- CRITICAL
+            image_url: product.image_url,
+            weight: parseFloat(product.weight) || 0,
             unitId: selectedUnit.id,
             unitLabel: selectedUnit.label,
             qty,

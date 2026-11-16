@@ -15,7 +15,6 @@ class CatalogController extends Controller
             ->filter()
             ->values();
 
-        // Force a fresh query with no caching
         $products = Product::where('is_active', true)
             ->with(['units' => function($q) {
                 $q->where('is_active', true)->with(['priceBreaks' => function($pb) {
@@ -24,7 +23,6 @@ class CatalogController extends Controller
             }])
             ->get()
             ->map(function ($p) {
-                // Get the base price directly from the first unit's first price break
                 $basePrice = null;
                 if ($p->units->isNotEmpty()) {
                     $firstUnit = $p->units->first();
@@ -41,6 +39,7 @@ class CatalogController extends Controller
                     'short_description' => $p->short_description,
                     'image_url' => $p->image_url,
                     'category' => $p->category,
+                    'weight' => (float) ($p->weight ?? 0),
                     'from_price' => $basePrice,
                 ];
             });
@@ -64,7 +63,7 @@ class CatalogController extends Controller
         ]);
 
         return Inertia::render('Product/Show', [
-            'product' => $product,
+            'product' => $product, // This already passes weight because it's the full model
             'units' => $product->units,
         ]);
     }
