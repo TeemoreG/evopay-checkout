@@ -22,10 +22,8 @@ cp "$REPO/artisan"          "$APP/"
 cp "$REPO/composer.json"    "$APP/"
 cp "$REPO/composer.lock"    "$APP/"
 
-echo "==> [3/5] Syncing public assets (Fixing 404s)"
-# Remove the old build folder completely to prevent stale file references
-rm -rf "$APP/public/build"
-# Copy the fresh build folder from the repo
+echo "==> [3/5] Syncing public assets"
+# Copy the entire public folder (including build, images, etc.)
 cp -R "$REPO/public/build"  "$APP/public/"
 
 echo "==> [4/5] Clearing Laravel caches"
