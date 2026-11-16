@@ -33,8 +33,8 @@ export default function CheckoutIndex() {
 
     const subtotal = items.reduce((n, i) => n + i.lineTotal, 0);
     const totalWeight = items.reduce((acc, item) => acc + (item.qty * 50), 0); 
-    const weightFee = Math.ceil(totalWeight / 50) * 40;
-    const distanceFee = distanceKm * 100;
+    const weightFee = Math.ceil(totalWeight / 50) * 30;
+    const distanceFee = distanceKm * 50;
     const totalDeliveryFee = form.delivery_method === 'pickup' ? 0 : (weightFee + distanceFee);
     const total = subtotal + totalDeliveryFee;
 
