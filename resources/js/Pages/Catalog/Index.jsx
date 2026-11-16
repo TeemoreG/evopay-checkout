@@ -6,12 +6,9 @@ import { useCart } from '../../Stores/cart';
 const formatKES = (v) =>
     'KSh ' + Number(v).toLocaleString('en-KE', { minimumFractionDigits: 0 });
 
-// Generates a fake rating and a random review count
 const getFakeRating = (id) => {
     const ratings = [3.8, 4.2, 4.5, 4.8, 5.0, 4.1, 4.7];
     const rating = ratings[id % ratings.length];
-    
-    // Generate a consistent pseudo-random number of reviews based on the ID
     const reviewCount = (id * 37) % 400 + 12; 
     return { rating, reviewCount };
 };
@@ -27,13 +24,15 @@ export default function CatalogIndex({ products, categories }) {
         : products.filter(p => p.category === activeCategory);
 
     const handleQuickAdd = (e, product) => {
-        e.preventDefault(); // Stop the Link from navigating
+        e.preventDefault();
         
         if (!product.from_price) return alert('This product requires a quote.');
 
         addItem({
             productId: product.id,
             productName: product.name,
+            image_url: product.image_url,
+            weight: product.weight || 0, // <-- CRITICAL
             unitId: `${product.id}-default`,
             unitLabel: '1 Unit',
             qty: 1,
@@ -43,7 +42,6 @@ export default function CatalogIndex({ products, categories }) {
 
     return (
         <MainLayout>
-            {/* Hero Section */}
             <div className="mb-10 rounded-2xl bg-brand-dark text-white p-8 md:p-12 relative overflow-hidden flex items-center">
                 <div className="relative z-10 max-w-lg">
                     <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-4">
@@ -57,7 +55,6 @@ export default function CatalogIndex({ products, categories }) {
                 <div className="absolute -right-20 -top-20 w-96 h-96 bg-brand-primary rounded-full blur-3xl opacity-20"></div>
             </div>
 
-            {/* Header & Filters */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <h2 className="text-2xl font-bold text-brand-dark">
                     {activeCategory === 'All' ? 'All Products' : activeCategory} ({filteredProducts.length})
@@ -79,7 +76,6 @@ export default function CatalogIndex({ products, categories }) {
                 </div>
             </div>
 
-            {/* Product Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
                 {filteredProducts.map((p) => {
                     const { rating, reviewCount } = getFakeRating(p.id);
@@ -90,7 +86,6 @@ export default function CatalogIndex({ products, categories }) {
                             href={`/products/${p.slug}`}
                             className="group flex flex-col bg-white rounded-2xl border border-brand-border overflow-hidden hover:shadow-xl hover:border-brand-primary transition duration-300 relative"
                         >
-                            {/* Image Area */}
                             <div className="aspect-square bg-gray-50 relative overflow-hidden">
                                 {p.image_url ? (
                                     <img 
@@ -102,14 +97,12 @@ export default function CatalogIndex({ products, categories }) {
                                     <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
                                 )}
                                 
-                                {/* Category Badge (Top Left) */}
                                 {p.category && (
                                     <span className="absolute top-3 left-3 bg-white/90 backdrop-blur text-[10px] font-bold px-2.5 py-1 rounded-md shadow-sm text-brand-dark uppercase tracking-wider">
                                         {p.category}
                                     </span>
                                 )}
 
-                                {/* Quick Add (+) Button (Top Right) */}
                                 <button
                                     onClick={(e) => handleQuickAdd(e, p)}
                                     className="absolute top-3 right-3 bg-brand-primary text-white w-9 h-9 rounded-full flex items-center justify-center shadow-lg hover:bg-brand-dark hover:scale-110 transition-all duration-200 z-10"
@@ -121,9 +114,7 @@ export default function CatalogIndex({ products, categories }) {
                                 </button>
                             </div>
 
-                            {/* Details Area */}
                             <div className="p-4 flex flex-col flex-grow">
-                                {/* Rating & Reviews */}
                                 <div className="flex items-center gap-1.5 mb-2">
                                     <div className="flex text-amber-400">
                                         {[...Array(5)].map((_, i) => (
