@@ -74,7 +74,6 @@ export default function CheckoutIndex() {
 
     return (
         <MainLayout minimal>
-            {/* Breadcrumb - Hidden on mobile to save space */}
             <div className="hidden md:flex mb-8 items-center gap-2 text-sm text-gray-500">
                 <Link href="/" className="hover:text-brand-primary">Shop</Link>
                 <span>›</span>
@@ -83,10 +82,8 @@ export default function CheckoutIndex() {
                 <span className="text-brand-dark font-medium">Payment</span>
             </div>
 
-            {/* Grid stacks on mobile, becomes 3 columns on large screens */}
             <form onSubmit={submit} className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
-                
-                {/* LEFT COLUMN (FORMS) - Takes 2 columns on large screens */}
+                {/* LEFT COLUMN (FORMS) */}
                 <div className="lg:col-span-2 space-y-4 md:space-y-6">
                     {/* CONTACT */}
                     <Section title="Contact details">
@@ -169,7 +166,7 @@ export default function CheckoutIndex() {
                     </Section>
                 </div>
 
-                {/* RIGHT COLUMN (SUMMARY) - Stacks on mobile, sticky on desktop */}
+                {/* RIGHT COLUMN (SUMMARY) */}
                 <aside className="lg:col-span-1 lg:sticky lg:top-28 mt-6 lg:mt-0">
                     <div className="bg-white rounded-2xl border border-brand-border p-5 md:p-6 shadow-sm">
                         <h2 className="text-lg font-bold text-brand-dark mb-4">Your Cart</h2>

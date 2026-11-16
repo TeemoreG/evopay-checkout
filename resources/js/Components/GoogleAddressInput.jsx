@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 export default function GoogleAddressInput({ onAddressSelect, placeholder = "Search for a place, building, or address..." }) {
-    const containerRef = useRef(null);
+    const inputRef = useRef(null);
     const [isLoaded, setIsLoaded] = useState(false);
 
     useEffect(() => {
@@ -19,76 +19,52 @@ export default function GoogleAddressInput({ onAddressSelect, placeholder = "Sea
     }, []);
 
     useEffect(() => {
-        if (!isLoaded || !containerRef.current) return;
+        if (!isLoaded || !inputRef.current) return;
 
-        const placeAutocomplete = new window.google.maps.places.PlaceAutocompleteElement({
+        // Use the classic Autocomplete attached to a normal input
+        const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
             componentRestrictions: { country: 'ke' },
+            fields: ['formatted_address', 'geometry', 'place_id', 'name'],
         });
 
-        placeAutocomplete.classList.add('custom-google-autocomplete');
-        
-        placeAutocomplete.addEventListener('gmp-select', async ({ placePrediction }) => {
-            const place = placePrediction.toPlace();
-            await place.fetchFields({ fields: ['formattedAddress', 'location', 'id', 'displayName'] });
-
-            if (place.location) {
+        autocomplete.addListener('place_changed', () => {
+            const place = autocomplete.getPlace();
+            
+            if (place.geometry && place.geometry.location) {
                 onAddressSelect({
-                    formatted: place.formattedAddress || place.displayName,
-                    lat: place.location.lat(),
-                    lng: place.location.lng(),
-                    placeId: place.id,
+                    formatted: place.formatted_address || place.name,
+                    lat: place.geometry.location.lat(),
+                    lng: place.geometry.location.lng(),
+                    placeId: place.place_id,
                 });
             }
         });
-
-        containerRef.current.appendChild(placeAutocomplete);
-
-        return () => {
-            if (containerRef.current) containerRef.current.innerHTML = '';
-        };
     }, [isLoaded, onAddressSelect]);
 
     return (
-        <div className="w-full">
-            <style dangerouslySetInnerHTML={{__html: `
-                /* Force light mode on the custom Google element */
-                gmp-place-autocomplete.custom-google-autocomplete {
-                    color-scheme: light !important;
-                    --gmp-color-surface: #E8EDF2 !important;
-                    --gmp-color-on-surface: #1A1A1A !important;
-                    --gmp-color-outline: transparent !important;
-                }
-                gmp-place-autocomplete.custom-google-autocomplete input {
-                    background-color: #E8EDF2 !important;
-                    color: #1A1A1A !important;
-                    border: 1px solid transparent !important;
-                    border-radius: 0.5rem !important;
-                    padding: 14px 16px 14px 40px !important;
-                    font-size: 14px !important;
-                    width: 100% !important;
-                }
-                gmp-place-autocomplete.custom-google-autocomplete input:focus {
-                    background-color: #ffffff !important;
-                    border-color: transparent !important;
-                    outline: 2px solid rgba(224, 90, 38, 0.3) !important;
-                }
-            `}} />
-
+        <div className="w-full relative">
             {!isLoaded ? (
-                <div className="w-full h-[52px] bg-[#E8EDF2] rounded-lg animate-pulse flex items-center px-4">
-                    <span className="text-sm text-gray-400">Loading Google Maps...</span>
+                <div className="w-full h-[50px] bg-brand-input rounded-lg animate-pulse flex items-center px-4">
+                    <span className="text-sm text-gray-500">Loading Google Maps...</span>
                 </div>
             ) : (
-                <div ref={containerRef} className="w-full"></div>
+                <>
+                    {/* Search Icon inside the input */}
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+
+                    {/* Standard Tailwind Input */}
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        placeholder={placeholder}
+                        className="w-full rounded-lg bg-brand-input border border-transparent pl-10 pr-4 py-3.5 text-sm placeholder-gray-500 focus:bg-white focus:ring-2 focus:ring-brand-primary/25 transition-all"
+                    />
+                </>
             )}
-            
-            <div className="flex items-center gap-1.5 mt-2">
-                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                </svg>
-                <p className="text-[11px] text-gray-500">Search for any building, mall, institution, or address</p>
-            </div>
         </div>
     );
 }
