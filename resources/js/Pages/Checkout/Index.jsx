@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react'; // Added router
 import { useState } from 'react';
 import MainLayout from '../../Layouts/MainLayout';
 import { useCart } from '../../Stores/cart';
@@ -15,9 +15,9 @@ const paymentMethods = [
 ];
 
 export default function CheckoutIndex() {
-    const { items, setQty, removeItem } = useCart();
+    const { items, setQty, removeItem, clear } = useCart(); // Added clear
     const [isProcessing, setIsProcessing] = useState(false);
-    const [distanceKm, setDistanceKm] = useState(0); // <-- CHANGED TO 0 BY DEFAULT
+    const [distanceKm, setDistanceKm] = useState(0);
 
     const [form, setForm] = useState({
         customer: { name: '', phone: '', email: '' },
@@ -33,10 +33,9 @@ export default function CheckoutIndex() {
 
     const subtotal = items.reduce((n, i) => n + i.lineTotal, 0);
     
-    // DYNAMIC WEIGHT & DISTANCE LOGIC
     const totalWeight = items.reduce((acc, item) => acc + (item.qty * (item.weight || 0)), 0); 
-    const weightFee = totalWeight * 20; // KSh 20 per KG
-    const distanceFee = distanceKm * 50; // KSh 50 per KM
+    const weightFee = totalWeight * 20;
+    const distanceFee = distanceKm * 50;
     const totalDeliveryFee = form.delivery_method === 'pickup' ? 0 : (weightFee + distanceFee);
     const total = subtotal + totalDeliveryFee;
 
@@ -62,9 +61,13 @@ export default function CheckoutIndex() {
             });
 
             if (response.data.status === 'redirect') {
+                // CARD PAYMENTS (MPGS)
                 window.location.href = response.data.url;
             } else if (response.data.status === 'pending') {
+                // M-PESA STK PUSH SUCCESSFUL
                 alert(response.data.message);
+                clear(); // Empty the cart
+                router.visit('/checkout/success'); // Send to success page to wait for payment
             }
         } catch (error) {
             console.error(error);
@@ -209,7 +212,6 @@ export default function CheckoutIndex() {
                                 <span className="font-medium text-brand-dark">{formatKES(subtotal)}</span>
                             </div>
                             
-                            {/* DELIVERY BREAKDOWN */}
                             <div className="flex justify-between items-start">
                                 <span className="text-gray-500">Delivery</span>
                                 <div className="text-right">
