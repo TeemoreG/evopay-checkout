@@ -2,7 +2,7 @@ import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 import MainLayout from '../../Layouts/MainLayout';
 import { useCart } from '../../Stores/cart';
-import GoogleAddressInput from '../../Components/GoogleAddressInput'; // <-- IMPORTED HERE
+import GoogleAddressInput from '../../Components/GoogleAddressInput';
 import axios from 'axios';
 
 const formatKES = (v) =>
@@ -21,28 +21,17 @@ export default function CheckoutIndex() {
 
     const [form, setForm] = useState({
         customer: { name: '', phone: '', email: '' },
-        delivery: { 
-            formatted: '', 
-            lat: null, 
-            lng: null, 
-            placeId: '',
-            landmark: '',
-            notes: ''
-        },
+        delivery: { formatted: '', lat: null, lng: null, placeId: '', landmark: '', notes: '' },
         payment_method: 'mpesa',
         delivery_method: 'standard',
     });
+    
     const [errors] = useState({});
 
-    const updateCustomer = (key, value) =>
-        setForm((f) => ({ ...f, customer: { ...f.customer, [key]: value } }));
-
-    const updateDelivery = (key, value) =>
-        setForm((f) => ({ ...f, delivery: { ...f.delivery, [key]: value } }));
+    const updateCustomer = (key, value) => setForm((f) => ({ ...f, customer: { ...f.customer, [key]: value } }));
+    const updateDelivery = (key, value) => setForm((f) => ({ ...f, delivery: { ...f.delivery, [key]: value } }));
 
     const subtotal = items.reduce((n, i) => n + i.lineTotal, 0);
-    
-    // DELIVERY LOGIC
     const totalWeight = items.reduce((acc, item) => acc + (item.qty * 50), 0); 
     const weightFee = Math.ceil(totalWeight / 50) * 40;
     const distanceFee = distanceKm * 100;
@@ -53,7 +42,6 @@ export default function CheckoutIndex() {
         e.preventDefault();
         if (items.length === 0) return;
         
-        // Ensure they selected an address if it's not pickup
         if (form.delivery_method === 'standard' && !form.delivery.formatted) {
             alert("Please select a delivery address.");
             return;
@@ -65,12 +53,10 @@ export default function CheckoutIndex() {
             const response = await axios.post('/checkout/process', {
                 items: items,
                 subtotal: subtotal,
-                delivery_fee: totalDeliveryFee,
-                total: total,
                 payment_method: form.payment_method,
                 delivery_method: form.delivery_method,
                 customer: form.customer,
-                delivery: { ...form.delivery, distance_km: distanceKm }
+                delivery: form.delivery
             });
 
             if (response.data.status === 'redirect') {
@@ -88,7 +74,8 @@ export default function CheckoutIndex() {
 
     return (
         <MainLayout minimal>
-            <div className="mb-8 flex items-center gap-2 text-sm text-gray-500">
+            {/* Breadcrumb - Hidden on mobile to save space */}
+            <div className="hidden md:flex mb-8 items-center gap-2 text-sm text-gray-500">
                 <Link href="/" className="hover:text-brand-primary">Shop</Link>
                 <span>›</span>
                 <span>Shipping</span>
@@ -96,14 +83,19 @@ export default function CheckoutIndex() {
                 <span className="text-brand-dark font-medium">Payment</span>
             </div>
 
-            <form onSubmit={submit} className="grid lg:grid-cols-3 gap-8 items-start">
-                <div className="lg:col-span-2 space-y-6">
+            {/* Grid stacks on mobile, becomes 3 columns on large screens */}
+            <form onSubmit={submit} className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+                
+                {/* LEFT COLUMN (FORMS) - Takes 2 columns on large screens */}
+                <div className="lg:col-span-2 space-y-4 md:space-y-6">
                     {/* CONTACT */}
                     <Section title="Contact details">
-                        <div className="grid sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <Field label="Full name" required value={form.customer.name} onChange={(e) => updateCustomer('name', e.target.value)} placeholder="e.g. John Kamau" error={errors['customer.name']} />
                             <Field label="Phone number" required value={form.customer.phone} onChange={(e) => updateCustomer('phone', e.target.value)} placeholder="+254 7XX XXX XXX" error={errors['customer.phone']} />
-                            <Field label="Email (optional)" type="email" value={form.customer.email} onChange={(e) => updateCustomer('email', e.target.value)} placeholder="you@example.com" error={errors['customer.email']} />
+                            <div className="sm:col-span-2">
+                                <Field label="Email (optional)" type="email" value={form.customer.email} onChange={(e) => updateCustomer('email', e.target.value)} placeholder="you@example.com" error={errors['customer.email']} />
+                            </div>
                         </div>
                     </Section>
 
@@ -112,49 +104,33 @@ export default function CheckoutIndex() {
                         <div>
                             <label className="block text-sm font-medium text-brand-dark mb-1.5">Search your address <span className="text-red-500">*</span></label>
                             
-                            {/* GOOGLE AUTOCOMPLETE COMPONENT */}
                             <GoogleAddressInput 
                                 onAddressSelect={(address) => {
                                     setForm(f => ({ ...f, delivery: { ...f.delivery, ...address } }));
-                                    // Mocking distance for now (random between 2km and 15km)
                                     setDistanceKm(Math.floor(Math.random() * 15) + 2); 
                                 }} 
                             />
 
-                            {/* Visual Confirmation */}
                             {form.delivery.formatted && (
                                 <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-start gap-2">
                                     <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                                     <div>
                                         <p className="text-xs font-semibold text-green-800">Confirmed Address:</p>
                                         <p className="text-sm text-green-700">{form.delivery.formatted}</p>
-                                        {form.delivery.lat && (
-                                            <p className="text-[10px] text-green-600 mt-1">GPS: {form.delivery.lat.toFixed(4)}, {form.delivery.lng.toFixed(4)}</p>
-                                        )}
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        <div className="mt-4 grid sm:grid-cols-2 gap-4">
-                            <Field 
-                                label="Landmark (optional)" 
-                                value={form.delivery.landmark}
-                                onChange={(e) => updateDelivery('landmark', e.target.value)}
-                                placeholder="e.g. Next to Imaara Mall" 
-                            />
-                            <Field 
-                                label="Delivery notes" 
-                                value={form.delivery.notes}
-                                onChange={(e) => updateDelivery('notes', e.target.value)}
-                                placeholder="e.g. Gate 3, opposite Shell" 
-                            />
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field label="Landmark (optional)" value={form.delivery.landmark} onChange={(e) => updateDelivery('landmark', e.target.value)} placeholder="e.g. Next to Imaara Mall" />
+                            <Field label="Delivery notes" value={form.delivery.notes} onChange={(e) => updateDelivery('notes', e.target.value)} placeholder="e.g. Gate 3, opposite Shell" />
                         </div>
                     </Section>
 
                     {/* DELIVERY METHOD */}
                     <Section title="Delivery method">
-                        <div className="grid sm:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <button type="button" onClick={() => setForm(f => ({ ...f, delivery_method: 'standard' }))} className={`text-left rounded-xl border p-4 transition relative ${form.delivery_method === 'standard' ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/25' : 'border-brand-border bg-white hover:border-brand-primary'}`}>
                                 <div className="flex justify-between items-start mb-1">
                                     <p className="font-bold text-sm text-brand-dark">Standard Delivery</p>
@@ -175,9 +151,9 @@ export default function CheckoutIndex() {
                         </div>
                     </Section>
 
-                    {/* PAYMENT */}
+                    {/* PAYMENT METHOD */}
                     <Section title="Payment method">
-                        <div className="grid sm:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             {paymentMethods.map((pm) => (
                                 <button key={pm.key} type="button" disabled={pm.disabled} onClick={() => setForm(f => ({ ...f, payment_method: pm.key }))} className={`text-left rounded-xl border p-4 transition relative flex flex-col items-center justify-center gap-3 ${pm.disabled ? 'border-brand-border bg-gray-50 opacity-60 cursor-not-allowed' : form.payment_method === pm.key ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/25' : 'border-brand-border bg-white hover:border-brand-primary'}`}>
                                     <div className="h-10 w-full flex items-center justify-center"><img src={pm.image} alt={pm.label} className="max-h-full max-w-[80%] object-contain" /></div>
@@ -193,9 +169,9 @@ export default function CheckoutIndex() {
                     </Section>
                 </div>
 
-                {/* SUMMARY */}
-                <aside className="lg:col-span-1 sticky top-28">
-                    <div className="bg-white rounded-2xl border border-brand-border p-6 shadow-sm">
+                {/* RIGHT COLUMN (SUMMARY) - Stacks on mobile, sticky on desktop */}
+                <aside className="lg:col-span-1 lg:sticky lg:top-28 mt-6 lg:mt-0">
+                    <div className="bg-white rounded-2xl border border-brand-border p-5 md:p-6 shadow-sm">
                         <h2 className="text-lg font-bold text-brand-dark mb-4">Your Cart</h2>
 
                         {items.length === 0 ? (
@@ -204,23 +180,19 @@ export default function CheckoutIndex() {
                                 <Link href="/" className="inline-block mt-3 text-sm text-brand-primary font-semibold hover:underline">Continue shopping →</Link>
                             </div>
                         ) : (
-                            <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto pr-1">
+                            <div className="space-y-4 mb-6 max-h-[300px] md:max-h-[400px] overflow-y-auto pr-1">
                                 {items.map((item) => (
                                     <div key={item.key} className="flex gap-3">
                                         <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0 border border-brand-border">
-                                            {item.image_url ? (
-                                                <img src={item.image_url} alt={item.productName} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <span className="text-gray-400 font-bold text-[10px]">Item</span>
-                                            )}
+                                            {item.image_url ? <img src={item.image_url} alt={item.productName} className="w-full h-full object-cover" /> : <span className="text-gray-400 font-bold text-[10px]">Item</span>}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-semibold truncate text-brand-dark">{item.productName}</p>
                                             <p className="text-xs text-gray-500">{item.unitLabel}</p>
                                             <div className="mt-1.5 flex items-center gap-2">
-                                                <button type="button" onClick={() => setQty(item.key, Math.max(1, item.qty - 1))} className="w-5 h-5 rounded border border-brand-border text-xs hover:border-brand-primary flex items-center justify-center bg-white">−</button>
+                                                <button type="button" onClick={() => setQty(item.key, Math.max(1, item.qty - 1))} className="w-6 h-6 rounded border border-brand-border text-xs hover:border-brand-primary flex items-center justify-center bg-white">−</button>
                                                 <span className="text-xs font-semibold w-4 text-center">{item.qty}</span>
-                                                <button type="button" onClick={() => setQty(item.key, item.qty + 1)} className="w-5 h-5 rounded border border-brand-border text-xs hover:border-brand-primary flex items-center justify-center bg-white">+</button>
+                                                <button type="button" onClick={() => setQty(item.key, item.qty + 1)} className="w-6 h-6 rounded border border-brand-border text-xs hover:border-brand-primary flex items-center justify-center bg-white">+</button>
                                                 <button type="button" onClick={() => removeItem(item.key)} className="ml-auto text-[11px] text-red-500 hover:underline">Remove</button>
                                             </div>
                                         </div>
@@ -249,11 +221,11 @@ export default function CheckoutIndex() {
                             </div>
                         </div>
 
-                        <button type="submit" disabled={items.length === 0 || isProcessing} className="mt-6 w-full bg-brand-dark text-white py-3.5 rounded-xl font-bold text-sm hover:bg-black disabled:opacity-40 transition">
+                        <button type="submit" disabled={items.length === 0 || isProcessing} className="mt-6 w-full bg-brand-dark text-white py-4 rounded-xl font-bold text-sm hover:bg-black disabled:opacity-40 transition">
                             {isProcessing ? 'Initializing Payment...' : `Pay · ${formatKES(total)}`}
                         </button>
 
-                        <Link href="/" className="mt-3 block text-center text-sm text-gray-500 hover:text-brand-primary font-medium">← Continue Shopping</Link>
+                        <Link href="/" className="mt-4 block text-center text-sm text-gray-500 hover:text-brand-primary font-medium">← Continue Shopping</Link>
                     </div>
                 </aside>
             </form>
@@ -263,7 +235,7 @@ export default function CheckoutIndex() {
 
 function Section({ title, children }) {
     return (
-        <section className="bg-white rounded-2xl border border-brand-border p-6 shadow-sm">
+        <section className="bg-white rounded-2xl border border-brand-border p-5 md:p-6 shadow-sm">
             <h2 className="text-lg font-bold text-brand-dark mb-4">{title}</h2>
             {children}
         </section>
@@ -274,7 +246,7 @@ function Field({ label, value, onChange, placeholder, error, type = 'text', requ
     return (
         <div>
             <label className="block text-sm font-medium text-brand-dark mb-1.5">{label} {required && <span className="text-red-500">*</span>}</label>
-            <input type={type} value={value || ''} onChange={onChange} placeholder={placeholder} disabled={disabled} className={`w-full rounded-lg bg-brand-input border px-4 py-3 text-sm placeholder-gray-500 ${error ? 'border-red-400' : 'border-transparent'} ${disabled ? 'bg-gray-50 text-gray-500' : ''}`} />
+            <input type={type} value={value || ''} onChange={onChange} placeholder={placeholder} disabled={disabled} className={`w-full rounded-lg bg-brand-input border px-4 py-3.5 text-sm placeholder-gray-500 ${error ? 'border-red-400' : 'border-transparent'} ${disabled ? 'bg-gray-50 text-gray-500' : ''}`} />
             {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
         </div>
     );
