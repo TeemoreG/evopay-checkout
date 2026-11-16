@@ -5,7 +5,6 @@ export default function GoogleAddressInput({ onAddressSelect, placeholder = "Sea
     const [isLoaded, setIsLoaded] = useState(false);
 
     useEffect(() => {
-        // Check if Google Maps script is already loaded
         if (window.google && window.google.maps && window.google.maps.places) {
             setIsLoaded(true);
             return;
@@ -24,25 +23,17 @@ export default function GoogleAddressInput({ onAddressSelect, placeholder = "Sea
     useEffect(() => {
         if (!isLoaded || !containerRef.current) return;
 
-        // Initialize the PlaceAutocompleteElement
+        // Initialize the new PlaceAutocompleteElement
         const placeAutocomplete = new window.google.maps.places.PlaceAutocompleteElement({
-            componentRestrictions: { country: 'ke' }, // Restrict to Kenya
-            // REMOVED the 'types' restriction so it searches EVERYTHING (establishments, landmarks, addresses, etc.)
+            componentRestrictions: { country: 'ke' },
+            // Add this to force the component to use a light theme
+            requestedRegion: 'KE', 
         });
 
-        // Bias the search results towards Nairobi (optional, but helps prioritize local results)
-        placeAutocomplete.locationBias = {
-            center: { lat: -1.286389, lng: 36.817223 }, // Nairobi coords
-            radius: 50000 // 50km radius
-        };
-
-        placeAutocomplete.classList.add('w-full');
+        placeAutocomplete.classList.add('w-full', 'custom-google-autocomplete');
         
-        // Handle the selection
         placeAutocomplete.addEventListener('gmp-select', async ({ placePrediction }) => {
             const place = placePrediction.toPlace();
-            
-            // Fetch the necessary fields
             await place.fetchFields({ fields: ['formattedAddress', 'location', 'id', 'displayName'] });
 
             if (place.location) {
@@ -55,7 +46,6 @@ export default function GoogleAddressInput({ onAddressSelect, placeholder = "Sea
             }
         });
 
-        // Append to our container
         containerRef.current.appendChild(placeAutocomplete);
 
         return () => {
@@ -67,6 +57,30 @@ export default function GoogleAddressInput({ onAddressSelect, placeholder = "Sea
 
     return (
         <div className="w-full">
+            {/* 
+              This style tag overrides Google's default dark mode inside the web component.
+              It forces the background to match your brand-input color.
+            */}
+            <style dangerouslySetInnerHTML={{__html: `
+                .custom-google-autocomplete {
+                    color-scheme: light !important;
+                }
+                .custom-google-autocomplete::part(input) {
+                    background-color: #E8EDF2 !important; 
+                    color: #1A1A1A !important;
+                    border: 1px solid transparent !important;
+                    border-radius: 0.5rem !important;
+                    padding: 12px 16px !important;
+                    font-size: 14px !important;
+                    box-shadow: none !important;
+                }
+                .custom-google-autocomplete::part(input):focus {
+                    background-color: #ffffff !important;
+                    border-color: transparent !important;
+                    outline: 2px solid rgba(224, 90, 38, 0.3) !important;
+                }
+            `}} />
+
             {!isLoaded ? (
                 <div className="w-full h-12 bg-brand-input rounded-lg animate-pulse flex items-center px-4">
                     <span className="text-sm text-gray-400">Loading Google Maps...</span>
