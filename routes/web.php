@@ -13,7 +13,7 @@ Route::get('/products/{slug}', [CatalogController::class, 'show'])->name('produc
 // Checkout Routes
 Route::get('/checkout', fn () => Inertia::render('Checkout/Index'))->name('checkout.index');
 Route::post('/checkout/process', [CheckoutController::class, 'process'])->name('checkout.process');
-Route::post('/checkout/distance', [CheckoutController::class, 'getDistance'])->name('checkout.distance'); // <-- ADDED
+Route::post('/checkout/distance', [CheckoutController::class, 'getDistance'])->withoutMiddleware(['csrf'])->name('checkout.distance');
 Route::get('/checkout/status/{order}', [CheckoutController::class, 'checkStatus'])->name('checkout.status');
 Route::get('/checkout/success', fn () => Inertia::render('Checkout/Success'))->name('checkout.success');
 
