@@ -47,7 +47,7 @@ export default function CheckoutIndex() {
         if (address.lat && address.lng) {
             setIsCalculatingDistance(true);
             try {
-                const res = await axios.post('/checkout/distance', {
+                const res = await axios.post('/api/distance', {
                     lat: address.lat,
                     lng: address.lng
                 });
