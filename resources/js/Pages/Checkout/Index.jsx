@@ -40,7 +40,7 @@ export default function CheckoutIndex() {
     const totalDeliveryFee = form.delivery_method === 'pickup' ? 0 : (weightFee + distanceFee);
     const total = subtotal + totalDeliveryFee;
 
-    // NEW: Real Distance Calculation function
+    // REAL DISTANCE CALCULATION - RESTORED
     const handleAddressSelect = async (address) => {
         setForm(f => ({ ...f, delivery: { ...f.delivery, ...address } }));
         
@@ -54,8 +54,7 @@ export default function CheckoutIndex() {
                 setDistanceKm(res.data.distance_km);
             } catch (error) {
                 console.error("Failed to get distance", error);
-                // Fallback to a default if Google API fails
-                setDistanceKm(5);
+                setDistanceKm(5); // Fallback
             } finally {
                 setIsCalculatingDistance(false);
             }
@@ -171,7 +170,7 @@ export default function CheckoutIndex() {
                         <div>
                             <label className="block text-sm font-medium text-brand-dark mb-1.5">Search your address <span className="text-red-500">*</span></label>
                             
-                            {/* UPDATED TO USE handleAddressSelect */}
+                            {/* REAL DISTANCE CALCULATION COMPONENT */}
                             <GoogleAddressInput onAddressSelect={handleAddressSelect} />
 
                             {isCalculatingDistance && (
@@ -200,7 +199,9 @@ export default function CheckoutIndex() {
                             <button type="button" onClick={() => setForm(f => ({ ...f, delivery_method: 'standard' }))} className={`text-left rounded-xl border p-4 transition relative ${form.delivery_method === 'standard' ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/25' : 'border-brand-border bg-white hover:border-brand-primary'}`}>
                                 <div className="flex justify-between items-start mb-1">
                                     <p className="font-bold text-sm text-brand-dark">Standard Delivery</p>
-                                    <p className="font-bold text-brand-primary text-sm">{formatKES(totalDeliveryFee)}</p>
+                                    <p className="font-bold text-brand-primary text-sm">
+                                        {isCalculatingDistance ? '...' : formatKES(totalDeliveryFee)}
+                                    </p>
                                 </div>
                                 <p className="text-[11px] text-gray-500">Calculated by weight & distance</p>
                                 {form.delivery_method === 'standard' && <span className="absolute -top-2 -right-2 bg-brand-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">✓</span>}
@@ -282,7 +283,7 @@ export default function CheckoutIndex() {
                                     ) : (
                                         <>
                                             <span className="font-medium text-brand-dark">
-                                                {isCalculatingDistance ? '...' : formatKES(totalDeliveryFee)}
+                                                {isCalculatingDistance ? 'Calculating...' : formatKES(totalDeliveryFee)}
                                             </span>
                                             <div className="text-[10px] text-gray-400 mt-0.5">
                                                 Weight: {totalWeight} KG | Distance: {distanceKm} KM
