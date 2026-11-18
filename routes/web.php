@@ -24,6 +24,10 @@ Route::post('/api/mpesa/callback', [CheckoutController::class, 'mpesaCallback'])
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'index'])->name('index');
     
+    // Settings
+    Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
+    Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
+    
     // Products
     Route::post('/products', [AdminController::class, 'storeProduct'])->name('products.store');
     Route::put('/products/{product}', [AdminController::class, 'updateProduct'])->name('products.update');

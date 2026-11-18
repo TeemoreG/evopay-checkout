@@ -32,7 +32,7 @@ class MpgsService
             ]
         ];
 
-        // MPGS uses Basic Auth (merchantId : apiPassword)
+        //Basic Auth (merchantId : apiPassword)
         $response = Http::withBasicAuth('merchant.' . $merchantId, $apiPassword)
             ->post($url, $payload);
 

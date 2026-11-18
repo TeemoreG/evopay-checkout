@@ -46,7 +46,6 @@ class MpesaService
         $timestamp = now()->format('YmdHis');
         $password = base64_encode($this->shortcode . $this->passkey . $timestamp);
         
-        // Format phone to 2547XXXXXXXX
         $phone = preg_replace('/^0/', '254', $phone);
         $phone = preg_replace('/^\+/', '', $phone);
 

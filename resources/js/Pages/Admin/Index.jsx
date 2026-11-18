@@ -19,7 +19,7 @@ export default function AdminIndex({ products }) {
         id: null,
         name: '',
         category: 'Hardware',
-        weight: '', // <-- ADDED
+        weight: '', 
         short_description: '',
         image_url: '', 
         units: [],
@@ -68,7 +68,7 @@ export default function AdminIndex({ products }) {
             id: product.id,
             name: product.name,
             category: product.category,
-            weight: product.weight || '', // <-- ADDED
+            weight: product.weight || '', 
             short_description: product.short_description || '',
             image_url: product.image_url || '',
             units: mappedUnits,
@@ -135,9 +135,15 @@ export default function AdminIndex({ products }) {
                     <h1 className="text-3xl font-extrabold text-brand-dark">Admin Dashboard</h1>
                     <p className="text-gray-500 mt-1">Manage your store inventory and pricing.</p>
                 </div>
-                <a href="/" className="bg-brand-primary text-white px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-brand-secondary transition">
-                    View Store &rarr;
-                </a>
+                {/* UPDATED BUTTONS */}
+                <div className="flex gap-3">
+                    <a href="/admin/settings" className="bg-white border border-brand-border text-brand-dark px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-gray-50 transition">
+                        Settings
+                    </a>
+                    <a href="/" className="bg-brand-primary text-white px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-brand-secondary transition">
+                        View Store &rarr;
+                    </a>
+                </div>
             </div>
 
             <div className="grid lg:grid-cols-2 gap-8">
@@ -309,7 +315,6 @@ export default function AdminIndex({ products }) {
                                 <img src={p.image_url || 'https://via.placeholder.com/100'} alt={p.name} className="w-16 h-16 rounded-lg object-cover bg-gray-50 flex-shrink-0" />
                                 <div className="flex-1 pr-16">
                                     <h3 className="font-bold text-sm text-brand-dark">{p.name}</h3>
-                                    {/* ADDED WEIGHT DISPLAY */}
                                     <p className="text-xs text-gray-500">{p.category} &middot; {p.sku} &middot; {p.weight || 0} KG</p>
                                     
                                     <div className="mt-3 space-y-1.5">

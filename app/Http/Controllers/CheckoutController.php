@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\Setting;
 use App\Services\MpgsService;
 use App\Services\MpesaService;
 use Illuminate\Http\Request;
@@ -29,10 +30,14 @@ class CheckoutController extends Controller
 
         // 1. Calculate Real Distance & Delivery Fee
         if ($data['delivery_method'] === 'standard' && !empty($data['delivery']['lat'])) {
+            // Fetch dynamic HQ coordinates from DB
+            $hqLat = (float) Setting::get('hq_lat', -1.2674);
+            $hqLng = (float) Setting::get('hq_lng', 36.7704);
+
             $distanceKm = $this->calculateDistance(
-                -1.2674, 36.7704, // Evopay HQ (Kabarsiran Gardens - Exact)
-                $data['delivery']['lat'], 
-                $data['delivery']['lng']
+                $hqLat, $hqLng,
+                (float) $data['delivery']['lat'], 
+                (float) $data['delivery']['lng']
             );
 
             // Dynamic Weight Math: KSh 20 per KG + KSh 50 per KM
@@ -108,10 +113,14 @@ class CheckoutController extends Controller
             'lng' => 'required|numeric',
         ]);
 
+        // Fetch dynamic HQ coordinates from DB
+        $hqLat = (float) Setting::get('hq_lat', -1.2674);
+        $hqLng = (float) Setting::get('hq_lng', 36.7704);
+
         $distanceKm = $this->calculateDistance(
-            -1.2674, 36.7704, // Evopay HQ (Kabarsiran Gardens - Exact)
-            $request->lat, 
-            $request->lng
+            $hqLat, $hqLng,
+            (float) $request->lat, 
+            (float) $request->lng
         );
 
         return response()->json([
@@ -173,12 +182,12 @@ class CheckoutController extends Controller
         $payload = [
             "origin" => [
                 "location" => [
-                    "latLng" => ["latitude" => $lat1, "longitude" => $lon1]
+                    "latLng" => ["latitude" => (float) $lat1, "longitude" => (float) $lon1]
                 ]
             ],
             "destination" => [
                 "location" => [
-                    "latLng" => ["latitude" => $lat2, "longitude" => $lon2]
+                    "latLng" => ["latitude" => (float) $lat2, "longitude" => (float) $lon2]
                 ]
             ],
             "travelMode" => "DRIVE",

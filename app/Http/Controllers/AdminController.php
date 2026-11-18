@@ -36,7 +36,7 @@ class AdminController extends Controller
             'slug' => Str::slug($request->name) . '-' . rand(100, 999),
             'sku' => 'SKU-' . rand(10000, 99999),
             'category' => $request->category,
-            'weight' => $request->weight ?? 0, // <-- ADDED
+            'weight' => $request->weight ?? 0,
             'short_description' => $request->short_description ?? '',
             'image_url' => $request->image_url ?? '', 
             'is_active' => true,
@@ -81,7 +81,7 @@ class AdminController extends Controller
             'name' => $request->name,
             'slug' => Str::slug($request->name) . '-' . $product->id,
             'category' => $request->category,
-            'weight' => $request->weight ?? 0, // <-- ADDED
+            'weight' => $request->weight ?? 0,
             'short_description' => $request->short_description ?? '',
             'image_url' => $request->image_url ?? '', 
         ]);
@@ -138,5 +138,28 @@ class AdminController extends Controller
     {
         $product->delete();
         return redirect()->back()->with('success', 'Product deleted successfully!');
+    }
+
+    // NEW METHODS ADDED BELOW
+    
+    public function settings()
+    {
+        return Inertia::render('Admin/Settings', [
+            'hq_lat' => \App\Models\Setting::get('hq_lat', '-1.2674'),
+            'hq_lng' => \App\Models\Setting::get('hq_lng', '36.7704'),
+        ]);
+    }
+
+    public function updateSettings(Request $request)
+    {
+        $request->validate([
+            'hq_lat' => 'required|numeric',
+            'hq_lng' => 'required|numeric',
+        ]);
+
+        \App\Models\Setting::set('hq_lat', $request->hq_lat);
+        \App\Models\Setting::set('hq_lng', $request->hq_lng);
+
+        return redirect()->back()->with('success', 'HQ Coordinates updated successfully!');
     }
 }
