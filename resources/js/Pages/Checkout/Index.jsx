@@ -9,9 +9,9 @@ const formatKES = (v) =>
     'KSh ' + Number(v).toLocaleString('en-KE', { minimumFractionDigits: 0 });
 
 const paymentMethods = [
-    { key: 'mpesa', label: 'M-Pesa', subtitle: 'STK push', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1781875182/Mpesa_bvcz8v.png', disabled: false },
-    { key: 'card', label: 'Card', subtitle: 'Visa / MC', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1789069363/visa-mastercard-logos_mpvf6q.jpg', disabled: false },
-    { key: 'airtel', label: 'Airtel', subtitle: 'Soon', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1789463153/422-4221364_send-cash-to-ghana-airtel-logo-new-hd_scmhh9.png', disabled: true },
+    { key: 'mpesa', label: 'M-Pesa', subtitle: 'STK push', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000028/1_q6VZ_q0WIism6TgZ9kBIWQ_km524l.png', disabled: false },
+    { key: 'card', label: 'Card', subtitle: 'Visa / MC', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000459/visa_mx9x3z.jpg', disabled: false },
+    { key: 'airtel', label: 'Airtel', subtitle: 'Soon', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000336/Airtel-Money-Logo_zhsldw.png', disabled: true },
 ];
 
 export default function CheckoutIndex() {
