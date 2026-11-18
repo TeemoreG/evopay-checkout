@@ -13,9 +13,7 @@
 </head>
 <body class="min-h-screen bg-brand-light text-brand-dark flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl border border-brand-border p-6 md:p-8 shadow-sm max-w-md w-full text-center">
-        <div id="spinner" class="w-16 h-16 border-4 border-brand-primary border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-
-        <h1 class="text-xl font-bold text-brand-dark mb-2">Redirecting to Card Payment</h1>
+        <h1 class="text-xl font-bold text-brand-dark mb-2">Mastercard Secure Checkout</h1>
         <p class="text-sm text-gray-500 mb-6">
             Order <strong class="text-brand-dark">{{ $order->order_number }}</strong> ·
             <span class="font-semibold text-brand-primary">KSh {{ number_format($order->total_amount, 0) }}</span>
@@ -42,7 +40,6 @@
     <script>
         function errorCallback(error) {
             console.error('MPGS Checkout Error:', error);
-            document.getElementById('spinner').classList.add('hidden');
             var box = document.getElementById('errorBox');
             box.classList.remove('hidden');
             box.textContent = (error && error.explanation)
