@@ -9,9 +9,9 @@ const formatKES = (v) =>
     'KSh ' + Number(v).toLocaleString('en-KE', { minimumFractionDigits: 0 });
 
 const paymentMethods = [
-    { key: 'mpesa', label: 'M-Pesa', subtitle: 'STK push', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1781875182/Mpesa_bvcz8v.png', disabled: false },
-    { key: 'card', label: 'Card', subtitle: 'Visa / MC', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1789069363/visa-mastercard-logos_mpvf6q.jpg', disabled: false },
-    { key: 'airtel', label: 'Airtel', subtitle: 'Soon', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1789463153/422-4221364_send-cash-to-ghana-airtel-logo-new-hd_scmhh9.png', disabled: true },
+    { key: 'mpesa', label: 'M-Pesa', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000028/1_q6VZ_q0WIism6TgZ9kBIWQ_km524l.png', disabled: false },
+    { key: 'card', label: 'Card', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000459/visa_mx9x3z.jpg', disabled: false },
+    { key: 'airtel', label: 'Airtel', subtitle: 'Soon', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000336/Airtel-Money-Logo_zhsldw.png', disabled: true },
 ];
 
 export default function CheckoutIndex() {
@@ -196,7 +196,6 @@ export default function CheckoutIndex() {
                                     </p>
                                 </div>
                                 <p className="text-[11px] text-gray-500">Calculated by weight & distance</p>
-                                {form.delivery_method === 'standard' && <span className="absolute -top-2 -right-2 bg-brand-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">✓</span>}
                             </button>
 
                             <button type="button" onClick={() => setForm(f => ({ ...f, delivery_method: 'pickup' }))} className={`text-left rounded-xl border p-4 transition relative ${form.delivery_method === 'pickup' ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/25' : 'border-brand-border bg-white hover:border-brand-primary'}`}>
@@ -205,7 +204,6 @@ export default function CheckoutIndex() {
                                     <p className="font-bold text-brand-primary text-sm">FREE</p>
                                 </div>
                                 <p className="text-[11px] text-gray-500">Collect from our warehouse</p>
-                                {form.delivery_method === 'pickup' && <span className="absolute -top-2 -right-2 bg-brand-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">✓</span>}
                             </button>
                         </div>
                     </Section>
@@ -222,7 +220,6 @@ export default function CheckoutIndex() {
                                         <p className="text-[9px] sm:text-[11px] text-gray-500 mt-0.5 truncate">{pm.subtitle}</p>
                                     </div>
                                     {pm.disabled && <span className="absolute top-1 right-1 sm:top-2 sm:right-2 text-[7px] sm:text-[9px] bg-gray-200 text-brand-dark px-1 sm:px-1.5 py-0.5 rounded font-bold uppercase">Soon</span>}
-                                    {!pm.disabled && form.payment_method === pm.key && <span className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-brand-primary text-white rounded-full w-3 h-3 sm:w-4 sm:h-4 flex items-center justify-center text-[8px] sm:text-[10px] font-bold">✓</span>}
                                 </button>
                             ))}
                         </div>
