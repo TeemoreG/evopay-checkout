@@ -9,8 +9,8 @@ const formatKES = (v) =>
     'KSh ' + Number(v).toLocaleString('en-KE', { minimumFractionDigits: 0 });
 
 const paymentMethods = [
-    { key: 'mpesa', label: 'M-Pesa', subtitle: 'STK push', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000028/1_q6VZ_q0WIism6TgZ9kBIWQ_km524l.png', disabled: false },
-    { key: 'card', label: 'Card', subtitle: 'Visa / MC', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000459/visa_mx9x3z.jpg', disabled: false },
+    { key: 'mpesa', label: 'M-Pesa', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000028/1_q6VZ_q0WIism6TgZ9kBIWQ_km524l.png', disabled: false },
+    { key: 'card', label: 'Card', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000459/visa_mx9x3z.jpg', disabled: false },
     { key: 'airtel', label: 'Airtel', subtitle: 'Soon', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000336/Airtel-Money-Logo_zhsldw.png', disabled: true },
 ];
 
