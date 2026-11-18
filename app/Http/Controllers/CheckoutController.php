@@ -7,8 +7,9 @@ use App\Models\Setting;
 use App\Services\MpgsService;
 use App\Services\MpesaService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class CheckoutController extends Controller
 {
@@ -76,12 +77,30 @@ class CheckoutController extends Controller
         // 3. Handle Card (MPGS)
         if ($data['payment_method'] === 'card') {
             try {
-                $session = $mpgs->createSession($total, $order->order_number);
+                $returnUrl = route('checkout.mpgs.callback', $order);
+                $cancelUrl = route('checkout.mpgs.cancel', $order);
+
+                $session = $mpgs->createSession(
+                    $total,
+                    $order->order_number,
+                    'KES',
+                    $returnUrl,
+                    $cancelUrl
+                );
+
+                if (empty($session['session']['id'])) {
+                    throw new \Exception('MPGS did not return a valid session ID.');
+                }
+
                 $order->update(['mpgs_session_id' => $session['session']['id']]);
+
+                if (!empty($session['successIndicator'])) {
+                    Cache::put("mpgs_indicator_{$order->order_number}", $session['successIndicator'], now()->addHours(2));
+                }
 
                 return response()->json([
                     'status' => 'redirect',
-                    'url' => "https://ap-gateway.mastercard.com/checkout/pay/" . $session['session']['id']
+                    'url' => route('checkout.mpgs.pay', $order),
                 ]);
             } catch (\Exception $e) {
                 $order->update([
@@ -126,6 +145,91 @@ class CheckoutController extends Controller
         }
 
         return response()->json(['status' => 'error', 'message' => 'Invalid payment method'], 400);
+    }
+
+    // MPGS Hosted Checkout Launcher
+    public function mpgsPay(Order $order, MpgsService $mpgs)
+    {
+        if ($order->status === 'paid') {
+            return redirect()->route('checkout.success', ['order' => $order->order_number]);
+        }
+
+        if (empty($order->mpgs_session_id)) {
+            return redirect()->route('checkout.index', ['error' => 'Card session not found. Please try again.']);
+        }
+
+        return view('checkout.mpgs', [
+            'order' => $order,
+            'sessionId' => $order->mpgs_session_id,
+            'checkoutJsUrl' => $mpgs->getCheckoutJsUrl(),
+            'cancelUrl' => route('checkout.mpgs.cancel', $order),
+        ]);
+    }
+
+    // MPGS Return Callback
+    public function mpgsCallback(Request $request, Order $order, MpgsService $mpgs)
+    {
+        if ($order->status === 'paid') {
+            return redirect()->route('checkout.success', ['order' => $order->order_number]);
+        }
+
+        $resultIndicator = (string) $request->query('resultIndicator', '');
+        $expectedIndicator = Cache::get("mpgs_indicator_{$order->order_number}");
+
+        try {
+            $mpgsOrder = $mpgs->retrieveOrder($order->order_number);
+            \Log::info("MPGS Order Verification ({$order->order_number}):", $mpgsOrder);
+
+            $gatewaySuccess = ($mpgsOrder['result'] ?? null) === 'SUCCESS'
+                && in_array($mpgsOrder['status'] ?? '', ['CAPTURED', 'AUTHORIZED', 'PARTIALLY_CAPTURED'], true);
+
+            $indicatorMatches = $expectedIndicator && $resultIndicator !== ''
+                && hash_equals((string) $expectedIndicator, $resultIndicator);
+
+            if ($gatewaySuccess || $indicatorMatches) {
+                $order->update([
+                    'status' => 'paid',
+                    'failure_reason' => null,
+                ]);
+                Cache::forget("mpgs_indicator_{$order->order_number}");
+
+                return redirect()->route('checkout.success', ['order' => $order->order_number]);
+            }
+
+            $reason = $mpgsOrder['error']['explanation']
+                ?? 'Card payment was declined or could not be verified.';
+
+            $order->update([
+                'status' => 'failed',
+                'failure_reason' => $reason,
+            ]);
+
+            return redirect()->route('checkout.index', ['error' => $reason]);
+        } catch (\Exception $e) {
+            \Log::error("MPGS Callback Error ({$order->order_number}): " . $e->getMessage());
+
+            $order->update([
+                'status' => 'failed',
+                'failure_reason' => 'Could not verify card payment. Please try again.',
+            ]);
+
+            return redirect()->route('checkout.index', ['error' => 'Could not verify card payment. Please try again.']);
+        }
+    }
+
+    // MPGS Cancelled Handler
+    public function mpgsCancel(Order $order)
+    {
+        if ($order->status !== 'paid') {
+            $order->update([
+                'status' => 'failed',
+                'failure_reason' => 'Card payment was cancelled.',
+            ]);
+        }
+
+        return redirect()->route('checkout.index', [
+            'error' => 'Card payment was cancelled. You can try again or choose M-Pesa.',
+        ]);
     }
 
     // Live distance calculation endpoint for the frontend

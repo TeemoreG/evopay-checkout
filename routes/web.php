@@ -17,6 +17,11 @@ Route::post('/checkout/distance', [CheckoutController::class, 'getDistance'])->n
 Route::get('/checkout/status/{order}', [CheckoutController::class, 'checkStatus'])->name('checkout.status');
 Route::get('/checkout/success', fn () => Inertia::render('Checkout/Success'))->name('checkout.success');
 
+// MPGS Card Checkout Routes
+Route::get('/checkout/mpgs/pay/{order}', [CheckoutController::class, 'mpgsPay'])->name('checkout.mpgs.pay');
+Route::get('/checkout/mpgs/callback/{order}', [CheckoutController::class, 'mpgsCallback'])->name('checkout.mpgs.callback');
+Route::get('/checkout/mpgs/cancel/{order}', [CheckoutController::class, 'mpgsCancel'])->name('checkout.mpgs.cancel');
+
 // M-Pesa Callback Route (CSRF excluded in bootstrap/app.php)
 Route::post('/api/mpesa/callback', [CheckoutController::class, 'mpesaCallback']);
 

@@ -33,6 +33,13 @@ export default function CheckoutIndex() {
     const [errors] = useState({});
 
     useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const urlError = params.get('error');
+        if (urlError) {
+            setPaymentError(urlError);
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+
         return () => {
             if (pollIntervalRef.current) {
                 clearInterval(pollIntervalRef.current);
@@ -138,7 +145,7 @@ export default function CheckoutIndex() {
                 if (res.data.status === 'paid') {
                     stopPolling();
                     clear();
-                    router.visit('/checkout/success');
+                    router.visit(`/checkout/success?order=${encodeURIComponent(res.data.order_number)}`);
                 } else if (res.data.status === 'failed') {
                     stopPolling();
                     setIsWaitingForPin(false);
