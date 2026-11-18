@@ -10,10 +10,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
 
 class CheckoutController extends Controller
 {
-    public function process(Request $request, MpgsService $mpgs, MpesaService $mpesa)
+    public function process(Request $request, MpgsService $mpgs)
     {
         $data = $request->validate([
             'items' => 'required|array',
@@ -74,7 +75,7 @@ class CheckoutController extends Controller
             ]),
         ]);
 
-        // 3. Handle Card (MPGS)
+        // 3. Handle Card (MPGS) -> Redirect to MPGS Hosted Checkout Launcher
         if ($data['payment_method'] === 'card') {
             try {
                 $returnUrl = route('checkout.mpgs.callback', $order);
@@ -101,6 +102,7 @@ class CheckoutController extends Controller
                 return response()->json([
                     'status' => 'redirect',
                     'url' => route('checkout.mpgs.pay', $order),
+                    'order_number' => $order->order_number,
                 ]);
             } catch (\Exception $e) {
                 $order->update([
@@ -112,39 +114,88 @@ class CheckoutController extends Controller
             }
         }
 
-        // 4. Handle M-Pesa (STK PUSH)
+        // 4. Handle M-Pesa -> Redirect to Dedicated M-Pesa Hosted Payment Page
         if ($data['payment_method'] === 'mpesa') {
-            try {
-                $response = $mpesa->stkPush($data['customer']['phone'], $total, $order->order_number);
-
-                if (empty($response['CheckoutRequestID']) || ($response['ResponseCode'] ?? null) !== '0') {
-                    $reason = $response['ResponseDescription'] ?? $response['errorMessage'] ?? 'Failed to initiate M-Pesa prompt.';
-                    $order->update([
-                        'status' => 'failed',
-                        'failure_reason' => $reason,
-                    ]);
-
-                    return response()->json(['error' => $reason], 422);
-                }
-
-                $order->update(['mpesa_request_id' => $response['CheckoutRequestID']]);
-
-                return response()->json([
-                    'status' => 'pending',
-                    'message' => 'STK Push sent! Please enter your M-Pesa PIN.',
-                    'order_id' => $order->id
-                ]);
-            } catch (\Exception $e) {
-                $order->update([
-                    'status' => 'failed',
-                    'failure_reason' => $e->getMessage(),
-                ]);
-
-                return response()->json(['error' => $e->getMessage()], 500);
-            }
+            return response()->json([
+                'status' => 'redirect',
+                'url' => route('checkout.mpesa.pay', ['order' => $order->order_number]),
+                'order_number' => $order->order_number,
+            ]);
         }
 
         return response()->json(['status' => 'error', 'message' => 'Invalid payment method'], 400);
+    }
+
+    // Hosted M-Pesa Payment Page
+    public function mpesaPay(Order $order)
+    {
+        if ($order->status === 'paid') {
+            return redirect()->route('checkout.success', ['order' => $order->order_number]);
+        }
+
+        return Inertia::render('Checkout/MpesaPay', [
+            'order' => [
+                'order_number' => $order->order_number,
+                'total_amount' => (float) $order->total_amount,
+                'status' => $order->status,
+                'customer_name' => $order->customer['name'] ?? '',
+                'contact_phone' => $order->customer['phone'] ?? '',
+            ],
+        ]);
+    }
+
+    // Reusable API Endpoint: Initiate M-Pesa STK Push for an Order
+    public function mpesaStkPush(Request $request, MpesaService $mpesa)
+    {
+        $data = $request->validate([
+            'order_number' => 'required|string|exists:orders,order_number',
+            'phone' => 'required|string|min:9|max:15',
+        ]);
+
+        $order = Order::where('order_number', $data['order_number'])->firstOrFail();
+
+        if ($order->status === 'paid') {
+            return response()->json([
+                'status' => 'paid',
+                'order_number' => $order->order_number,
+                'message' => 'This order is already paid.',
+            ]);
+        }
+
+        $phone = preg_replace('/[\s\-]+/', '', trim($data['phone']));
+
+        try {
+            $response = $mpesa->stkPush($phone, $order->total_amount, $order->order_number);
+
+            if (empty($response['CheckoutRequestID']) || ($response['ResponseCode'] ?? null) !== '0') {
+                $reason = $response['ResponseDescription'] ?? $response['errorMessage'] ?? 'Failed to initiate M-Pesa prompt.';
+                $order->update([
+                    'status' => 'failed',
+                    'failure_reason' => $reason,
+                ]);
+
+                return response()->json(['error' => $reason], 422);
+            }
+
+            $order->update([
+                'status' => 'pending',
+                'failure_reason' => null,
+                'mpesa_request_id' => $response['CheckoutRequestID'],
+            ]);
+
+            return response()->json([
+                'status' => 'pending',
+                'order_number' => $order->order_number,
+                'message' => 'STK Push sent! Please enter your M-Pesa PIN.',
+            ]);
+        } catch (\Exception $e) {
+            $order->update([
+                'status' => 'failed',
+                'failure_reason' => $e->getMessage(),
+            ]);
+
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     // MPGS Hosted Checkout Launcher
@@ -255,7 +306,7 @@ class CheckoutController extends Controller
         ]);
     }
 
-    // Polling endpoint for the frontend (M-Pesa)
+    // Polling endpoint for the frontend (M-Pesa / Payment Gateway)
     public function checkStatus(Order $order)
     {
         return response()->json([

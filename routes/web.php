@@ -17,6 +17,9 @@ Route::post('/checkout/distance', [CheckoutController::class, 'getDistance'])->n
 Route::get('/checkout/status/{order}', [CheckoutController::class, 'checkStatus'])->name('checkout.status');
 Route::get('/checkout/success', fn () => Inertia::render('Checkout/Success'))->name('checkout.success');
 
+// Hosted Payment Pages
+Route::get('/pay/mpesa/{order:order_number}', [CheckoutController::class, 'mpesaPay'])->name('checkout.mpesa.pay');
+
 // MPGS Card Checkout Routes
 Route::get('/checkout/mpgs/pay/{order}', [CheckoutController::class, 'mpgsPay'])->name('checkout.mpgs.pay');
 Route::get('/checkout/mpgs/callback/{order}', [CheckoutController::class, 'mpgsCallback'])->name('checkout.mpgs.callback');

@@ -1,5 +1,5 @@
-import { Link, router } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
+import { Link } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 import MainLayout from '../../Layouts/MainLayout';
 import { useCart } from '../../Stores/cart';
 import GoogleAddressInput from '../../Components/GoogleAddressInput';
@@ -15,13 +15,11 @@ const paymentMethods = [
 ];
 
 export default function CheckoutIndex() {
-    const { items, setQty, removeItem, clear } = useCart();
+    const { items, setQty, removeItem } = useCart();
     const [isProcessing, setIsProcessing] = useState(false);
-    const [isWaitingForPin, setIsWaitingForPin] = useState(false);
     const [paymentError, setPaymentError] = useState(null);
     const [distanceKm, setDistanceKm] = useState(0);
     const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
-    const pollIntervalRef = useRef(null);
 
     const [form, setForm] = useState({
         customer: { name: '', phone: '', email: '' },
@@ -39,24 +37,11 @@ export default function CheckoutIndex() {
             setPaymentError(urlError);
             window.history.replaceState({}, '', window.location.pathname);
         }
-
-        return () => {
-            if (pollIntervalRef.current) {
-                clearInterval(pollIntervalRef.current);
-            }
-        };
     }, []);
 
     const showError = (message) => {
         setPaymentError(message);
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
-    const stopPolling = () => {
-        if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-            pollIntervalRef.current = null;
-        }
     };
 
     const updateCustomer = (key, value) => setForm((f) => ({ ...f, customer: { ...f.customer, [key]: value } }));
@@ -118,73 +103,19 @@ export default function CheckoutIndex() {
                 delivery: form.delivery
             });
 
-            if (response.data.status === 'redirect') {
+            if (response.data.status === 'redirect' && response.data.url) {
                 window.location.href = response.data.url;
-            } else if (response.data.status === 'pending') {
-                setIsWaitingForPin(true);
-                setIsProcessing(false);
-                pollOrderStatus(response.data.order_id);
+                return;
             }
+
+            showError('Unexpected checkout response. Please try again.');
+            setIsProcessing(false);
         } catch (error) {
             console.error(error);
             showError(error.response?.data?.error || error.response?.data?.message || 'Payment failed to initialize.');
             setIsProcessing(false);
         }
     };
-
-    const pollOrderStatus = (orderId) => {
-        stopPolling();
-        let attempts = 0;
-        const maxAttempts = 25; // ~75 seconds
-
-        pollIntervalRef.current = setInterval(async () => {
-            attempts++;
-            try {
-                const res = await axios.get(`/checkout/status/${orderId}`);
-
-                if (res.data.status === 'paid') {
-                    stopPolling();
-                    clear();
-                    router.visit(`/checkout/success?order=${encodeURIComponent(res.data.order_number)}`);
-                } else if (res.data.status === 'failed') {
-                    stopPolling();
-                    setIsWaitingForPin(false);
-                    showError(res.data.message || 'M-Pesa payment failed or was cancelled. Please try again.');
-                } else if (attempts >= maxAttempts) {
-                    stopPolling();
-                    setIsWaitingForPin(false);
-                    showError('M-Pesa confirmation timed out. If you entered your PIN, wait for the SMS or try again.');
-                }
-            } catch (error) {
-                console.error("Polling error", error);
-            }
-        }, 3000);
-    };
-
-    if (isWaitingForPin) {
-        return (
-            <MainLayout minimal>
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <div className="w-20 h-20 border-4 border-brand-primary border-t-transparent rounded-full animate-spin mb-6"></div>
-                    <h2 className="text-2xl font-bold text-brand-dark mb-2">Waiting for M-Pesa PIN</h2>
-                    <p className="text-gray-500 max-w-sm">
-                        An STK Push has been sent to <strong>{form.customer.phone}</strong>. Please enter your M-Pesa PIN to complete the payment.
-                    </p>
-                    <p className="text-xs text-gray-400 mt-6">Do not close this page. Waiting for Safaricom confirmation...</p>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            stopPolling();
-                            setIsWaitingForPin(false);
-                        }}
-                        className="mt-6 text-sm text-gray-500 hover:text-brand-dark underline"
-                    >
-                        Cancel and return to checkout
-                    </button>
-                </div>
-            </MainLayout>
-        );
-    }
 
     return (
         <MainLayout minimal>
@@ -363,7 +294,7 @@ export default function CheckoutIndex() {
                         </div>
 
                         <button type="submit" disabled={items.length === 0 || isProcessing || isCalculatingDistance} className="mt-6 w-full bg-brand-dark text-white py-4 rounded-xl font-bold text-sm hover:bg-black disabled:opacity-40 transition">
-                            {isProcessing ? 'Initializing Payment...' : isCalculatingDistance ? 'Calculating Distance...' : `Pay · ${formatKES(total)}`}
+                            {isProcessing ? 'Redirecting to Payment...' : isCalculatingDistance ? 'Calculating Distance...' : `Pay · ${formatKES(total)}`}
                         </button>
 
                         <Link href="/" className="mt-4 block text-center text-sm text-gray-500 hover:text-brand-primary font-medium">← Continue Shopping</Link>
