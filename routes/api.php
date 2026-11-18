@@ -8,4 +8,5 @@ Route::post('/distance', [CheckoutController::class, 'getDistance']);
 
 // Reusable Payment Gateway Endpoints
 Route::post('/payments/mpesa/stk-push', [CheckoutController::class, 'mpesaStkPush']);
+Route::post('/payments/mpgs/init', [CheckoutController::class, 'mpgsInit']);
 Route::get('/payments/{order:order_number}/status', [CheckoutController::class, 'checkStatus']);

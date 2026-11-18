@@ -8,13 +8,7 @@ import axios from 'axios';
 const formatKES = (v) =>
     'KSh ' + Number(v).toLocaleString('en-KE', { minimumFractionDigits: 0 });
 
-const paymentMethods = [
-    { key: 'mpesa', label: 'M-Pesa', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000028/1_q6VZ_q0WIism6TgZ9kBIWQ_km524l.png', disabled: false },
-    { key: 'card', label: 'Card', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000459/visa_mx9x3z.jpg', disabled: false },
-    { key: 'airtel', label: 'Airtel', subtitle: 'Soon', image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000336/Airtel-Money-Logo_zhsldw.png', disabled: true },
-];
-
-export default function CheckoutIndex() {
+export default function CheckoutIndex({ price_per_kg = 20, price_per_km = 50 }) {
     const { items, setQty, removeItem } = useCart();
     const [isProcessing, setIsProcessing] = useState(false);
     const [paymentError, setPaymentError] = useState(null);
@@ -24,7 +18,6 @@ export default function CheckoutIndex() {
     const [form, setForm] = useState({
         customer: { name: '', phone: '', email: '' },
         delivery: { formatted: '', lat: null, lng: null, placeId: '', landmark: '', notes: '' },
-        payment_method: 'mpesa',
         delivery_method: 'standard',
     });
 
@@ -49,12 +42,11 @@ export default function CheckoutIndex() {
 
     const subtotal = items.reduce((n, i) => n + i.lineTotal, 0);
     const totalWeight = items.reduce((acc, item) => acc + (item.qty * parseFloat(item.weight || 0)), 0);
-    const weightFee = totalWeight * 20;
-    const distanceFee = distanceKm * 20;
+    const weightFee = totalWeight * Number(price_per_kg);
+    const distanceFee = distanceKm > 0 ? Math.ceil(distanceKm) * Number(price_per_km) : 0;
     const totalDeliveryFee = form.delivery_method === 'pickup' ? 0 : (weightFee + distanceFee);
     const total = subtotal + totalDeliveryFee;
 
-    // REAL DISTANCE CALCULATION - RESTORED
     const handleAddressSelect = async (address) => {
         setForm(f => ({ ...f, delivery: { ...f.delivery, ...address } }));
 
@@ -97,7 +89,6 @@ export default function CheckoutIndex() {
             const response = await axios.post('/checkout/process', {
                 items: items,
                 subtotal: subtotal,
-                payment_method: form.payment_method,
                 delivery_method: form.delivery_method,
                 customer: form.customer,
                 delivery: form.delivery
@@ -112,7 +103,7 @@ export default function CheckoutIndex() {
             setIsProcessing(false);
         } catch (error) {
             console.error(error);
-            showError(error.response?.data?.error || error.response?.data?.message || 'Payment failed to initialize.');
+            showError(error.response?.data?.error || error.response?.data?.message || 'Could not proceed to payment.');
             setIsProcessing(false);
         }
     };
@@ -122,9 +113,9 @@ export default function CheckoutIndex() {
             <div className="hidden md:flex mb-8 items-center gap-2 text-sm text-gray-500">
                 <Link href="/" className="hover:text-brand-primary">Shop</Link>
                 <span>›</span>
-                <span>Shipping</span>
+                <span className="text-brand-dark font-medium">Shipping</span>
                 <span>›</span>
-                <span className="text-brand-dark font-medium">Payment</span>
+                <span>Payment</span>
             </div>
 
             {paymentError && (
@@ -132,7 +123,7 @@ export default function CheckoutIndex() {
                     <div className="flex items-start gap-3">
                         <span className="mt-0.5 text-red-600 font-bold text-sm">✕</span>
                         <div>
-                            <p className="text-sm font-bold text-red-800">Payment could not be completed</p>
+                            <p className="text-sm font-bold text-red-800">Action required</p>
                             <p className="text-sm text-red-700 mt-0.5">{paymentError}</p>
                         </div>
                     </div>
@@ -162,7 +153,6 @@ export default function CheckoutIndex() {
                         <div>
                             <label className="block text-sm font-medium text-brand-dark mb-1.5">Search your address <span className="text-red-500">*</span></label>
 
-                            {/* REAL DISTANCE CALCULATION COMPONENT */}
                             <GoogleAddressInput onAddressSelect={handleAddressSelect} />
 
                             {isCalculatingDistance && (
@@ -192,10 +182,10 @@ export default function CheckoutIndex() {
                                 <div className="flex justify-between items-start mb-1">
                                     <p className="font-bold text-sm text-brand-dark">Standard Delivery</p>
                                     <p className="font-bold text-brand-primary text-sm">
-                                        {isCalculatingDistance ? '...' : formatKES(totalDeliveryFee)}
+                                        {isCalculatingDistance ? '...' : formatKES(weightFee + distanceFee)}
                                     </p>
                                 </div>
-                                <p className="text-[11px] text-gray-500">Calculated by weight & distance</p>
+                                <p className="text-[11px] text-gray-500">KSh {price_per_kg}/kg + KSh {price_per_km}/km</p>
                             </button>
 
                             <button type="button" onClick={() => setForm(f => ({ ...f, delivery_method: 'pickup' }))} className={`text-left rounded-xl border p-4 transition relative ${form.delivery_method === 'pickup' ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/25' : 'border-brand-border bg-white hover:border-brand-primary'}`}>
@@ -205,23 +195,6 @@ export default function CheckoutIndex() {
                                 </div>
                                 <p className="text-[11px] text-gray-500">Collect from our warehouse</p>
                             </button>
-                        </div>
-                    </Section>
-
-                    <Section title="Payment method">
-                        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                            {paymentMethods.map((pm) => (
-                                <button key={pm.key} type="button" disabled={pm.disabled} onClick={() => setForm(f => ({ ...f, payment_method: pm.key }))} className={`text-left rounded-xl border p-2 sm:p-4 transition relative flex flex-col items-center justify-center ${pm.disabled ? 'border-brand-border bg-gray-50 opacity-60 cursor-not-allowed' : form.payment_method === pm.key ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/25' : 'border-brand-border bg-white hover:border-brand-primary'}`}>
-                                    <div className="h-8 sm:h-10 w-full flex items-center justify-center mb-1 sm:mb-3">
-                                        <img src={pm.image} alt={pm.label} className="max-h-full max-w-[80%] object-contain" />
-                                    </div>
-                                    <div className="text-center w-full">
-                                        <p className="font-bold text-[10px] sm:text-sm text-brand-dark truncate">{pm.label}</p>
-                                        <p className="text-[9px] sm:text-[11px] text-gray-500 mt-0.5 truncate">{pm.subtitle}</p>
-                                    </div>
-                                    {pm.disabled && <span className="absolute top-1 right-1 sm:top-2 sm:right-2 text-[7px] sm:text-[9px] bg-gray-200 text-brand-dark px-1 sm:px-1.5 py-0.5 rounded font-bold uppercase">Soon</span>}
-                                </button>
-                            ))}
                         </div>
                     </Section>
                 </div>
@@ -290,14 +263,12 @@ export default function CheckoutIndex() {
                             </div>
                         </div>
 
-                        <button type="submit" disabled={items.length === 0 || isProcessing || isCalculatingDistance} className="mt-6 w-full bg-brand-dark text-white py-4 rounded-xl font-bold text-sm hover:bg-black disabled:opacity-40 transition">
+                        <button type="submit" disabled={items.length === 0 || isProcessing || isCalculatingDistance} className="mt-6 w-full bg-brand-dark text-white py-4 rounded-xl font-bold text-sm hover:bg-black disabled:opacity-40 transition cursor-pointer">
                             {isProcessing
-                                ? 'Redirecting...'
+                                ? 'Proceeding to Payment...'
                                 : isCalculatingDistance
                                     ? 'Calculating Distance...'
-                                    : form.payment_method === 'card'
-                                        ? 'Continue to Checkout'
-                                        : `Pay · ${formatKES(total)}`}
+                                    : `Pay · ${formatKES(total)}`}
                         </button>
 
                         <Link href="/" className="mt-4 block text-center text-sm text-gray-500 hover:text-brand-primary font-medium">← Continue Shopping</Link>

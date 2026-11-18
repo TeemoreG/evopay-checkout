@@ -14,12 +14,19 @@ use Inertia\Inertia;
 
 class CheckoutController extends Controller
 {
-    public function process(Request $request, MpgsService $mpgs)
+    public function index()
+    {
+        return Inertia::render('Checkout/Index', [
+            'price_per_kg' => (float) Setting::get('price_per_kg', 20),
+            'price_per_km' => (float) Setting::get('price_per_km', 50),
+        ]);
+    }
+
+    public function process(Request $request)
     {
         $data = $request->validate([
             'items' => 'required|array',
             'subtotal' => 'required|numeric',
-            'payment_method' => 'required|string',
             'delivery_method' => 'required|string',
             'customer' => 'required|array',
             'customer.name' => 'required|string',
@@ -32,11 +39,12 @@ class CheckoutController extends Controller
         $weightFee = 0;
         $distanceFee = 0;
 
-        // 1. Calculate Real Distance & Delivery Fee
+        // 1. Calculate Real Distance & Dynamic Delivery Fee
         if ($data['delivery_method'] === 'standard' && !empty($data['delivery']['lat'])) {
-            // Fetch dynamic HQ coordinates from DB
             $hqLat = (float) Setting::get('hq_lat', -1.2674);
             $hqLng = (float) Setting::get('hq_lng', 36.7704);
+            $pricePerKg = (float) Setting::get('price_per_kg', 20);
+            $pricePerKm = (float) Setting::get('price_per_km', 50);
 
             $distanceKm = $this->calculateDistance(
                 $hqLat, $hqLng,
@@ -44,13 +52,12 @@ class CheckoutController extends Controller
                 (float) $data['delivery']['lng']
             );
 
-            // Dynamic Weight Math: KSh 20 per KG + KSh 50 per KM
             $totalWeight = collect($data['items'])->reduce(function ($acc, $item) {
                 return $acc + ($item['qty'] * (float) ($item['weight'] ?? 0));
             }, 0);
 
-            $weightFee = $totalWeight * 20;
-            $distanceFee = ceil($distanceKm) * 50;
+            $weightFee = $totalWeight * $pricePerKg;
+            $distanceFee = ceil($distanceKm) * $pricePerKm;
 
             $deliveryFee = $weightFee + $distanceFee;
         }
@@ -58,12 +65,12 @@ class CheckoutController extends Controller
         // Recalculate total securely on the backend
         $total = $data['subtotal'] + $deliveryFee;
 
-        // 2. Create the Order
+        // 2. Create the Order (payment method selected on /pay/{order_number})
         $order = Order::create([
             'order_number' => 'ORD-' . strtoupper(Str::random(8)),
             'total_amount' => $total,
             'status' => 'pending',
-            'payment_method' => $data['payment_method'],
+            'payment_method' => 'pending',
             'items' => $data['items'],
             'customer' => $data['customer'],
             'delivery' => array_merge($data['delivery'] ?? [], [
@@ -75,55 +82,30 @@ class CheckoutController extends Controller
             ]),
         ]);
 
-        // 3. Handle Card (MPGS) -> Redirect to MPGS Hosted Checkout Launcher
-        if ($data['payment_method'] === 'card') {
-            try {
-                $returnUrl = route('checkout.mpgs.callback', $order);
-                $cancelUrl = route('checkout.mpgs.cancel', $order);
+        return response()->json([
+            'status' => 'redirect',
+            'url' => route('checkout.pay', ['order' => $order->order_number]),
+            'order_number' => $order->order_number,
+        ]);
+    }
 
-                $session = $mpgs->createSession(
-                    $total,
-                    $order->order_number,
-                    'KES',
-                    $returnUrl,
-                    $cancelUrl
-                );
-
-                if (empty($session['session']['id'])) {
-                    throw new \Exception('MPGS did not return a valid session ID.');
-                }
-
-                $order->update(['mpgs_session_id' => $session['session']['id']]);
-
-                if (!empty($session['successIndicator'])) {
-                    Cache::put("mpgs_indicator_{$order->order_number}", $session['successIndicator'], now()->addHours(2));
-                }
-
-                return response()->json([
-                    'status' => 'redirect',
-                    'url' => route('checkout.mpgs.pay', $order),
-                    'order_number' => $order->order_number,
-                ]);
-            } catch (\Exception $e) {
-                $order->update([
-                    'status' => 'failed',
-                    'failure_reason' => $e->getMessage(),
-                ]);
-
-                return response()->json(['error' => $e->getMessage()], 500);
-            }
+    // Secluded Payment Method Selector Page
+    public function pay(Order $order)
+    {
+        if ($order->status === 'paid') {
+            return redirect()->route('checkout.success', ['order' => $order->order_number]);
         }
 
-        // 4. Handle M-Pesa -> Redirect to Dedicated M-Pesa Hosted Payment Page
-        if ($data['payment_method'] === 'mpesa') {
-            return response()->json([
-                'status' => 'redirect',
-                'url' => route('checkout.mpesa.pay', ['order' => $order->order_number]),
+        return Inertia::render('Checkout/Pay', [
+            'order' => [
                 'order_number' => $order->order_number,
-            ]);
-        }
-
-        return response()->json(['status' => 'error', 'message' => 'Invalid payment method'], 400);
+                'total_amount' => (float) $order->total_amount,
+                'status' => $order->status,
+                'failure_reason' => $order->failure_reason,
+                'customer_name' => $order->customer['name'] ?? '',
+                'items_count' => collect($order->items ?? [])->sum('qty'),
+            ],
+        ]);
     }
 
     // Hosted M-Pesa Payment Page
@@ -170,6 +152,7 @@ class CheckoutController extends Controller
             if (empty($response['CheckoutRequestID']) || ($response['ResponseCode'] ?? null) !== '0') {
                 $reason = $response['ResponseDescription'] ?? $response['errorMessage'] ?? 'Failed to initiate M-Pesa prompt.';
                 $order->update([
+                    'payment_method' => 'mpesa',
                     'status' => 'failed',
                     'failure_reason' => $reason,
                 ]);
@@ -178,6 +161,7 @@ class CheckoutController extends Controller
             }
 
             $order->update([
+                'payment_method' => 'mpesa',
                 'status' => 'pending',
                 'failure_reason' => null,
                 'mpesa_request_id' => $response['CheckoutRequestID'],
@@ -190,6 +174,65 @@ class CheckoutController extends Controller
             ]);
         } catch (\Exception $e) {
             $order->update([
+                'payment_method' => 'mpesa',
+                'status' => 'failed',
+                'failure_reason' => $e->getMessage(),
+            ]);
+
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    // Reusable API Endpoint: Initialize MPGS Card Session for an Order
+    public function mpgsInit(Request $request, MpgsService $mpgs)
+    {
+        $data = $request->validate([
+            'order_number' => 'required|string|exists:orders,order_number',
+        ]);
+
+        $order = Order::where('order_number', $data['order_number'])->firstOrFail();
+
+        if ($order->status === 'paid') {
+            return response()->json([
+                'status' => 'redirect',
+                'url' => route('checkout.success', ['order' => $order->order_number]),
+            ]);
+        }
+
+        try {
+            $returnUrl = route('checkout.mpgs.callback', $order);
+            $cancelUrl = route('checkout.mpgs.cancel', $order);
+
+            $session = $mpgs->createSession(
+                $order->total_amount,
+                $order->order_number,
+                'KES',
+                $returnUrl,
+                $cancelUrl
+            );
+
+            if (empty($session['session']['id'])) {
+                throw new \Exception('MPGS did not return a valid session ID.');
+            }
+
+            $order->update([
+                'payment_method' => 'card',
+                'status' => 'pending',
+                'failure_reason' => null,
+                'mpgs_session_id' => $session['session']['id'],
+            ]);
+
+            if (!empty($session['successIndicator'])) {
+                Cache::put("mpgs_indicator_{$order->order_number}", $session['successIndicator'], now()->addHours(2));
+            }
+
+            return response()->json([
+                'status' => 'redirect',
+                'url' => route('checkout.mpgs.pay', $order),
+            ]);
+        } catch (\Exception $e) {
+            $order->update([
+                'payment_method' => 'card',
                 'status' => 'failed',
                 'failure_reason' => $e->getMessage(),
             ]);
@@ -206,7 +249,10 @@ class CheckoutController extends Controller
         }
 
         if (empty($order->mpgs_session_id)) {
-            return redirect()->route('checkout.index', ['error' => 'Card session not found. Please try again.']);
+            return redirect()->route('checkout.pay', [
+                'order' => $order->order_number,
+                'error' => 'Card session not found. Please try again.',
+            ]);
         }
 
         return view('checkout.mpgs', [
@@ -240,9 +286,11 @@ class CheckoutController extends Controller
             if ($gatewaySuccess || $indicatorMatches) {
                 $order->update([
                     'status' => 'paid',
+                    'payment_method' => 'card',
                     'failure_reason' => null,
                 ]);
                 Cache::forget("mpgs_indicator_{$order->order_number}");
+                $this->sendEmailReceiptPlaceholder($order);
 
                 return redirect()->route('checkout.success', ['order' => $order->order_number]);
             }
@@ -255,7 +303,10 @@ class CheckoutController extends Controller
                 'failure_reason' => $reason,
             ]);
 
-            return redirect()->route('checkout.index', ['error' => $reason]);
+            return redirect()->route('checkout.pay', [
+                'order' => $order->order_number,
+                'error' => $reason,
+            ]);
         } catch (\Exception $e) {
             \Log::error("MPGS Callback Error ({$order->order_number}): " . $e->getMessage());
 
@@ -264,7 +315,10 @@ class CheckoutController extends Controller
                 'failure_reason' => 'Could not verify card payment. Please try again.',
             ]);
 
-            return redirect()->route('checkout.index', ['error' => 'Could not verify card payment. Please try again.']);
+            return redirect()->route('checkout.pay', [
+                'order' => $order->order_number,
+                'error' => 'Could not verify card payment. Please try again.',
+            ]);
         }
     }
 
@@ -278,8 +332,30 @@ class CheckoutController extends Controller
             ]);
         }
 
-        return redirect()->route('checkout.index', [
+        return redirect()->route('checkout.pay', [
+            'order' => $order->order_number,
             'error' => 'Card payment was cancelled. You can try again or choose M-Pesa.',
+        ]);
+    }
+
+    // Order Receipt Success Page
+    public function success(Request $request)
+    {
+        $orderNumber = $request->query('order');
+        $order = $orderNumber ? Order::where('order_number', $orderNumber)->first() : null;
+
+        return Inertia::render('Checkout/Success', [
+            'order' => $order ? [
+                'order_number' => $order->order_number,
+                'total_amount' => (float) $order->total_amount,
+                'status' => $order->status,
+                'payment_method' => $order->payment_method,
+                'mpesa_receipt' => $order->mpesa_receipt,
+                'customer' => $order->customer,
+                'delivery' => $order->delivery,
+                'items' => $order->items,
+                'created_at' => $order->created_at?->toIso8601String(),
+            ] : null,
         ]);
     }
 
@@ -291,7 +367,6 @@ class CheckoutController extends Controller
             'lng' => 'required|numeric',
         ]);
 
-        // Fetch dynamic HQ coordinates from DB
         $hqLat = (float) Setting::get('hq_lat', -1.2674);
         $hqLng = (float) Setting::get('hq_lng', 36.7704);
 
@@ -343,11 +418,13 @@ class CheckoutController extends Controller
 
                 $order->update([
                     'status' => 'paid',
+                    'payment_method' => 'mpesa',
                     'mpesa_receipt' => $receipt,
                     'failure_reason' => null,
                 ]);
 
                 \Log::info("Order {$order->order_number} paid successfully. Receipt: {$receipt}");
+                $this->sendEmailReceiptPlaceholder($order);
             } else {
                 $order->update([
                     'status' => 'failed',
@@ -362,6 +439,18 @@ class CheckoutController extends Controller
             'ResultCode' => 0,
             'ResultDesc' => 'Callback received successfully'
         ]);
+    }
+
+    private function sendEmailReceiptPlaceholder(Order $order): void
+    {
+        $email = $order->customer['email'] ?? null;
+        if (!$email) {
+            return;
+        }
+
+        // Email Receipt Placeholder (enable once SMTP credentials are configured in .env)
+        // Mail::to($email)->send(new \App\Mail\OrderReceiptMail($order));
+        \Log::info("Email receipt placeholder triggered for {$order->order_number} ({$email})");
     }
 
     private function mapMpesaError(int $code, string $fallback): string
