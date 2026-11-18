@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import MainLayout from '../../Layouts/MainLayout';
 import { useCart } from '../../Stores/cart';
 import GoogleAddressInput from '../../Components/GoogleAddressInput';
@@ -17,9 +17,11 @@ const paymentMethods = [
 export default function CheckoutIndex() {
     const { items, setQty, removeItem, clear } = useCart();
     const [isProcessing, setIsProcessing] = useState(false);
-    const [isWaitingForPin, setIsWaitingForPin] = useState(false); 
+    const [isWaitingForPin, setIsWaitingForPin] = useState(false);
+    const [paymentError, setPaymentError] = useState(null);
     const [distanceKm, setDistanceKm] = useState(0);
     const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
+    const pollIntervalRef = useRef(null);
 
     const [form, setForm] = useState({
         customer: { name: '', phone: '', email: '' },
@@ -27,14 +29,34 @@ export default function CheckoutIndex() {
         payment_method: 'mpesa',
         delivery_method: 'standard',
     });
-    
+
     const [errors] = useState({});
+
+    useEffect(() => {
+        return () => {
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+            }
+        };
+    }, []);
+
+    const showError = (message) => {
+        setPaymentError(message);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const stopPolling = () => {
+        if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+        }
+    };
 
     const updateCustomer = (key, value) => setForm((f) => ({ ...f, customer: { ...f.customer, [key]: value } }));
     const updateDelivery = (key, value) => setForm((f) => ({ ...f, delivery: { ...f.delivery, [key]: value } }));
 
     const subtotal = items.reduce((n, i) => n + i.lineTotal, 0);
-    const totalWeight = items.reduce((acc, item) => acc + (item.qty * parseFloat(item.weight || 0)), 0);  
+    const totalWeight = items.reduce((acc, item) => acc + (item.qty * parseFloat(item.weight || 0)), 0);
     const weightFee = totalWeight * 20;
     const distanceFee = distanceKm * 20;
     const totalDeliveryFee = form.delivery_method === 'pickup' ? 0 : (weightFee + distanceFee);
@@ -43,7 +65,7 @@ export default function CheckoutIndex() {
     // REAL DISTANCE CALCULATION - RESTORED
     const handleAddressSelect = async (address) => {
         setForm(f => ({ ...f, delivery: { ...f.delivery, ...address } }));
-        
+
         if (address.lat && address.lng) {
             setIsCalculatingDistance(true);
             try {
@@ -64,14 +86,16 @@ export default function CheckoutIndex() {
     const submit = async (e) => {
         e.preventDefault();
         if (items.length === 0) return;
-        
+
+        setPaymentError(null);
+
         if (form.delivery_method === 'standard' && !form.delivery.formatted) {
-            alert("Please select a delivery address.");
+            showError("Please select a delivery address.");
             return;
         }
-        
+
         if (isCalculatingDistance) {
-            alert("Please wait while we calculate your delivery distance.");
+            showError("Please wait while we calculate your delivery distance.");
             return;
         }
 
@@ -96,32 +120,33 @@ export default function CheckoutIndex() {
             }
         } catch (error) {
             console.error(error);
-            alert(error.response?.data?.error || 'Payment failed to initialize.');
+            showError(error.response?.data?.error || error.response?.data?.message || 'Payment failed to initialize.');
             setIsProcessing(false);
         }
     };
 
     const pollOrderStatus = (orderId) => {
+        stopPolling();
         let attempts = 0;
-        const maxAttempts = 20;
+        const maxAttempts = 25; // ~75 seconds
 
-        const interval = setInterval(async () => {
+        pollIntervalRef.current = setInterval(async () => {
             attempts++;
             try {
                 const res = await axios.get(`/checkout/status/${orderId}`);
-                
+
                 if (res.data.status === 'paid') {
-                    clearInterval(interval);
+                    stopPolling();
                     clear();
                     router.visit('/checkout/success');
                 } else if (res.data.status === 'failed') {
-                    clearInterval(interval);
+                    stopPolling();
                     setIsWaitingForPin(false);
-                    alert('Payment failed or cancelled. Please try again.');
+                    showError(res.data.message || 'M-Pesa payment failed or was cancelled. Please try again.');
                 } else if (attempts >= maxAttempts) {
-                    clearInterval(interval);
+                    stopPolling();
                     setIsWaitingForPin(false);
-                    alert('Payment timeout. Please check your phone or try again.');
+                    showError('M-Pesa confirmation timed out. If you entered your PIN, wait for the SMS or try again.');
                 }
             } catch (error) {
                 console.error("Polling error", error);
@@ -138,7 +163,17 @@ export default function CheckoutIndex() {
                     <p className="text-gray-500 max-w-sm">
                         An STK Push has been sent to <strong>{form.customer.phone}</strong>. Please enter your M-Pesa PIN to complete the payment.
                     </p>
-                    <p className="text-xs text-gray-400 mt-6">Do not close this page.</p>
+                    <p className="text-xs text-gray-400 mt-6">Do not close this page. Waiting for Safaricom confirmation...</p>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            stopPolling();
+                            setIsWaitingForPin(false);
+                        }}
+                        className="mt-6 text-sm text-gray-500 hover:text-brand-dark underline"
+                    >
+                        Cancel and return to checkout
+                    </button>
                 </div>
             </MainLayout>
         );
@@ -153,6 +188,25 @@ export default function CheckoutIndex() {
                 <span>›</span>
                 <span className="text-brand-dark font-medium">Payment</span>
             </div>
+
+            {paymentError && (
+                <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                        <span className="mt-0.5 text-red-600 font-bold text-sm">✕</span>
+                        <div>
+                            <p className="text-sm font-bold text-red-800">Payment could not be completed</p>
+                            <p className="text-sm text-red-700 mt-0.5">{paymentError}</p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setPaymentError(null)}
+                        className="text-xs font-semibold text-red-600 hover:text-red-800"
+                    >
+                        Dismiss
+                    </button>
+                </div>
+            )}
 
             <form onSubmit={submit} className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
                 <div className="lg:col-span-2 space-y-4 md:space-y-6">
@@ -169,7 +223,7 @@ export default function CheckoutIndex() {
                     <Section title="Delivery address">
                         <div>
                             <label className="block text-sm font-medium text-brand-dark mb-1.5">Search your address <span className="text-red-500">*</span></label>
-                            
+
                             {/* REAL DISTANCE CALCULATION COMPONENT */}
                             <GoogleAddressInput onAddressSelect={handleAddressSelect} />
 
@@ -206,7 +260,7 @@ export default function CheckoutIndex() {
                                 <p className="text-[11px] text-gray-500">Calculated by weight & distance</p>
                                 {form.delivery_method === 'standard' && <span className="absolute -top-2 -right-2 bg-brand-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">✓</span>}
                             </button>
-                            
+
                             <button type="button" onClick={() => setForm(f => ({ ...f, delivery_method: 'pickup' }))} className={`text-left rounded-xl border p-4 transition relative ${form.delivery_method === 'pickup' ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/25' : 'border-brand-border bg-white hover:border-brand-primary'}`}>
                                 <div className="flex justify-between items-start mb-1">
                                     <p className="font-bold text-sm text-brand-dark">Store Pickup</p>
@@ -274,7 +328,7 @@ export default function CheckoutIndex() {
                                 <span className="text-gray-500">Subtotal</span>
                                 <span className="font-medium text-brand-dark">{formatKES(subtotal)}</span>
                             </div>
-                            
+
                             <div className="flex justify-between items-start">
                                 <span className="text-gray-500">Delivery</span>
                                 <div className="text-right">

@@ -10,9 +10,11 @@ class Order extends Model
         'order_number',
         'total_amount',
         'status',
+        'failure_reason',
         'payment_method',
         'mpgs_session_id',
-        'mpesa_request_id', // <-- ADDED
+        'mpesa_request_id',
+        'mpesa_receipt',
         'items',
         'customer',
         'delivery',
