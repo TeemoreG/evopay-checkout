@@ -244,3 +244,22 @@ class CheckoutController extends Controller
             ],
             "travelMode" => "DRIVE",
             "routingPreference" => "TRAFFIC_AWARE"
+        ];
+
+        $response = Http::withHeaders([
+            'Content-Type' => 'application/json',
+            'X-Goog-Api-Key' => $apiKey,
+            'X-Goog-FieldMask' => 'routes.distanceMeters'
+        ])->post($url, $payload);
+
+        if ($response->successful()) {
+            $data = $response->json();
+            if (isset($data['routes'][0]['distanceMeters'])) {
+                return $data['routes'][0]['distanceMeters'] / 1000;
+            }
+        }
+
+        \Log::error('Google Routes API Error: ' . $response->body());
+        return 0;
+    }
+}
