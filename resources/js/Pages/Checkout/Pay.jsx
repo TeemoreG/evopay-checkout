@@ -11,7 +11,6 @@ const paymentMethods = [
         key: 'mpesa',
         label: 'M-Pesa',
         subtitle: 'Safaricom STK Push',
-        tag: 'Most Popular',
         image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000028/1_q6VZ_q0WIism6TgZ9kBIWQ_km524l.png',
         disabled: false,
     },
