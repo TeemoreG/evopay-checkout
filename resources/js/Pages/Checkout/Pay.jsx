@@ -107,7 +107,7 @@ export default function CheckoutPay({ order }) {
                 <div className="bg-brand-light rounded-2xl p-4 sm:p-5 mb-5 border border-brand-border shadow-xs">
                     <div className="flex justify-between items-center mb-2 text-xs">
                         <span className="text-gray-500">Order Reference</span>
-                        <span className="font-mono font-bold text-brand-dark bg-white px-2 py-0.5 rounded border border-brand-border">
+                        <span className="font-medium text-brand-dark">
                             {order.order_number}
                         </span>
                     </div>
