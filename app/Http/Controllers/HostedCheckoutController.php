@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\DispatchMerchantWebhook;
 use App\Models\CheckoutSession;
 use App\Services\MpgsService;
 use App\Services\MpesaService;
@@ -111,7 +112,6 @@ class HostedCheckoutController extends Controller
         ]);
 
         $phone = preg_replace('/[\s\-]+/', '', trim($request->input('phone')));
-        // Safaricom AccountReference has a 12-char limit
         $accountRef = substr(preg_replace('/[^a-zA-Z0-9]/', '', $session->merchant_reference), 0, 12) ?: 'EVOPAY';
 
         try {
@@ -179,7 +179,7 @@ class HostedCheckoutController extends Controller
 
             $mpgsSession = $mpgs->createSession(
                 $session->amount,
-                $session->token, // unique order ID for MPGS
+                $session->token,
                 $session->currency,
                 $returnUrl,
                 $cancelUrl
@@ -268,11 +268,15 @@ class HostedCheckoutController extends Controller
                 $session->markAsPaid('card');
                 Cache::forget("mpgs_indicator_{$session->token}");
 
+                DispatchMerchantWebhook::dispatch($session, 'payment.succeeded');
+
                 return $this->redirectToMerchantSuccess($session);
             }
 
             $reason = $mpgsOrder['error']['explanation'] ?? 'Card payment was declined.';
             $session->markAsFailed($reason);
+
+            DispatchMerchantWebhook::dispatch($session, 'payment.failed');
 
             return redirect()->route('gateway.show', [
                 'token' => $token,
@@ -281,6 +285,8 @@ class HostedCheckoutController extends Controller
         } catch (\Exception $e) {
             Log::error("MPGS Callback Error for Session {$session->token}: " . $e->getMessage());
             $session->markAsFailed('Could not verify card payment.');
+
+            DispatchMerchantWebhook::dispatch($session, 'payment.failed');
 
             return redirect()->route('gateway.show', [
                 'token' => $token,
@@ -336,9 +342,6 @@ class HostedCheckoutController extends Controller
         ]);
     }
 
-    /**
-     * Build the return redirect URL with signed query parameters.
-     */
     private function buildReturnUrl(CheckoutSession $session): string
     {
         if ($session->return_url) {

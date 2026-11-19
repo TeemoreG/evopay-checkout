@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\DispatchMerchantWebhook;
 use App\Models\CheckoutSession;
 use App\Models\Order;
 use App\Models\Setting;
@@ -451,9 +452,13 @@ class CheckoutController extends Controller
 
                 $session->markAsPaid('mpesa', $receipt);
                 \Log::info("CheckoutSession {$session->token} paid successfully. Receipt: {$receipt}");
+
+                DispatchMerchantWebhook::dispatch($session, 'payment.succeeded');
             } else {
                 $session->markAsFailed($this->mapMpesaError($resultCode, $resultDesc));
                 \Log::warning("CheckoutSession {$session->token} failed ({$resultCode}): {$resultDesc}");
+
+                DispatchMerchantWebhook::dispatch($session, 'payment.failed');
             }
         }
 
