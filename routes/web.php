@@ -7,31 +7,20 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\HostedCheckoutController;
 use App\Http\Controllers\MerchantPortalController;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
-// Auth Routes
+// ============================================================================
+// Evopay Payment Provider Home & Auth
+// ============================================================================
+Route::get('/', fn () => Inertia::render('Gateway/Home'))->name('home');
+
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.attempt');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
-// Storefront Routes (Nyumba Cement POC)
-Route::get('/', [CatalogController::class, 'index'])->name('catalog.index');
-Route::get('/products/{slug}', [CatalogController::class, 'show'])->name('product.show');
-
-// Internal Demo Store Checkout Routes
-Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
-Route::post('/checkout/process', [CheckoutController::class, 'process'])->name('checkout.process');
-Route::post('/checkout/distance', [CheckoutController::class, 'getDistance'])->name('checkout.distance');
-Route::get('/checkout/status/{order}', [CheckoutController::class, 'checkStatus'])->name('checkout.status');
-Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
-Route::get('/pay/{order:order_number}', [CheckoutController::class, 'pay'])->name('checkout.pay');
-Route::get('/pay/mpesa/{order:order_number}', [CheckoutController::class, 'mpesaPay'])->name('checkout.mpesa.pay');
-
-// Internal Demo Card Routes
-Route::get('/checkout/mpgs/pay/{order}', [CheckoutController::class, 'mpgsPay'])->name('checkout.mpgs.pay');
-Route::get('/checkout/mpgs/callback/{order}', [CheckoutController::class, 'mpgsCallback'])->name('checkout.mpgs.callback');
-Route::get('/checkout/mpgs/cancel/{order}', [CheckoutController::class, 'mpgsCancel'])->name('checkout.mpgs.cancel');
-
-// Evopay Hosted Checkout Gateway Routes (/c/{token})
+// ============================================================================
+// Evopay Hosted Checkout Gateway (/c/{token})
+// ============================================================================
 Route::prefix('c/{token}')->name('gateway.')->group(function () {
     Route::get('/', [HostedCheckoutController::class, 'show'])->name('show');
     Route::get('/mpesa', [HostedCheckoutController::class, 'mpesaShow'])->name('mpesa');
@@ -48,7 +37,9 @@ Route::prefix('c/{token}')->name('gateway.')->group(function () {
 // Provider Inbound Callbacks (CSRF excluded in bootstrap/app.php)
 Route::post('/api/mpesa/callback', [CheckoutController::class, 'mpesaCallback']);
 
-// Merchant Portal Routes (Protected)
+// ============================================================================
+// Merchant Portal (Protected)
+// ============================================================================
 Route::prefix('merchant')->middleware(['auth', 'role:merchant'])->name('merchant.')->group(function () {
     Route::get('/', [MerchantPortalController::class, 'dashboard'])->name('dashboard');
     Route::get('/developers', [MerchantPortalController::class, 'developers'])->name('developers');
@@ -59,20 +50,35 @@ Route::prefix('merchant')->middleware(['auth', 'role:merchant'])->name('merchant
     Route::post('/webhooks/{delivery}/retry', [MerchantPortalController::class, 'retryWebhook'])->name('webhooks.retry');
 });
 
-// Admin Routes (Protected)
+// ============================================================================
+// Platform Admin — Purely Merchant & Gateway Management (Protected)
+// ============================================================================
 Route::prefix('admin')->middleware(['auth', 'role:admin'])->name('admin.')->group(function () {
-    Route::get('/', [AdminController::class, 'index'])->name('index');
-    Route::get('/orders', [AdminController::class, 'orders'])->name('orders');
+    Route::get('/', [AdminController::class, 'merchants'])->name('index');
     Route::get('/merchants', [AdminController::class, 'merchants'])->name('merchants');
     Route::post('/merchants', [AdminController::class, 'storeMerchant'])->name('merchants.store');
+    Route::post('/merchants/{merchant}/login', [AdminController::class, 'createMerchantLogin'])->name('merchants.login');
     Route::post('/merchants/{merchant}/toggle', [AdminController::class, 'toggleMerchantStatus'])->name('merchants.toggle');
+    Route::get('/transactions', [AdminController::class, 'transactions'])->name('transactions');
 
-    // Settings
+    // Transition Demo Shop Admin (Separate from main Gateway Admin)
+    Route::get('/demo-shop', [AdminController::class, 'index'])->name('demo-shop');
+    Route::get('/orders', [AdminController::class, 'orders'])->name('orders');
     Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
     Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
-
-    // Products
     Route::post('/products', [AdminController::class, 'storeProduct'])->name('products.store');
     Route::put('/products/{product}', [AdminController::class, 'updateProduct'])->name('products.update');
     Route::delete('/products/{product}', [AdminController::class, 'destroyProduct'])->name('products.destroy');
 });
+
+// ============================================================================
+// Transition Demo Shop Routes (/shop) — Connected to Evopay as an API Client
+// ============================================================================
+Route::get('/shop', [CatalogController::class, 'index'])->name('catalog.index');
+Route::get('/products/{slug}', [CatalogController::class, 'show'])->name('product.show');
+Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
+Route::post('/checkout/process', [CheckoutController::class, 'process'])->name('checkout.process');
+Route::post('/checkout/distance', [CheckoutController::class, 'getDistance'])->name('checkout.distance');
+Route::get('/checkout/return', [CheckoutController::class, 'gatewayReturn'])->name('checkout.return');
+Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
+Route::post('/api/shop/webhook', [CheckoutController::class, 'shopWebhook'])->name('shop.evopay.webhook');

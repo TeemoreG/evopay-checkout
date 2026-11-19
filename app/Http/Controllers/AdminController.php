@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CheckoutSession;
 use App\Models\Merchant;
 use App\Models\Order;
 use App\Models\Product;
@@ -28,34 +29,87 @@ class AdminController extends Controller
         return is_array($decoded) && count($decoded) > 0 ? $decoded : $default;
     }
 
-    public function index()
-    {
-        $products = Product::with(['units.priceBreaks'])->latest()->get();
-
-        return Inertia::render('Admin/Index', [
-            'products' => $products,
-            'unit_measurements' => $this->getUnitMeasurements(),
-        ]);
-    }
-
-    public function orders()
-    {
-        $orders = Order::latest()->limit(100)->get();
-
-        return Inertia::render('Admin/Orders', [
-            'orders' => $orders,
-        ]);
-    }
-
+    /**
+     * Main Admin Home: Purely Merchants & Platform Gateway Overview
+     */
     public function merchants()
     {
+        $merchantUsers = User::whereNotNull('merchant_id')
+            ->get()
+            ->keyBy('merchant_id');
+
+        $paidByMerchant = CheckoutSession::where('status', 'paid')
+            ->selectRaw('merchant_id, SUM(amount) as paid_volume, COUNT(*) as paid_count')
+            ->groupBy('merchant_id')
+            ->get()
+            ->keyBy('merchant_id');
+
         $merchants = Merchant::withCount('checkoutSessions')
-            ->with(['apiKeys' => fn ($q) => $q->where('is_active', true)])
             ->latest()
-            ->get();
+            ->get()
+            ->map(function ($m) use ($merchantUsers, $paidByMerchant) {
+                $user = $merchantUsers->get($m->id);
+                $paid = $paidByMerchant->get($m->id);
+
+                return [
+                    'id' => $m->id,
+                    'name' => $m->name,
+                    'slug' => $m->slug,
+                    'email' => $m->email,
+                    'logo_url' => $m->logo_url,
+                    'status' => $m->status,
+                    'fee_percent' => (float) $m->fee_percent,
+                    'checkout_sessions_count' => $m->checkout_sessions_count,
+                    'paid_volume' => (float) ($paid->paid_volume ?? 0),
+                    'paid_count' => (int) ($paid->paid_count ?? 0),
+                    'has_login' => (bool) $user,
+                    'login_email' => $user?->email,
+                    'created_at' => $m->created_at?->toIso8601String(),
+                ];
+            });
+
+        $totalPaidVolume = (float) CheckoutSession::where('status', 'paid')->sum('amount');
+        $totalPaidCount = CheckoutSession::where('status', 'paid')->count();
 
         return Inertia::render('Admin/Merchants', [
             'merchants' => $merchants,
+            'stats' => [
+                'merchants_count' => $merchants->count(),
+                'paid_volume' => $totalPaidVolume,
+                'paid_count' => $totalPaidCount,
+                'total_sessions' => CheckoutSession::count(),
+            ],
+        ]);
+    }
+
+    /**
+     * Global Gateway Transactions across all merchants
+     */
+    public function transactions()
+    {
+        $sessions = CheckoutSession::with('merchant:id,name,slug,fee_percent')
+            ->latest()
+            ->limit(150)
+            ->get()
+            ->map(fn ($s) => [
+                'id' => $s->id,
+                'token' => $s->token,
+                'merchant_name' => $s->merchant?->name ?? 'Unknown',
+                'merchant_reference' => $s->merchant_reference,
+                'amount' => (float) $s->amount,
+                'currency' => $s->currency,
+                'fee_amount' => round(((float) $s->amount * (float) ($s->merchant?->fee_percent ?? 0)) / 100, 2),
+                'status' => $s->status,
+                'payment_method' => $s->payment_method,
+                'mpesa_receipt' => $s->mpesa_receipt,
+                'failure_reason' => $s->failure_reason,
+                'customer' => $s->customer ?? [],
+                'paid_at' => $s->paid_at?->toIso8601String(),
+                'created_at' => $s->created_at->toIso8601String(),
+            ]);
+
+        return Inertia::render('Admin/Transactions', [
+            'sessions' => $sessions,
         ]);
     }
 
@@ -116,6 +170,41 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Attach or reset a portal login for an existing merchant (e.g. CLI-created Nyumba Cement)
+     */
+    public function createMerchantLogin(Request $request, Merchant $merchant)
+    {
+        $data = $request->validate([
+            'email' => 'required|email|max:255',
+            'password' => 'required|string|min:8',
+        ]);
+
+        $existingByEmail = User::where('email', $data['email'])
+            ->where('merchant_id', '!=', $merchant->id)
+            ->first();
+
+        if ($existingByEmail) {
+            return response()->json([
+                'message' => 'That email is already used by another account.',
+            ], 422);
+        }
+
+        User::updateOrCreate(
+            ['merchant_id' => $merchant->id, 'role' => 'merchant'],
+            [
+                'name' => $merchant->name,
+                'email' => $data['email'],
+                'password' => $data['password'],
+            ]
+        );
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Portal login saved for {$merchant->name}.",
+        ]);
+    }
+
     public function toggleMerchantStatus(Merchant $merchant)
     {
         $merchant->update([
@@ -123,6 +212,27 @@ class AdminController extends Controller
         ]);
 
         return redirect()->back();
+    }
+
+    // --- Transition Demo Shop Admin Methods (/admin/demo-shop) ---
+
+    public function index()
+    {
+        $products = Product::with(['units.priceBreaks'])->latest()->get();
+
+        return Inertia::render('Admin/Index', [
+            'products' => $products,
+            'unit_measurements' => $this->getUnitMeasurements(),
+        ]);
+    }
+
+    public function orders()
+    {
+        $orders = Order::latest()->limit(100)->get();
+
+        return Inertia::render('Admin/Orders', [
+            'orders' => $orders,
+        ]);
     }
 
     public function storeProduct(Request $request)

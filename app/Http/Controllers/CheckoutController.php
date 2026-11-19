@@ -6,10 +6,7 @@ use App\Jobs\DispatchMerchantWebhook;
 use App\Models\CheckoutSession;
 use App\Models\Order;
 use App\Models\Setting;
-use App\Services\MpgsService;
-use App\Services\MpesaService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -24,6 +21,10 @@ class CheckoutController extends Controller
         ]);
     }
 
+    /**
+     * Shop Checkout: Creates local Order, then calls Evopay Gateway API via Secret Key
+     * just like any external merchant store.
+     */
     public function process(Request $request)
     {
         $data = $request->validate([
@@ -44,12 +45,18 @@ class CheckoutController extends Controller
             'delivery_method.required' => 'Please select a delivery method.',
         ]);
 
+        $secretKey = env('EVOPAY_SHOP_SECRET_KEY');
+        if (!$secretKey) {
+            return response()->json([
+                'error' => 'Shop payment gateway is not configured (missing EVOPAY_SHOP_SECRET_KEY in .env).',
+            ], 500);
+        }
+
         $deliveryFee = 0;
         $distanceKm = 0;
         $weightFee = 0;
         $distanceFee = 0;
 
-        // 1. Calculate Real Distance & Dynamic Delivery Fee
         if ($data['delivery_method'] === 'standard' && !empty($data['delivery']['lat'])) {
             $hqLat = (float) Setting::get('hq_lat', -1.2674);
             $hqLng = (float) Setting::get('hq_lng', 36.7704);
@@ -72,15 +79,14 @@ class CheckoutController extends Controller
             $deliveryFee = $weightFee + $distanceFee;
         }
 
-        // Recalculate total securely on the backend
         $total = $data['subtotal'] + $deliveryFee;
 
-        // 2. Create the Order (payment method selected on /pay/{order_number})
+        // 1. Create Shop Order locally
         $order = Order::create([
             'order_number' => 'ORD-' . strtoupper(Str::random(8)),
             'total_amount' => $total,
             'status' => 'pending',
-            'payment_method' => 'pending',
+            'payment_method' => 'evopay_gateway',
             'items' => $data['items'],
             'customer' => $data['customer'],
             'delivery' => array_merge($data['delivery'] ?? [], [
@@ -92,260 +98,158 @@ class CheckoutController extends Controller
             ]),
         ]);
 
-        return response()->json([
-            'status' => 'redirect',
-            'url' => route('checkout.pay', ['order' => $order->order_number]),
-            'order_number' => $order->order_number,
-        ]);
-    }
-
-    // Secluded Payment Method Selector Page
-    public function pay(Order $order)
-    {
-        if ($order->status === 'paid') {
-            return redirect()->route('checkout.success', ['order' => $order->order_number]);
-        }
-
-        return Inertia::render('Checkout/Pay', [
-            'order' => [
-                'order_number' => $order->order_number,
-                'total_amount' => (float) $order->total_amount,
-                'status' => $order->status,
-                'failure_reason' => $order->failure_reason,
-                'customer_name' => $order->customer['name'] ?? '',
-                'items_count' => collect($order->items ?? [])->sum('qty'),
-            ],
-        ]);
-    }
-
-    // Hosted M-Pesa Payment Page
-    public function mpesaPay(Order $order)
-    {
-        if ($order->status === 'paid') {
-            return redirect()->route('checkout.success', ['order' => $order->order_number]);
-        }
-
-        return Inertia::render('Checkout/MpesaPay', [
-            'order' => [
-                'order_number' => $order->order_number,
-                'total_amount' => (float) $order->total_amount,
-                'status' => $order->status,
-                'customer_name' => $order->customer['name'] ?? '',
-                'contact_phone' => $order->customer['phone'] ?? '',
-            ],
-        ]);
-    }
-
-    // Reusable API Endpoint: Initiate M-Pesa STK Push for an Order
-    public function mpesaStkPush(Request $request, MpesaService $mpesa)
-    {
-        $data = $request->validate([
-            'order_number' => 'required|string|exists:orders,order_number',
-            'phone' => 'required|string|min:9|max:15',
-        ]);
-
-        $order = Order::where('order_number', $data['order_number'])->firstOrFail();
-
-        if ($order->status === 'paid') {
-            return response()->json([
-                'status' => 'paid',
-                'order_number' => $order->order_number,
-                'message' => 'This order is already paid.',
-            ]);
-        }
-
-        $phone = preg_replace('/[\s\-]+/', '', trim($data['phone']));
+        // 2. Call Evopay Payment Provider API (/api/v1/checkout/sessions)
+        $gatewayUrl = rtrim(env('EVOPAY_GATEWAY_URL', url('/')), '/');
 
         try {
-            $response = $mpesa->stkPush($phone, $order->total_amount, $order->order_number);
-
-            if (empty($response['CheckoutRequestID']) || ($response['ResponseCode'] ?? null) !== '0') {
-                $reason = $response['ResponseDescription'] ?? $response['errorMessage'] ?? 'Failed to initiate M-Pesa prompt.';
-                $order->update([
-                    'payment_method' => 'mpesa',
-                    'status' => 'failed',
-                    'failure_reason' => $reason,
+            $response = Http::withToken($secretKey)
+                ->acceptJson()
+                ->timeout(15)
+                ->post("{$gatewayUrl}/api/v1/checkout/sessions", [
+                    'amount' => $total,
+                    'currency' => 'KES',
+                    'merchant_reference' => $order->order_number,
+                    'customer' => [
+                        'name' => $data['customer']['name'],
+                        'phone' => $data['customer']['phone'],
+                        'email' => $data['customer']['email'] ?? null,
+                    ],
+                    'return_url' => route('checkout.return'),
+                    'cancel_url' => route('checkout.index', ['error' => 'Payment was cancelled. You can try again.']),
+                    'webhook_url' => route('shop.evopay.webhook'),
+                    'metadata' => [
+                        'source' => 'nyumba_cement_shop',
+                        'delivery_method' => $data['delivery_method'],
+                    ],
                 ]);
 
-                return response()->json(['error' => $reason], 422);
+            if ($response->failed() || empty($response->json('data.checkout_url'))) {
+                $errMsg = $response->json('message') ?? 'Could not connect to Evopay Payment Gateway.';
+                $order->update([
+                    'status' => 'failed',
+                    'failure_reason' => $errMsg,
+                ]);
+
+                return response()->json(['error' => $errMsg], 502);
             }
 
+            // Store the gateway session token on the order for reference
             $order->update([
-                'payment_method' => 'mpesa',
-                'status' => 'pending',
-                'failure_reason' => null,
-                'mpesa_request_id' => $response['CheckoutRequestID'],
+                'mpesa_request_id' => $response->json('data.token'),
             ]);
 
             return response()->json([
-                'status' => 'pending',
+                'status' => 'redirect',
+                'url' => $response->json('data.checkout_url'),
                 'order_number' => $order->order_number,
-                'message' => 'STK Push sent! Please enter your M-Pesa PIN.',
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            \Log::error("Shop -> Evopay API Error: " . $e->getMessage());
             $order->update([
-                'payment_method' => 'mpesa',
                 'status' => 'failed',
-                'failure_reason' => $e->getMessage(),
+                'failure_reason' => 'Gateway connection error. Please try again.',
             ]);
 
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json([
+                'error' => 'Unable to reach Evopay Payment Gateway. Please try again.',
+            ], 502);
         }
     }
 
-    // Reusable API Endpoint: Initialize MPGS Card Session for an Order
-    public function mpgsInit(Request $request, MpgsService $mpgs)
+    /**
+     * Shop Return URL: Server-to-server verification against Evopay Gateway API
+     */
+    public function gatewayReturn(Request $request)
     {
-        $data = $request->validate([
-            'order_number' => 'required|string|exists:orders,order_number',
-        ]);
+        $token = $request->query('session_token');
+        $reference = $request->query('reference');
 
-        $order = Order::where('order_number', $data['order_number'])->firstOrFail();
-
-        if ($order->status === 'paid') {
-            return response()->json([
-                'status' => 'redirect',
-                'url' => route('checkout.success', ['order' => $order->order_number]),
-            ]);
+        if (!$token || !$reference) {
+            return redirect()->route('checkout.index', ['error' => 'Missing payment verification details.']);
         }
 
-        try {
-            $returnUrl = route('checkout.mpgs.callback', $order);
-            $cancelUrl = route('checkout.mpgs.cancel', $order);
-
-            $session = $mpgs->createSession(
-                $order->total_amount,
-                $order->order_number,
-                'KES',
-                $returnUrl,
-                $cancelUrl
-            );
-
-            if (empty($session['session']['id'])) {
-                throw new \Exception('MPGS did not return a valid session ID.');
-            }
-
-            $order->update([
-                'payment_method' => 'card',
-                'status' => 'pending',
-                'failure_reason' => null,
-                'mpgs_session_id' => $session['session']['id'],
-            ]);
-
-            if (!empty($session['successIndicator'])) {
-                Cache::put("mpgs_indicator_{$order->order_number}", $session['successIndicator'], now()->addHours(2));
-            }
-
-            return response()->json([
-                'status' => 'redirect',
-                'url' => route('checkout.mpgs.pay', $order),
-            ]);
-        } catch (\Exception $e) {
-            $order->update([
-                'payment_method' => 'card',
-                'status' => 'failed',
-                'failure_reason' => $e->getMessage(),
-            ]);
-
-            return response()->json(['error' => $e->getMessage()], 500);
+        $order = Order::where('order_number', $reference)->first();
+        if (!$order) {
+            return redirect()->route('checkout.index', ['error' => 'Order not found.']);
         }
-    }
 
-    // MPGS Hosted Checkout Launcher
-    public function mpgsPay(Order $order, MpgsService $mpgs)
-    {
         if ($order->status === 'paid') {
             return redirect()->route('checkout.success', ['order' => $order->order_number]);
         }
 
-        if (empty($order->mpgs_session_id)) {
-            return redirect()->route('checkout.pay', [
-                'order' => $order->order_number,
-                'error' => 'Card session not found. Please try again.',
-            ]);
-        }
-
-        return view('checkout.mpgs', [
-            'order' => $order,
-            'sessionId' => $order->mpgs_session_id,
-            'checkoutJsUrl' => $mpgs->getCheckoutJsUrl(),
-            'cancelUrl' => route('checkout.mpgs.cancel', $order),
-        ]);
-    }
-
-    // MPGS Return Callback
-    public function mpgsCallback(Request $request, Order $order, MpgsService $mpgs)
-    {
-        if ($order->status === 'paid') {
-            return redirect()->route('checkout.success', ['order' => $order->order_number]);
-        }
-
-        $resultIndicator = (string) $request->query('resultIndicator', '');
-        $expectedIndicator = Cache::get("mpgs_indicator_{$order->order_number}");
+        $gatewayUrl = rtrim(env('EVOPAY_GATEWAY_URL', url('/')), '/');
+        $secretKey = env('EVOPAY_SHOP_SECRET_KEY');
 
         try {
-            $mpgsOrder = $mpgs->retrieveOrder($order->order_number);
-            \Log::info("MPGS Order Verification ({$order->order_number}):", $mpgsOrder);
+            $res = Http::withToken($secretKey)
+                ->acceptJson()
+                ->timeout(15)
+                ->get("{$gatewayUrl}/api/v1/checkout/sessions/{$token}");
 
-            $gatewaySuccess = ($mpgsOrder['result'] ?? null) === 'SUCCESS'
-                && in_array($mpgsOrder['status'] ?? '', ['CAPTURED', 'AUTHORIZED', 'PARTIALLY_CAPTURED'], true);
+            $data = $res->json('data');
 
-            $indicatorMatches = $expectedIndicator && $resultIndicator !== ''
-                && hash_equals((string) $expectedIndicator, $resultIndicator);
-
-            if ($gatewaySuccess || $indicatorMatches) {
+            if ($res->successful() && ($data['status'] ?? null) === 'paid') {
                 $order->update([
                     'status' => 'paid',
-                    'payment_method' => 'card',
+                    'payment_method' => $data['payment_method'] ?? 'evopay',
+                    'mpesa_receipt' => $data['mpesa_receipt'] ?? null,
                     'failure_reason' => null,
                 ]);
-                Cache::forget("mpgs_indicator_{$order->order_number}");
-                $this->sendEmailReceiptPlaceholder($order);
 
                 return redirect()->route('checkout.success', ['order' => $order->order_number]);
             }
 
-            $reason = $mpgsOrder['error']['explanation']
-                ?? 'Card payment was declined or could not be verified.';
-
-            $order->update([
-                'status' => 'failed',
-                'failure_reason' => $reason,
-            ]);
-
-            return redirect()->route('checkout.pay', [
-                'order' => $order->order_number,
-                'error' => $reason,
-            ]);
-        } catch (\Exception $e) {
-            \Log::error("MPGS Callback Error ({$order->order_number}): " . $e->getMessage());
-
-            $order->update([
-                'status' => 'failed',
-                'failure_reason' => 'Could not verify card payment. Please try again.',
-            ]);
-
-            return redirect()->route('checkout.pay', [
-                'order' => $order->order_number,
-                'error' => 'Could not verify card payment. Please try again.',
-            ]);
+            $reason = $data['failure_reason'] ?? 'Payment has not been confirmed yet.';
+            return redirect()->route('checkout.index', ['error' => $reason]);
+        } catch (\Throwable $e) {
+            \Log::error("Shop return verification error: " . $e->getMessage());
+            return redirect()->route('checkout.index', ['error' => 'Could not verify payment status.']);
         }
     }
 
-    // MPGS Cancelled Handler
-    public function mpgsCancel(Order $order)
+    /**
+     * Shop Outbound Webhook Receiver (Evopay -> Shop)
+     */
+    public function shopWebhook(Request $request)
     {
-        if ($order->status !== 'paid') {
-            $order->update([
-                'status' => 'failed',
-                'failure_reason' => 'Card payment was cancelled.',
-            ]);
+        $webhookSecret = env('EVOPAY_SHOP_WEBHOOK_SECRET');
+        if ($webhookSecret) {
+            $signature = (string) $request->header('X-Evopay-Signature', '');
+            $expected = 'sha256=' . hash_hmac('sha256', $request->getContent(), $webhookSecret);
+
+            if (!hash_equals($expected, $signature)) {
+                \Log::warning('Shop Webhook: Invalid signature received.');
+                return response()->json(['message' => 'Invalid signature'], 401);
+            }
         }
 
-        return redirect()->route('checkout.pay', [
-            'order' => $order->order_number,
-            'error' => 'Card payment was cancelled. You can try again or choose M-Pesa.',
-        ]);
+        $event = $request->input('event');
+        $data = $request->input('data', []);
+        $reference = $data['merchant_reference'] ?? null;
+
+        if (!$reference) {
+            return response()->json(['message' => 'Missing reference'], 400);
+        }
+
+        $order = Order::where('order_number', $reference)->first();
+        if ($order && $order->status !== 'paid') {
+            if ($event === 'payment.succeeded' && ($data['status'] ?? null) === 'paid') {
+                $order->update([
+                    'status' => 'paid',
+                    'payment_method' => $data['payment_method'] ?? 'evopay',
+                    'mpesa_receipt' => $data['mpesa_receipt'] ?? null,
+                    'failure_reason' => null,
+                ]);
+                \Log::info("Shop Order {$order->order_number} marked PAID via Evopay webhook.");
+            } elseif ($event === 'payment.failed') {
+                $order->update([
+                    'status' => 'failed',
+                    'failure_reason' => $data['failure_reason'] ?? 'Payment failed.',
+                ]);
+            }
+        }
+
+        return response()->json(['status' => 'ok']);
     }
 
     // Order Receipt Success Page
@@ -391,18 +295,7 @@ class CheckoutController extends Controller
         ]);
     }
 
-    // Polling endpoint for the frontend (M-Pesa / Payment Gateway)
-    public function checkStatus(Order $order)
-    {
-        return response()->json([
-            'status' => $order->status,
-            'message' => $order->failure_reason,
-            'order_number' => $order->order_number,
-            'receipt' => $order->mpesa_receipt,
-        ]);
-    }
-
-    // Safaricom Callback endpoint (Handles BOTH internal store Orders and external CheckoutSessions)
+    // Safaricom Callback endpoint for Gateway CheckoutSessions
     public function mpesaCallback(Request $request)
     {
         \Log::info('M-Pesa Callback Received:', $request->all());
@@ -417,33 +310,6 @@ class CheckoutController extends Controller
         $resultCode = (int) ($callbackData['ResultCode'] ?? 1);
         $resultDesc = $callbackData['ResultDesc'] ?? 'Payment failed.';
 
-        // 1. Check if callback belongs to internal store Order
-        $order = Order::where('mpesa_request_id', $checkoutRequestId)->first();
-        if ($order && $order->status !== 'paid') {
-            if ($resultCode === 0) {
-                $items = $callbackData['CallbackMetadata']['Item'] ?? [];
-                $receipt = collect($items)->firstWhere('Name', 'MpesaReceiptNumber')['Value'] ?? null;
-
-                $order->update([
-                    'status' => 'paid',
-                    'payment_method' => 'mpesa',
-                    'mpesa_receipt' => $receipt,
-                    'failure_reason' => null,
-                ]);
-
-                \Log::info("Order {$order->order_number} paid successfully. Receipt: {$receipt}");
-                $this->sendEmailReceiptPlaceholder($order);
-            } else {
-                $order->update([
-                    'status' => 'failed',
-                    'failure_reason' => $this->mapMpesaError($resultCode, $resultDesc),
-                ]);
-
-                \Log::warning("Order {$order->order_number} failed ({$resultCode}): {$resultDesc}");
-            }
-        }
-
-        // 2. Check if callback belongs to external merchant CheckoutSession
         $session = CheckoutSession::where('mpesa_request_id', $checkoutRequestId)->first();
         if ($session && $session->status !== 'paid') {
             if ($resultCode === 0) {
@@ -468,16 +334,6 @@ class CheckoutController extends Controller
         ]);
     }
 
-    private function sendEmailReceiptPlaceholder(Order $order): void
-    {
-        $email = $order->customer['email'] ?? null;
-        if (!$email) {
-            return;
-        }
-
-        \Log::info("Email receipt placeholder triggered for {$order->order_number} ({$email})");
-    }
-
     private function mapMpesaError(int $code, string $fallback): string
     {
         return match ($code) {
@@ -490,14 +346,9 @@ class CheckoutController extends Controller
         };
     }
 
-    /**
-     * Calculate driving distance using Google Routes API
-     * This gives real driving distance (like Bolt/Uber)
-     */
     private function calculateDistance($lat1, $lon1, $lat2, $lon2)
     {
         $apiKey = env('GOOGLE_MAPS_API_KEY');
-
         $url = "https://routes.googleapis.com/directions/v2:computeRoutes";
 
         $payload = [
