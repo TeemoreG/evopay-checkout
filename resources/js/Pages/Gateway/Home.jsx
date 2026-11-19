@@ -31,16 +31,16 @@ export default function GatewayHome() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     return (
-        <div className="min-h-screen bg-white text-brand-dark font-sans flex flex-col">
+        <div className="min-h-screen bg-white text-brand-dark font-sans flex flex-col overflow-x-hidden">
             <Head title="Evopay Checkout — M-Pesa & Card Payment Gateway" />
 
             {/* Sticky Top Header */}
             <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-brand-border">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
-                    <Link href="/" className="flex items-center gap-3 flex-shrink-0">
-                        <img src="/images/logo.png" alt="Evopay" className="h-10 w-auto" />
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-4">
+                    <Link href="/" className="flex items-center gap-2.5 sm:gap-3 flex-shrink-0">
+                        <img src="/images/logo.png" alt="Evopay" className="h-8 sm:h-10 w-auto" />
                         <div className="leading-tight">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-brand-primary block">
+                            <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-brand-primary block">
                                 Payment Gateway
                             </span>
                         </div>
@@ -76,7 +76,7 @@ export default function GatewayHome() {
                         className="md:hidden p-2 rounded-lg border border-brand-border text-brand-dark hover:bg-brand-light cursor-pointer"
                         aria-label="Toggle navigation"
                     >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                             {mobileMenuOpen ? (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                             ) : (
@@ -87,13 +87,13 @@ export default function GatewayHome() {
                 </div>
 
                 {mobileMenuOpen && (
-                    <div className="md:hidden border-t border-brand-border bg-white px-4 py-4 space-y-3 text-sm font-semibold">
-                        <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block py-1.5 text-gray-700">Features</a>
-                        <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block py-1.5 text-gray-700">How It Works</a>
-                        <a href="#developers" onClick={() => setMobileMenuOpen(false)} className="block py-1.5 text-gray-700">API Docs</a>
-                        <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block py-1.5 text-gray-700">Pricing</a>
-                        <Link href="/shop" className="block py-1.5 text-gray-700">Demo Store</Link>
-                        <div className="pt-3 border-t border-brand-border flex flex-col gap-2">
+                    <div className="md:hidden border-t border-brand-border bg-white px-4 py-4 space-y-1 text-sm font-semibold">
+                        <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block py-2.5 text-gray-700">Features</a>
+                        <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block py-2.5 text-gray-700">How It Works</a>
+                        <a href="#developers" onClick={() => setMobileMenuOpen(false)} className="block py-2.5 text-gray-700">API Docs</a>
+                        <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block py-2.5 text-gray-700">Pricing</a>
+                        <Link href="/shop" onClick={() => setMobileMenuOpen(false)} className="block py-2.5 text-gray-700">Demo Store</Link>
+                        <div className="pt-3 mt-2 border-t border-brand-border flex flex-col gap-2.5">
                             <a
                                 href="mailto:support@evopay.africa?subject=Evopay%20Merchant%20Onboarding"
                                 className="w-full text-center border border-brand-border text-brand-dark py-3 rounded-xl font-bold"
@@ -111,91 +111,91 @@ export default function GatewayHome() {
             <main className="flex-1">
                 {/* Hero Section */}
                 <section className="bg-brand-light border-b border-brand-border">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14 sm:py-20 lg:py-24 grid lg:grid-cols-12 gap-12 items-center">
-                        <div className="lg:col-span-6">
-                            <p className="text-xs font-bold uppercase tracking-widest text-brand-primary">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-20 lg:py-24 grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-12 items-center">
+                        <div className="lg:col-span-6 min-w-0">
+                            <p className="text-[11px] sm:text-xs font-bold uppercase tracking-widest text-brand-primary">
                                 Evopay Payment Infrastructure · Kenya
                             </p>
 
-                            <h1 className="mt-4 text-3xl sm:text-5xl font-extrabold text-brand-dark tracking-tight leading-[1.1]">
+                            <h1 className="mt-3 sm:mt-4 text-2xl sm:text-4xl lg:text-5xl font-extrabold text-brand-dark tracking-tight leading-[1.15]">
                                 Accept M-Pesa & Card Payments Through One Unified API
                             </h1>
 
-                            <p className="mt-5 text-base sm:text-lg text-gray-600 leading-relaxed max-w-xl">
+                            <p className="mt-4 sm:mt-5 text-sm sm:text-lg text-gray-600 leading-relaxed max-w-xl">
                                 Launch a merchant-branded hosted checkout in minutes. Evopay handles Safaricom M-Pesa STK Push, Visa & Mastercard 3D Secure, and signed server webhooks so your store gets paid reliably.
                             </p>
 
-                            <div className="mt-8 flex flex-wrap items-center gap-3.5">
+                            <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                                 <a
                                     href="#developers"
-                                    className="bg-brand-dark text-white px-7 py-4 rounded-xl font-bold text-sm hover:bg-black transition"
+                                    className="bg-brand-dark text-white px-6 py-3.5 sm:py-4 rounded-xl font-bold text-sm text-center hover:bg-black transition"
                                 >
                                     Read API Quickstart
                                 </a>
                                 <Link
                                     href="/shop"
-                                    className="bg-white border border-brand-border text-brand-dark px-7 py-4 rounded-xl font-bold text-sm hover:bg-gray-50 transition"
+                                    className="bg-white border border-brand-border text-brand-dark px-6 py-3.5 sm:py-4 rounded-xl font-bold text-sm text-center hover:bg-gray-50 transition"
                                 >
                                     Try Live Demo Store
                                 </Link>
                             </div>
 
-                            <div className="mt-10 pt-6 border-t border-brand-border flex flex-wrap items-center gap-6 text-xs text-gray-500 font-semibold">
-                                <span className="uppercase tracking-wider text-[11px] text-gray-400">Payment Rails:</span>
+                            <div className="mt-8 sm:mt-10 pt-5 sm:pt-6 border-t border-brand-border flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 font-semibold">
+                                <span className="uppercase tracking-wider text-[11px] text-gray-400 w-full sm:w-auto">Payment Rails:</span>
                                 <span>Safaricom M-Pesa</span>
-                                <span>•</span>
+                                <span className="text-gray-300">•</span>
                                 <span>Visa & Mastercard (MPGS)</span>
-                                <span>•</span>
+                                <span className="text-gray-300 hidden sm:inline">•</span>
                                 <span className="text-gray-400">Airtel Money (Soon)</span>
                             </div>
                         </div>
 
                         {/* Checkout Preview Card */}
-                        <div className="lg:col-span-6">
-                            <div className="bg-white rounded-3xl border border-brand-border shadow-lg p-5 sm:p-7 max-w-lg mx-auto">
-                                <div className="flex items-center justify-between pb-4 border-b border-brand-border">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-8 h-8 rounded-lg bg-brand-primary/10 text-brand-primary font-extrabold text-xs flex items-center justify-center">
+                        <div className="lg:col-span-6 min-w-0 w-full">
+                            <div className="bg-white rounded-2xl sm:rounded-3xl border border-brand-border shadow-lg p-4 sm:p-7 max-w-lg mx-auto w-full">
+                                <div className="flex items-center justify-between gap-2 pb-4 border-b border-brand-border">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className="w-8 h-8 rounded-lg bg-brand-primary/10 text-brand-primary font-extrabold text-xs flex items-center justify-center flex-shrink-0">
                                             ES
                                         </div>
-                                        <div>
-                                            <p className="text-xs font-bold text-brand-dark">Evopay Shop</p>
-                                            <p className="text-[10px] text-gray-400">checkout.evopay.africa/c/cs_live_...</p>
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-bold text-brand-dark truncate">Evopay Shop</p>
+                                            <p className="text-[10px] text-gray-400 truncate">checkout.evopay.africa/c/cs_live_...</p>
                                         </div>
                                     </div>
-                                    <span className="text-[11px] font-semibold text-gray-500">
+                                    <span className="text-[10px] sm:text-[11px] font-semibold text-gray-500 flex-shrink-0">
                                         SSL Secured
                                     </span>
                                 </div>
 
-                                <div className="py-5 text-center border-b border-brand-border/60">
+                                <div className="py-4 sm:py-5 text-center border-b border-brand-border/60">
                                     <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Amount Payable</p>
-                                    <p className="text-3xl font-extrabold text-brand-dark mt-1">KES 2,500</p>
+                                    <p className="text-2xl sm:text-3xl font-extrabold text-brand-dark mt-1">KES 2,500</p>
                                     <p className="text-xs text-gray-500 mt-1">Ref: ORD-84920 · Jane Doe</p>
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-2.5 my-5">
-                                    <div className="rounded-xl border-2 border-brand-primary bg-brand-primary/5 p-3 text-center">
-                                        <p className="text-xs font-extrabold text-brand-dark">M-Pesa</p>
-                                        <p className="text-[10px] text-gray-500 mt-0.5">STK Push</p>
+                                <div className="grid grid-cols-3 gap-2 sm:gap-2.5 my-4 sm:my-5">
+                                    <div className="rounded-xl border-2 border-brand-primary bg-brand-primary/5 p-2.5 sm:p-3 text-center">
+                                        <p className="text-[11px] sm:text-xs font-extrabold text-brand-dark truncate">M-Pesa</p>
+                                        <p className="text-[9px] sm:text-[10px] text-gray-500 mt-0.5 truncate">STK Push</p>
                                     </div>
-                                    <div className="rounded-xl border border-brand-border p-3 text-center">
-                                        <p className="text-xs font-bold text-brand-dark">Card</p>
-                                        <p className="text-[10px] text-gray-400 mt-0.5">Visa / MC</p>
+                                    <div className="rounded-xl border border-brand-border p-2.5 sm:p-3 text-center">
+                                        <p className="text-[11px] sm:text-xs font-bold text-brand-dark truncate">Card</p>
+                                        <p className="text-[9px] sm:text-[10px] text-gray-400 mt-0.5 truncate">Visa / MC</p>
                                     </div>
-                                    <div className="rounded-xl border border-brand-border bg-gray-50 opacity-50 p-3 text-center">
-                                        <p className="text-xs font-bold text-brand-dark">Airtel</p>
-                                        <p className="text-[10px] text-gray-400 mt-0.5">Soon</p>
+                                    <div className="rounded-xl border border-brand-border bg-gray-50 opacity-50 p-2.5 sm:p-3 text-center">
+                                        <p className="text-[11px] sm:text-xs font-bold text-brand-dark truncate">Airtel</p>
+                                        <p className="text-[9px] sm:text-[10px] text-gray-400 mt-0.5 truncate">Soon</p>
                                     </div>
                                 </div>
 
-                                <div className="bg-brand-dark text-white text-center py-3.5 rounded-xl font-bold text-sm">
+                                <div className="bg-brand-dark text-white text-center py-3 sm:py-3.5 rounded-xl font-bold text-xs sm:text-sm">
                                     Pay · KES 2,500
                                 </div>
 
-                                <div className="mt-4 rounded-xl bg-gray-900 text-gray-200 p-3.5 font-mono text-[11px] flex items-center justify-between">
-                                    <span>POST /api/v1/checkout/sessions</span>
-                                    <span className="text-emerald-400 font-bold">201 Created</span>
+                                <div className="mt-4 rounded-xl bg-gray-900 text-gray-200 p-3 font-mono text-[10px] sm:text-[11px] flex flex-wrap items-center justify-between gap-2">
+                                    <span className="truncate">POST /api/v1/checkout/sessions</span>
+                                    <span className="text-emerald-400 font-bold flex-shrink-0">201 Created</span>
                                 </div>
                             </div>
                         </div>
@@ -203,29 +203,29 @@ export default function GatewayHome() {
                 </section>
 
                 {/* Metrics Strip */}
-                <section className="bg-brand-dark text-white py-8">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+                <section className="bg-brand-dark text-white py-7 sm:py-8">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-2 md:grid-cols-4 gap-5 sm:gap-6 text-center">
                         <div>
-                            <p className="text-xl sm:text-2xl font-extrabold text-brand-secondary">Direct STK</p>
-                            <p className="text-xs text-gray-400 mt-1">Safaricom Daraja Integration</p>
+                            <p className="text-lg sm:text-2xl font-extrabold text-brand-secondary">Direct STK</p>
+                            <p className="text-[11px] sm:text-xs text-gray-400 mt-1">Safaricom Daraja Integration</p>
                         </div>
                         <div>
-                            <p className="text-xl sm:text-2xl font-extrabold text-brand-secondary">3DS 2.0</p>
-                            <p className="text-xs text-gray-400 mt-1">Mastercard & Visa Hosted UI</p>
+                            <p className="text-lg sm:text-2xl font-extrabold text-brand-secondary">3DS 2.0</p>
+                            <p className="text-[11px] sm:text-xs text-gray-400 mt-1">Mastercard & Visa Hosted UI</p>
                         </div>
                         <div>
-                            <p className="text-xl sm:text-2xl font-extrabold text-brand-secondary">HMAC-SHA256</p>
-                            <p className="text-xs text-gray-400 mt-1">Signed Webhook Events</p>
+                            <p className="text-lg sm:text-2xl font-extrabold text-brand-secondary">HMAC-SHA256</p>
+                            <p className="text-[11px] sm:text-xs text-gray-400 mt-1">Signed Webhook Events</p>
                         </div>
                         <div>
-                            <p className="text-xl sm:text-2xl font-extrabold text-brand-secondary">REST API</p>
-                            <p className="text-xs text-gray-400 mt-1">One-Call Session Setup</p>
+                            <p className="text-lg sm:text-2xl font-extrabold text-brand-secondary">REST API</p>
+                            <p className="text-[11px] sm:text-xs text-gray-400 mt-1">One-Call Session Setup</p>
                         </div>
                     </div>
                 </section>
 
                 {/* Features Grid */}
-                <section id="features" className="py-16 sm:py-24 bg-white">
+                <section id="features" className="py-12 sm:py-24 bg-white">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6">
                         <div className="max-w-2xl">
                             <p className="text-xs font-bold uppercase tracking-wider text-brand-primary">Capabilities</p>
@@ -237,7 +237,7 @@ export default function GatewayHome() {
                             </p>
                         </div>
 
-                        <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="mt-8 sm:mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                             <FeatureCard
                                 title="M-Pesa STK Push Express"
                                 body="Customers enter any Safaricom number, receive an instant PIN prompt, and get verified directly via Safaricom callbacks."
@@ -297,7 +297,7 @@ export default function GatewayHome() {
                 </section>
 
                 {/* How It Works */}
-                <section id="how-it-works" className="py-16 sm:py-24 bg-brand-light border-y border-brand-border">
+                <section id="how-it-works" className="py-12 sm:py-24 bg-brand-light border-y border-brand-border">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6">
                         <div className="text-center max-w-2xl mx-auto">
                             <p className="text-xs font-bold uppercase tracking-wider text-brand-primary">Integration Flow</p>
@@ -306,7 +306,7 @@ export default function GatewayHome() {
                             </h2>
                         </div>
 
-                        <div className="mt-12 grid md:grid-cols-3 gap-6">
+                        <div className="mt-8 sm:mt-12 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                             <StepCard
                                 step="01"
                                 title="Create a Checkout Session"
@@ -327,9 +327,9 @@ export default function GatewayHome() {
                 </section>
 
                 {/* Developer API Section */}
-                <section id="developers" className="py-16 sm:py-24 bg-brand-dark text-white">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-12 gap-10 items-start">
-                        <div className="lg:col-span-5">
+                <section id="developers" className="py-12 sm:py-24 bg-brand-dark text-white">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10 items-start">
+                        <div className="lg:col-span-5 min-w-0">
                             <p className="text-xs font-bold uppercase tracking-wider text-brand-secondary">For Developers</p>
                             <h2 className="mt-2 text-2xl sm:text-4xl font-extrabold tracking-tight">
                                 Clean REST APIs & Cryptographic Webhooks
@@ -340,46 +340,46 @@ export default function GatewayHome() {
 
                             <ul className="mt-6 space-y-3 text-sm text-gray-300">
                                 <li className="flex items-center gap-2.5">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-brand-secondary"></span>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-brand-secondary flex-shrink-0"></span>
                                     <span>SHA-256 hashed API keys (sk_live_... / sk_test_...)</span>
                                 </li>
                                 <li className="flex items-center gap-2.5">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-brand-secondary"></span>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-brand-secondary flex-shrink-0"></span>
                                     <span>Server-to-server session & reference verification</span>
                                 </li>
                                 <li className="flex items-center gap-2.5">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-brand-secondary"></span>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-brand-secondary flex-shrink-0"></span>
                                     <span>HMAC-SHA256 webhook signature verification</span>
                                 </li>
                             </ul>
 
-                            <div className="mt-8">
+                            <div className="mt-7 sm:mt-8">
                                 <Link
                                     href="/login"
-                                    className="inline-block bg-brand-primary text-white px-6 py-3.5 rounded-xl font-bold text-sm hover:bg-brand-secondary transition"
+                                    className="inline-block w-full sm:w-auto text-center bg-brand-primary text-white px-6 py-3.5 rounded-xl font-bold text-sm hover:bg-brand-secondary transition"
                                 >
                                     Open Developer Console →
                                 </Link>
                             </div>
                         </div>
 
-                        <div className="lg:col-span-7 space-y-4">
-                            <div className="rounded-2xl bg-black/50 border border-white/10 overflow-hidden">
-                                <div className="px-4 py-2.5 bg-white/5 border-b border-white/10 flex items-center justify-between text-xs text-gray-400 font-mono">
-                                    <span>1. Initialize Checkout Session</span>
-                                    <span className="text-emerald-400">JSON</span>
+                        <div className="lg:col-span-7 min-w-0 w-full space-y-4">
+                            <div className="rounded-2xl bg-black/50 border border-white/10 overflow-hidden max-w-full">
+                                <div className="px-4 py-2.5 bg-white/5 border-b border-white/10 flex items-center justify-between gap-2 text-[11px] sm:text-xs text-gray-400 font-mono">
+                                    <span className="truncate">1. Initialize Checkout Session</span>
+                                    <span className="text-emerald-400 flex-shrink-0">JSON</span>
                                 </div>
-                                <pre className="p-4 text-xs font-mono text-gray-200 overflow-x-auto leading-relaxed">
+                                <pre className="p-3.5 sm:p-4 text-[11px] sm:text-xs font-mono text-gray-200 overflow-x-auto leading-relaxed max-w-full">
                                     <code>{apiRequestSnippet}</code>
                                 </pre>
                             </div>
 
-                            <div className="rounded-2xl bg-black/50 border border-white/10 overflow-hidden">
-                                <div className="px-4 py-2.5 bg-white/5 border-b border-white/10 flex items-center justify-between text-xs text-gray-400 font-mono">
-                                    <span>2. Verify Webhook Signature</span>
-                                    <span className="text-brand-secondary">PHP / Laravel</span>
+                            <div className="rounded-2xl bg-black/50 border border-white/10 overflow-hidden max-w-full">
+                                <div className="px-4 py-2.5 bg-white/5 border-b border-white/10 flex items-center justify-between gap-2 text-[11px] sm:text-xs text-gray-400 font-mono">
+                                    <span className="truncate">2. Verify Webhook Signature</span>
+                                    <span className="text-brand-secondary flex-shrink-0">PHP / Laravel</span>
                                 </div>
-                                <pre className="p-4 text-xs font-mono text-gray-200 overflow-x-auto leading-relaxed">
+                                <pre className="p-3.5 sm:p-4 text-[11px] sm:text-xs font-mono text-gray-200 overflow-x-auto leading-relaxed max-w-full">
                                     <code>{webhookVerifySnippet}</code>
                                 </pre>
                             </div>
@@ -388,7 +388,7 @@ export default function GatewayHome() {
                 </section>
 
                 {/* Pricing Section */}
-                <section id="pricing" className="py-16 sm:py-24 bg-white">
+                <section id="pricing" className="py-12 sm:py-24 bg-white">
                     <div className="max-w-5xl mx-auto px-4 sm:px-6">
                         <div className="text-center max-w-2xl mx-auto">
                             <p className="text-xs font-bold uppercase tracking-wider text-brand-primary">Transparent Pricing</p>
@@ -400,12 +400,12 @@ export default function GatewayHome() {
                             </p>
                         </div>
 
-                        <div className="mt-12 grid md:grid-cols-2 gap-6">
-                            <div className="rounded-3xl border border-brand-border p-7 sm:p-8 bg-white shadow-xs">
+                        <div className="mt-8 sm:mt-12 grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+                            <div className="rounded-2xl sm:rounded-3xl border border-brand-border p-6 sm:p-8 bg-white shadow-xs">
                                 <p className="text-xs font-bold uppercase tracking-wider text-brand-primary">Standard Merchant</p>
                                 <div className="mt-3 flex items-baseline gap-2">
-                                    <span className="text-4xl font-extrabold text-brand-dark">2.5%</span>
-                                    <span className="text-sm text-gray-500">per successful transaction</span>
+                                    <span className="text-3xl sm:text-4xl font-extrabold text-brand-dark">2.5%</span>
+                                    <span className="text-xs sm:text-sm text-gray-500">per successful transaction</span>
                                 </div>
                                 <p className="mt-3 text-sm text-gray-500">
                                     Ideal for growing Kenyan e-commerce stores, hardware suppliers, and online businesses.
@@ -418,17 +418,17 @@ export default function GatewayHome() {
                                 </ul>
                                 <Link
                                     href="/login"
-                                    className="mt-8 block text-center w-full bg-brand-dark text-white py-3.5 rounded-xl font-bold text-sm hover:bg-black transition"
+                                    className="mt-7 sm:mt-8 block text-center w-full bg-brand-dark text-white py-3.5 rounded-xl font-bold text-sm hover:bg-black transition"
                                 >
                                     Sign In to Dashboard
                                 </Link>
                             </div>
 
-                            <div className="rounded-3xl border-2 border-brand-dark p-7 sm:p-8 bg-brand-light">
+                            <div className="rounded-2xl sm:rounded-3xl border-2 border-brand-dark p-6 sm:p-8 bg-brand-light">
                                 <p className="text-xs font-bold uppercase tracking-wider text-brand-dark">Enterprise & High Volume</p>
                                 <div className="mt-3 flex items-baseline gap-2">
-                                    <span className="text-4xl font-extrabold text-brand-dark">Custom</span>
-                                    <span className="text-sm text-gray-500">tailored rates</span>
+                                    <span className="text-3xl sm:text-4xl font-extrabold text-brand-dark">Custom</span>
+                                    <span className="text-xs sm:text-sm text-gray-500">tailored rates</span>
                                 </div>
                                 <p className="mt-3 text-sm text-gray-500">
                                     Built for distributors, manufacturers, and multi-branch marketplaces with high monthly volume.
@@ -441,7 +441,7 @@ export default function GatewayHome() {
                                 </ul>
                                 <a
                                     href="mailto:support@evopay.africa?subject=Evopay%20Enterprise%20Inquiry"
-                                    className="mt-8 block text-center w-full bg-white border border-brand-border text-brand-dark py-3.5 rounded-xl font-bold text-sm hover:bg-gray-100 transition"
+                                    className="mt-7 sm:mt-8 block text-center w-full bg-white border border-brand-border text-brand-dark py-3.5 rounded-xl font-bold text-sm hover:bg-gray-100 transition"
                                 >
                                     Contact Sales
                                 </a>
@@ -451,26 +451,26 @@ export default function GatewayHome() {
                 </section>
 
                 {/* Bottom CTA */}
-                <section className="py-14 bg-brand-primary text-white">
+                <section className="py-12 sm:py-14 bg-brand-primary text-white">
                     <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
                         <div>
-                            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                            <h2 className="text-xl sm:text-3xl font-extrabold tracking-tight">
                                 Ready to power your checkout with Evopay?
                             </h2>
                             <p className="mt-1.5 text-sm sm:text-base text-white/85">
                                 Experience the live customer checkout in our demo store or sign in to your merchant portal.
                             </p>
                         </div>
-                        <div className="flex flex-wrap gap-3 flex-shrink-0">
+                        <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3 flex-shrink-0">
                             <Link
                                 href="/shop"
-                                className="bg-white text-brand-dark px-6 py-3.5 rounded-xl font-bold text-sm hover:bg-gray-100 transition"
+                                className="bg-white text-brand-dark px-6 py-3.5 rounded-xl font-bold text-sm text-center hover:bg-gray-100 transition"
                             >
                                 Launch Demo Store
                             </Link>
                             <Link
                                 href="/login"
-                                className="bg-brand-dark text-white px-6 py-3.5 rounded-xl font-bold text-sm hover:bg-black transition"
+                                className="bg-brand-dark text-white px-6 py-3.5 rounded-xl font-bold text-sm text-center hover:bg-black transition"
                             >
                                 Sign In →
                             </Link>
@@ -481,12 +481,12 @@ export default function GatewayHome() {
 
             {/* Detailed Multi-Column Footer */}
             <footer className="bg-brand-dark text-gray-300 border-t border-white/10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
-                    <div>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14 grid grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10">
+                    <div className="col-span-2 lg:col-span-1">
                         <div className="flex items-center gap-2.5">
                             <img src="/images/logo.png" alt="Evopay" className="h-9 w-auto bg-white rounded-lg p-1" />
                         </div>
-                        <p className="mt-4 text-xs text-gray-400 leading-relaxed">
+                        <p className="mt-4 text-xs text-gray-400 leading-relaxed max-w-xs">
                             Unified M-Pesa and Card payment gateway infrastructure built for Kenyan and East African commerce.
                         </p>
                         <p className="mt-4 text-xs text-gray-500">Nairobi, Kenya</p>
@@ -513,7 +513,7 @@ export default function GatewayHome() {
                         </ul>
                     </div>
 
-                    <div>
+                    <div className="col-span-2 sm:col-span-1">
                         <h3 className="text-xs font-bold uppercase tracking-wider text-white mb-4">Platform & Support</h3>
                         <ul className="space-y-2.5 text-xs text-gray-400">
                             <li><Link href="/login" className="hover:text-white transition">Merchant Portal Login</Link></li>
@@ -525,9 +525,9 @@ export default function GatewayHome() {
                 </div>
 
                 <div className="border-t border-white/10">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 text-center sm:text-left">
                         <p>© 2026 Evopay Africa. All rights reserved.</p>
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
                             <span>Safaricom Daraja</span>
                             <span>•</span>
                             <span>Mastercard MPGS</span>
@@ -543,7 +543,7 @@ export default function GatewayHome() {
 
 function FeatureCard({ title, body, icon }) {
     return (
-        <div className="rounded-2xl border border-brand-border bg-white p-6 hover:border-brand-primary/50 hover:shadow-xs transition">
+        <div className="rounded-2xl border border-brand-border bg-white p-5 sm:p-6 hover:border-brand-primary/50 hover:shadow-xs transition">
             <div className="w-10 h-10 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center mb-4">
                 {icon}
             </div>
@@ -555,7 +555,7 @@ function FeatureCard({ title, body, icon }) {
 
 function StepCard({ step, title, body }) {
     return (
-        <div className="rounded-2xl border border-brand-border bg-white p-6 shadow-xs">
+        <div className="rounded-2xl border border-brand-border bg-white p-5 sm:p-6 shadow-xs">
             <span className="text-xs font-extrabold font-mono text-brand-primary bg-brand-primary/10 px-2.5 py-1 rounded-md">
                 STEP {step}
             </span>
