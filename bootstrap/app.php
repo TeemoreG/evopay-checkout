@@ -20,6 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/mpesa/callback',
             'checkout/distance',
         ]);
+
+        $middleware->alias([
+            'auth.api_key' => \App\Http\Middleware\AuthenticateApiKey::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
