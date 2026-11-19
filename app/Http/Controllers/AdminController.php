@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Merchant;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductUnit;
 use App\Models\Setting;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -42,6 +45,84 @@ class AdminController extends Controller
         return Inertia::render('Admin/Orders', [
             'orders' => $orders,
         ]);
+    }
+
+    public function merchants()
+    {
+        $merchants = Merchant::withCount('checkoutSessions')
+            ->with(['apiKeys' => fn ($q) => $q->where('is_active', true)])
+            ->latest()
+            ->get();
+
+        return Inertia::render('Admin/Merchants', [
+            'merchants' => $merchants,
+        ]);
+    }
+
+    public function storeMerchant(Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:8',
+            'logo_url' => 'nullable|url|max:2048',
+            'webhook_url' => 'nullable|url|max:2048',
+            'fee_percent' => 'nullable|numeric|min:0|max:50',
+            'mode' => 'required|in:live,test',
+        ]);
+
+        $result = DB::transaction(function () use ($data) {
+            $slug = Str::slug($data['name']);
+            $originalSlug = $slug;
+            $counter = 1;
+            while (Merchant::where('slug', $slug)->exists()) {
+                $slug = $originalSlug . '-' . $counter++;
+            }
+
+            $merchant = Merchant::create([
+                'name' => $data['name'],
+                'slug' => $slug,
+                'email' => $data['email'],
+                'logo_url' => $data['logo_url'] ?? null,
+                'webhook_url' => $data['webhook_url'] ?? null,
+                'webhook_secret' => 'whsec_' . Str::random(32),
+                'fee_percent' => $data['fee_percent'] ?? 2.50,
+                'status' => 'active',
+            ]);
+
+            $keys = $merchant->createApiKey('Default API Key', $data['mode']);
+
+            User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => $data['password'],
+                'role' => 'merchant',
+                'merchant_id' => $merchant->id,
+            ]);
+
+            return [
+                'merchant' => $merchant,
+                'public_key' => $keys['public_key'],
+                'secret_key' => $keys['secret_key'],
+            ];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'merchant' => $result['merchant'],
+            'public_key' => $result['public_key'],
+            'secret_key' => $result['secret_key'],
+            'login_email' => $data['email'],
+        ]);
+    }
+
+    public function toggleMerchantStatus(Merchant $merchant)
+    {
+        $merchant->update([
+            'status' => $merchant->status === 'active' ? 'suspended' : 'active',
+        ]);
+
+        return redirect()->back();
     }
 
     public function storeProduct(Request $request)
@@ -114,8 +195,6 @@ class AdminController extends Controller
 
         if ($request->has('units') && is_array($request->units)) {
             $existingUnitIds = collect($request->units)->pluck('id')->filter()->toArray();
-
-            // Delete removed units
             $product->units()->whereNotIn('id', $existingUnitIds)->delete();
 
             foreach ($request->units as $unitData) {
@@ -127,7 +206,6 @@ class AdminController extends Controller
                             'label' => $unitData['label'],
                         ]);
 
-                        // Delete old prices and create fresh to prevent cache ghosts
                         $unit->priceBreaks()->delete();
                         $unit->priceBreaks()->create([
                             'min_qty' => 1,
@@ -137,7 +215,6 @@ class AdminController extends Controller
                         ]);
                     }
                 } else {
-                    // New unit
                     $newUnit = $product->units()->create([
                         'unit_type' => $unitData['unit_type'],
                         'label' => $unitData['label'],

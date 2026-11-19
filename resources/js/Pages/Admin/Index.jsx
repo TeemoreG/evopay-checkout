@@ -137,9 +137,12 @@ export default function AdminIndex({
             <div className="mb-8 flex flex-wrap justify-between items-end gap-4">
                 <div>
                     <h1 className="text-3xl font-extrabold text-brand-dark">Admin Dashboard</h1>
-                    <p className="text-gray-500 mt-1">Manage your store inventory and pricing.</p>
+                    <p className="text-gray-500 mt-1">Manage your store inventory, merchants, and pricing.</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
+                    <Link href="/admin/merchants" className="bg-white border border-brand-border text-brand-dark px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-gray-50 transition">
+                        Merchants
+                    </Link>
                     <Link href="/admin/orders" className="bg-white border border-brand-border text-brand-dark px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-gray-50 transition">
                         Orders
                     </Link>
@@ -149,6 +152,13 @@ export default function AdminIndex({
                     <a href="/" className="bg-brand-primary text-white px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-brand-secondary transition">
                         View Store &rarr;
                     </a>
+                    <button
+                        type="button"
+                        onClick={() => router.post('/logout')}
+                        className="bg-white border border-brand-border text-gray-600 px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-gray-50 transition cursor-pointer"
+                    >
+                        Logout
+                    </button>
                 </div>
             </div>
 
