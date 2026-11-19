@@ -10,23 +10,21 @@ const paymentMethods = [
     {
         key: 'mpesa',
         label: 'M-Pesa',
-        subtitle: 'Safaricom STK Push',
+        subtitle: 'Pay via Safaricom STK Push',
         image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000028/1_q6VZ_q0WIism6TgZ9kBIWQ_km524l.png',
         disabled: false,
     },
     {
         key: 'card',
-        label: 'Debit / Credit Card',
-        subtitle: 'Visa & Mastercard',
-        tag: 'Secure 3D',
+        label: 'Card',
+        subtitle: 'Visa or Mastercard',
         image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000459/visa_mx9x3z.jpg',
         disabled: false,
     },
     {
         key: 'airtel',
         label: 'Airtel Money',
-        subtitle: 'Mobile Money',
-        tag: 'Coming Soon',
+        subtitle: 'Coming soon',
         image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000336/Airtel-Money-Logo_zhsldw.png',
         disabled: true,
     },
@@ -82,169 +80,91 @@ export default function CheckoutPay({ order }) {
 
     return (
         <MainLayout minimal>
-            <div className="max-w-3xl mx-auto py-6 sm:py-12 px-2 sm:px-4">
-                <div className="bg-white rounded-3xl border border-brand-border p-5 sm:p-8 md:p-10 shadow-sm">
-                    {/* Top Security & Branding Bar */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pb-5 border-b border-brand-border">
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                                Evopay Secure Checkout
-                            </span>
-                        </div>
+            <div className="w-full max-w-md mx-auto py-6 px-4">
+                
+                {/* Header */}
+                <div className="text-center mb-8">
+                    <h1 className="text-2xl font-bold text-brand-dark">Complete Payment</h1>
+                    <p className="text-sm text-gray-500 mt-1">Select your preferred payment method.</p>
+                </div>
+
+                {/* Order Summary Card */}
+                <div className="bg-brand-light rounded-xl p-4 mb-6 border border-brand-border">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs text-gray-500">Order Number</span>
+                        <span className="text-xs text-gray-500 text-brand-dark">{order.order_number}</span>
                     </div>
-
-                    {/* Order & Amount Header */}
-                    <div className="py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs font-semibold px-2.5 py-1 bg-brand-light border border-brand-border rounded-md text-brand-dark">
-                                    {order.order_number}
-                                </span>
-                                {order.items_count > 0 && (
-                                    <span className="text-xs text-gray-500 font-medium">
-                                        ({order.items_count} {order.items_count === 1 ? 'item' : 'items'})
-                                    </span>
-                                )}
-                            </div>
-                            <h1 className="text-xl sm:text-2xl font-extrabold text-brand-dark mt-2 tracking-tight">
-                                Select Payment Method
-                            </h1>
-                            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-                                {order.customer_name ? `Paying as ${order.customer_name} · ` : ''}Choose your preferred option
-                            </p>
-                        </div>
-
-                        <div className="sm:text-right bg-brand-light sm:bg-transparent p-4 sm:p-0 rounded-2xl border sm:border-0 border-brand-border">
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</p>
-                            <p className="text-2xl sm:text-3xl font-extrabold text-brand-primary mt-0.5">
-                                {formatKES(order.total_amount)}
-                            </p>
-                        </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-brand-border/50">
+                        <span className="text-sm font-medium text-brand-dark">Total Payable</span>
+                        <span className="text-xl font-extrabold text-brand-primary">{formatKES(order.total_amount)}</span>
                     </div>
+                </div>
 
-                    {error && (
-                        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-start justify-between gap-3 shadow-xs">
-                            <div className="flex items-start gap-2.5">
-                                <span className="mt-0.5 text-red-600 font-bold">✕</span>
-                                <div>
-                                    <p className="font-bold text-red-800">Payment failed or cancelled</p>
-                                    <p className="mt-0.5 text-xs sm:text-sm">{error}</p>
-                                </div>
-                            </div>
+                {/* Error Message */}
+                {error && (
+                    <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 flex items-start gap-2">
+                        <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <div className="flex-1">{error}</div>
+                    </div>
+                )}
+
+                {/* Payment Methods */}
+                <div className="space-y-3 mb-8">
+                    {paymentMethods.map((pm) => {
+                        const isSelected = selected === pm.key;
+                        return (
                             <button
+                                key={pm.key}
                                 type="button"
-                                onClick={() => setError(null)}
-                                className="text-xs font-semibold text-red-600 hover:text-red-800 cursor-pointer"
+                                disabled={pm.disabled || isLoading}
+                                onClick={() => setSelected(pm.key)}
+                                className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left ${
+                                    pm.disabled
+                                        ? 'border-brand-border bg-gray-50 opacity-60 cursor-not-allowed'
+                                        : isSelected
+                                            ? 'border-brand-primary bg-brand-primary/5 ring-1 ring-brand-primary'
+                                            : 'border-brand-border bg-white hover:border-gray-300'
+                                }`}
                             >
-                                Dismiss
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-8 bg-white rounded border border-brand-border flex items-center justify-center p-1 flex-shrink-0">
+                                        <img src={pm.image} alt={pm.label} className="max-h-full max-w-full object-contain" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm text-brand-dark">{pm.label}</p>
+                                        <p className="text-xs text-gray-500">{pm.subtitle}</p>
+                                    </div>
+                                </div>
+
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                                    isSelected && !pm.disabled ? 'border-brand-primary' : 'border-gray-300'
+                                }`}>
+                                    {isSelected && !pm.disabled && <div className="w-2.5 h-2.5 rounded-full bg-brand-primary"></div>}
+                                </div>
                             </button>
-                        </div>
+                        );
+                    })}
+                </div>
+
+                {/* Action Button */}
+                <button
+                    type="button"
+                    onClick={handleContinue}
+                    disabled={isLoading}
+                    className="w-full bg-brand-dark text-white py-3.5 rounded-xl font-bold text-sm hover:bg-black transition-colors disabled:opacity-50 flex justify-center items-center"
+                >
+                    {isLoading ? (
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                        `Pay ${formatKES(order.total_amount)}`
                     )}
+                </button>
 
-                    {/* Payment Methods - Row Grid Layout on tablet/desktop, Clean responsive stack on mobile */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4 mt-2">
-                        {paymentMethods.map((pm) => {
-                            const isSelected = selected === pm.key;
-                            return (
-                                <button
-                                    key={pm.key}
-                                    type="button"
-                                    disabled={pm.disabled || isLoading}
-                                    onClick={() => setSelected(pm.key)}
-                                    className={`relative text-left rounded-2xl border p-4 sm:p-5 transition-all flex flex-row sm:flex-col items-center sm:items-start justify-between sm:justify-between min-h-[96px] sm:min-h-[170px] ${
-                                        pm.disabled
-                                            ? 'border-brand-border bg-gray-50 opacity-55 cursor-not-allowed'
-                                            : isSelected
-                                                ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/25 shadow-sm cursor-pointer'
-                                                : 'border-brand-border bg-white hover:border-brand-primary/60 hover:shadow-xs cursor-pointer'
-                                    }`}
-                                >
-                                    {/* Tag Badge */}
-                                    {pm.tag && (
-                                        <span
-                                            className={`absolute top-2.5 right-2.5 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full tracking-wide ${
-                                                pm.disabled
-                                                    ? 'bg-gray-200 text-gray-600'
-                                                    : isSelected
-                                                        ? 'bg-brand-primary text-white'
-                                                        : 'bg-brand-light border border-brand-border text-gray-600'
-                                            }`}
-                                        >
-                                            {pm.tag}
-                                        </span>
-                                    )}
-
-                                    {/* Logo Container */}
-                                    <div className="w-14 h-12 sm:w-16 sm:h-12 flex items-center justify-center bg-white rounded-xl border border-brand-border/80 p-1 flex-shrink-0">
-                                        <img
-                                            src={pm.image}
-                                            alt={pm.label}
-                                            className="max-h-full max-w-full object-contain"
-                                        />
-                                    </div>
-
-                                    {/* Text Info */}
-                                    <div className="flex-1 sm:flex-initial mx-3 sm:mx-0 sm:mt-4">
-                                        <p className="font-bold text-sm text-brand-dark leading-tight">
-                                            {pm.label}
-                                        </p>
-                                        <p className="text-[11px] text-gray-500 mt-0.5">
-                                            {pm.subtitle}
-                                        </p>
-                                    </div>
-
-                                    {/* Active Radio Indicator */}
-                                    <div className="flex-shrink-0 sm:mt-3">
-                                        <div
-                                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
-                                                pm.disabled
-                                                    ? 'border-gray-300'
-                                                    : isSelected
-                                                        ? 'border-brand-primary bg-brand-primary'
-                                                        : 'border-gray-300 bg-white'
-                                            }`}
-                                        >
-                                            {isSelected && !pm.disabled && (
-                                                <div className="w-2 h-2 rounded-full bg-white"></div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* Action Button */}
-                    <button
-                        type="button"
-                        onClick={handleContinue}
-                        disabled={isLoading}
-                        className="mt-8 w-full bg-brand-dark text-white py-4 rounded-2xl font-bold text-sm sm:text-base hover:bg-black disabled:opacity-40 transition-all cursor-pointer shadow-md hover:shadow-lg"
-                    >
-                        {isLoading
-                            ? 'Connecting to Gateway...'
-                            : selected === 'card'
-                                ? 'Continue to Checkout'
-                                : `Pay · ${formatKES(order.total_amount)}`}
-                    </button>
-
-                    {/* Trust Badges & Back Navigation */}
-                    <div className="mt-6 pt-5 border-t border-brand-border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-400">
-                        <Link
-                            href="/checkout"
-                            className="text-gray-500 hover:text-brand-primary font-medium transition"
-                        >
-                            ← Back to shipping details
-                        </Link>
-
-                        <div className="flex items-center gap-3 text-[11px]">
-                            <span>Safaricom M-Pesa</span>
-                            <span>•</span>
-                            <span>Mastercard MPGS</span>
-                            <span>•</span>
-                            <span>Evopay Africa</span>
-                        </div>
-                    </div>
+                {/* Footer Links */}
+                <div className="mt-6 text-center">
+                    <Link href="/checkout" className="text-xs text-gray-500 hover:text-brand-primary transition">
+                        Cancel and return to checkout
+                    </Link>
                 </div>
             </div>
         </MainLayout>
