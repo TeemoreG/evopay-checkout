@@ -43,9 +43,6 @@ export default function GatewayLayout({ children }) {
                         >
                             Pricing
                         </Link>
-                        <Link href="/shop" className="text-gray-600 hover:text-brand-primary transition">
-                            Demo Store
-                        </Link>
                     </nav>
 
                     <div className="hidden md:flex items-center gap-3">
