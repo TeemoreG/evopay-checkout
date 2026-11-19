@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CheckoutSession;
 use App\Models\Order;
 use App\Models\Setting;
 use App\Services\MpgsService;
@@ -25,13 +26,21 @@ class CheckoutController extends Controller
     public function process(Request $request)
     {
         $data = $request->validate([
-            'items' => 'required|array',
+            'items' => 'required|array|min:1',
             'subtotal' => 'required|numeric',
             'delivery_method' => 'required|string',
             'customer' => 'required|array',
-            'customer.name' => 'required|string',
-            'customer.phone' => 'required|string',
+            'customer.name' => 'required|string|max:255',
+            'customer.phone' => 'required|string|max:20',
+            'customer.email' => 'nullable|email|max:255',
             'delivery' => 'nullable|array',
+        ], [
+            'items.required' => 'Your cart is empty. Please add items before checking out.',
+            'items.min' => 'Your cart is empty. Please add items before checking out.',
+            'customer.name.required' => 'Please enter your full name.',
+            'customer.phone.required' => 'Please enter your phone number.',
+            'customer.email.email' => 'Please enter a valid email address.',
+            'delivery_method.required' => 'Please select a delivery method.',
         ]);
 
         $deliveryFee = 0;
@@ -392,7 +401,7 @@ class CheckoutController extends Controller
         ]);
     }
 
-    // Safaricom Callback endpoint
+    // Safaricom Callback endpoint (Handles BOTH internal store Orders and external CheckoutSessions)
     public function mpesaCallback(Request $request)
     {
         \Log::info('M-Pesa Callback Received:', $request->all());
@@ -407,11 +416,9 @@ class CheckoutController extends Controller
         $resultCode = (int) ($callbackData['ResultCode'] ?? 1);
         $resultDesc = $callbackData['ResultDesc'] ?? 'Payment failed.';
 
+        // 1. Check if callback belongs to internal store Order
         $order = Order::where('mpesa_request_id', $checkoutRequestId)->first();
-
-        if (!$order) {
-            \Log::warning("M-Pesa Callback: No order found for CheckoutRequestID {$checkoutRequestId}");
-        } elseif ($order->status !== 'paid') {
+        if ($order && $order->status !== 'paid') {
             if ($resultCode === 0) {
                 $items = $callbackData['CallbackMetadata']['Item'] ?? [];
                 $receipt = collect($items)->firstWhere('Name', 'MpesaReceiptNumber')['Value'] ?? null;
@@ -435,6 +442,21 @@ class CheckoutController extends Controller
             }
         }
 
+        // 2. Check if callback belongs to external merchant CheckoutSession
+        $session = CheckoutSession::where('mpesa_request_id', $checkoutRequestId)->first();
+        if ($session && $session->status !== 'paid') {
+            if ($resultCode === 0) {
+                $items = $callbackData['CallbackMetadata']['Item'] ?? [];
+                $receipt = collect($items)->firstWhere('Name', 'MpesaReceiptNumber')['Value'] ?? null;
+
+                $session->markAsPaid('mpesa', $receipt);
+                \Log::info("CheckoutSession {$session->token} paid successfully. Receipt: {$receipt}");
+            } else {
+                $session->markAsFailed($this->mapMpesaError($resultCode, $resultDesc));
+                \Log::warning("CheckoutSession {$session->token} failed ({$resultCode}): {$resultDesc}");
+            }
+        }
+
         return response()->json([
             'ResultCode' => 0,
             'ResultDesc' => 'Callback received successfully'
@@ -448,8 +470,6 @@ class CheckoutController extends Controller
             return;
         }
 
-        // Email Receipt Placeholder (enable once SMTP credentials are configured in .env)
-        // Mail::to($email)->send(new \App\Mail\OrderReceiptMail($order));
         \Log::info("Email receipt placeholder triggered for {$order->order_number} ({$email})");
     }
 
