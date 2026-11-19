@@ -162,12 +162,6 @@ export default function CheckoutPay({ order }) {
                                             : 'border-brand-border bg-white hover:border-brand-primary/60'
                                 }`}
                             >
-                                {/* Selected Checkmark Badge */}
-                                {isSelected && !pm.disabled && (
-                                    <span className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 bg-brand-primary text-white rounded-full flex items-center justify-center text-[9px] font-bold shadow-xs">
-                                        ✓
-                                    </span>
-                                )}
 
                                 {/* Disabled Soon Badge */}
                                 {pm.disabled && (
