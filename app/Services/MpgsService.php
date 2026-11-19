@@ -29,7 +29,7 @@ class MpgsService
         $interaction = [
             'operation' => $this->operation,
             'merchant' => [
-                'name' => 'Evopay Shop',
+                'name' => 'Evopay',
             ],
         ];
 
