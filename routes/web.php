@@ -10,9 +10,11 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 // ============================================================================
-// Evopay Payment Provider Home & Auth
+// Evopay Payment Provider Public Pages
 // ============================================================================
 Route::get('/', fn () => Inertia::render('Gateway/Home'))->name('home');
+Route::get('/developers', fn () => Inertia::render('Gateway/Developers'))->name('developers');
+Route::get('/pricing', fn () => Inertia::render('Gateway/Pricing'))->name('pricing');
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.attempt');
