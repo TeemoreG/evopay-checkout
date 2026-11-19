@@ -131,6 +131,8 @@ class HostedCheckoutController extends Controller
                 'mpesa_request_id' => $response['CheckoutRequestID'],
             ]);
 
+            Cache::forget("mpesa_query_lock_{$session->token}");
+
             return response()->json([
                 'status' => 'pending',
                 'message' => 'STK Push sent! Please enter your M-Pesa PIN.',
@@ -144,11 +146,47 @@ class HostedCheckoutController extends Controller
 
     /**
      * GET /c/{token}/status
-     * Polling endpoint used by the hosted checkout frontend.
+     * Polling endpoint with throttled Safaricom STK Query fallback if callback is delayed.
      */
-    public function checkStatus(string $token): JsonResponse
+    public function checkStatus(Request $request, string $token, MpesaService $mpesa): JsonResponse
     {
         $session = CheckoutSession::where('token', $token)->firstOrFail();
+
+        if (
+            $session->status === 'pending'
+            && $session->payment_method === 'mpesa'
+            && !empty($session->mpesa_request_id)
+        ) {
+            $force = $request->boolean('force');
+            $secondsSincePrompt = $session->updated_at ? $session->updated_at->diffInSeconds(now()) : 0;
+            $shouldQuery = $force || $secondsSincePrompt >= 20;
+
+            if ($shouldQuery && Cache::add("mpesa_query_lock_{$session->token}", true, $force ? 4 : 10)) {
+                try {
+                    $query = $mpesa->stkQuery($session->mpesa_request_id);
+
+                    $session->refresh();
+
+                    if ($session->status === 'pending') {
+                        if ($query['state'] === 'paid') {
+                            $session->markAsPaid('mpesa');
+                            Log::info("CheckoutSession {$session->token} confirmed paid via STK Query fallback.");
+                            DispatchMerchantWebhook::dispatch($session, 'payment.succeeded');
+                        } elseif ($query['state'] === 'failed') {
+                            $reason = $this->mapMpesaError(
+                                (int) ($query['result_code'] ?? 1),
+                                $query['result_desc'] ?? 'M-Pesa payment failed.'
+                            );
+                            $session->markAsFailed($reason);
+                            Log::warning("CheckoutSession {$session->token} failed via STK Query ({$query['result_code']}): {$reason}");
+                            DispatchMerchantWebhook::dispatch($session, 'payment.failed');
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning("STK Query fallback error for {$session->token}: " . $e->getMessage());
+                }
+            }
+        }
 
         return response()->json([
             'status' => $session->status,
@@ -296,6 +334,61 @@ class HostedCheckoutController extends Controller
     }
 
     /**
+     * POST /api/webhooks/mpgs
+     * Server-to-server webhook from Mastercard MPGS (confirms payments even if customer closes browser).
+     */
+    public function mpgsWebhook(Request $request): JsonResponse
+    {
+        $expectedSecret = env('MPGS_WEBHOOK_SECRET');
+        $incomingSecret = (string) $request->header('X-Notification-Secret', '');
+
+        if ($expectedSecret && !hash_equals((string) $expectedSecret, $incomingSecret)) {
+            Log::warning('MPGS Webhook rejected: Invalid X-Notification-Secret header.');
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        Log::info('MPGS Webhook Received:', $request->all());
+
+        $orderId = $request->input('order.id');
+        if (!$orderId) {
+            return response()->json(['status' => 'ignored'], 200);
+        }
+
+        $session = CheckoutSession::where('token', $orderId)->first();
+        if (!$session || $session->isPaid()) {
+            return response()->json(['status' => 'ok'], 200);
+        }
+
+        $result = strtoupper((string) $request->input('result', ''));
+        $orderStatus = strtoupper((string) $request->input('order.status', ''));
+
+        if (
+            $result === 'SUCCESS'
+            && in_array($orderStatus, ['CAPTURED', 'AUTHORIZED', 'PARTIALLY_CAPTURED'], true)
+        ) {
+            $session->markAsPaid('card');
+            Cache::forget("mpgs_indicator_{$session->token}");
+            Log::info("CheckoutSession {$session->token} marked PAID via MPGS Webhook.");
+
+            DispatchMerchantWebhook::dispatch($session, 'payment.succeeded');
+        } elseif (
+            in_array($result, ['FAILURE', 'ERROR'], true)
+            || in_array($orderStatus, ['FAILED', 'CANCELLED'], true)
+        ) {
+            $reason = $request->input('response.acquirerMessage')
+                ?? $request->input('error.explanation')
+                ?? 'Card payment was declined.';
+
+            $session->markAsFailed($reason);
+            Log::warning("CheckoutSession {$session->token} marked FAILED via MPGS Webhook: {$reason}");
+
+            DispatchMerchantWebhook::dispatch($session, 'payment.failed');
+        }
+
+        return response()->json(['status' => 'ok'], 200);
+    }
+
+    /**
      * GET /c/{token}/mpgs/cancel
      */
     public function mpgsCancel(string $token)
@@ -340,6 +433,18 @@ class HostedCheckoutController extends Controller
                 'logo_url' => $session->merchant->logo_url,
             ],
         ]);
+    }
+
+    private function mapMpesaError(int $code, string $fallback): string
+    {
+        return match ($code) {
+            1 => 'Insufficient M-Pesa balance. Please top up and try again.',
+            1032 => 'Payment cancelled. You dismissed the M-Pesa prompt.',
+            1037 => 'Your phone could not be reached for the M-Pesa prompt (1037). Ensure your phone is unlocked with cellular signal, then try again.',
+            2001 => 'Incorrect M-Pesa PIN entered. Please try again.',
+            1019, 1025 => 'M-Pesa request timed out. Please try again.',
+            default => $fallback,
+        };
     }
 
     private function buildReturnUrl(CheckoutSession $session): string

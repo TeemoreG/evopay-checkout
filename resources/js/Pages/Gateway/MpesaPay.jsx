@@ -46,7 +46,11 @@ export default function GatewayMpesaPay({ session, merchant }) {
     const checkPaymentStatus = async (manual = false) => {
         if (manual) setIsCheckingNow(true);
         try {
-            const res = await axios.get(`/c/${session.token}/status`);
+            const url = manual
+                ? `/c/${session.token}/status?force=1`
+                : `/c/${session.token}/status`;
+
+            const res = await axios.get(url);
 
             if (res.data.status === 'paid') {
                 stopPolling();
@@ -137,7 +141,6 @@ export default function GatewayMpesaPay({ session, merchant }) {
         <MainLayout minimal>
             <div className="min-h-[82vh] flex flex-col justify-center py-6 sm:py-12 px-4 sm:px-6">
                 <div className="w-full max-w-md mx-auto bg-white rounded-3xl border border-brand-border p-6 sm:p-8 shadow-xs">
-                    {/* Header with M-Pesa & Merchant */}
                     <div className="flex items-center justify-between pb-4 border-b border-brand-border">
                         <img src={MPESA_LOGO} alt="M-Pesa" className="h-7 object-contain" />
                         <div className="text-right">

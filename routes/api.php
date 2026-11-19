@@ -2,15 +2,14 @@
 
 use App\Http\Controllers\Api\CheckoutSessionController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\HostedCheckoutController;
 use Illuminate\Support\Facades\Route;
 
 // Public utility endpoints
 Route::post('/distance', [CheckoutController::class, 'getDistance']);
 
-// Internal POC payment endpoints
-Route::post('/payments/mpesa/stk-push', [CheckoutController::class, 'mpesaStkPush']);
-Route::post('/payments/mpgs/init', [CheckoutController::class, 'mpgsInit']);
-Route::get('/payments/{order:order_number}/status', [CheckoutController::class, 'checkStatus']);
+// Provider Inbound Webhooks (CSRF-free under /api/*)
+Route::post('/webhooks/mpgs', [HostedCheckoutController::class, 'mpgsWebhook']);
 
 // Merchant v1 API (Authenticated via Bearer sk_live_... / sk_test_...)
 Route::prefix('v1')->middleware('auth.api_key')->group(function () {
