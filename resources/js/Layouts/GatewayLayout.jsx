@@ -81,7 +81,6 @@ export default function GatewayLayout({ children }) {
                         <Link href="/" onClick={() => setMobileMenuOpen(false)} className="block py-2.5 text-gray-700">Home</Link>
                         <Link href="/developers" onClick={() => setMobileMenuOpen(false)} className="block py-2.5 text-gray-700">Developers</Link>
                         <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="block py-2.5 text-gray-700">Pricing</Link>
-                        <Link href="/shop" onClick={() => setMobileMenuOpen(false)} className="block py-2.5 text-gray-700">Demo Store</Link>
                         <div className="pt-3 mt-2 border-t border-brand-border flex flex-col gap-2.5">
                             <a
                                 href="mailto:support@evopay.africa?subject=Evopay%20Merchant%20Onboarding"
