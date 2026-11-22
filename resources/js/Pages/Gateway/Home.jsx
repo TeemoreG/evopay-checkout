@@ -7,10 +7,10 @@ export default function GatewayHome() {
             <Head title="Evopay Checkout — M-Pesa & Card Payment Gateway for Kenya" />
 
             {/* Hero Section */}
-            <section className="bg-brand-light border-b border-brand-border overflow-hidden">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-16 lg:py-24 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-                    <div className="lg:col-span-6 min-w-0 text-center lg:text-left">
-                        <p className="inline-block text-[11px] sm:text-xs font-bold uppercase tracking-widest text-brand-primary bg-brand-primary/10 px-3.5 py-1.5 rounded-full mb-3">
+            <section className="bg-gradient-to-br from-white via-brand-light to-orange-50/40 border-b border-brand-border relative overflow-hidden">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20 lg:py-28 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+                    <div className="lg:col-span-7 min-w-0 text-center lg:text-left z-10">
+                        <p className="inline-block text-[11px] sm:text-xs font-bold uppercase tracking-widest text-brand-primary bg-brand-primary/10 px-3.5 py-1.5 rounded-full mb-4">
                             Evopay Payment Infrastructure · Kenya
                         </p>
 
@@ -18,11 +18,11 @@ export default function GatewayHome() {
                             Accept M-Pesa & Card Payments Through One Unified API
                         </h1>
 
-                        <p className="mt-4 sm:mt-5 text-sm sm:text-lg text-gray-600 leading-relaxed max-w-xl mx-auto lg:mx-0">
+                        <p className="mt-5 text-base sm:text-lg text-gray-600 leading-relaxed max-w-2xl mx-auto lg:mx-0">
                             Launch a merchant-branded hosted checkout in minutes. Evopay handles Safaricom M-Pesa STK Push, Visa & Mastercard 3D Secure, and signed server webhooks so your store gets paid reliably.
                         </p>
 
-                        <div className="mt-7 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center lg:justify-start gap-3">
+                        <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center lg:justify-start gap-3.5">
                             <Link
                                 href="/developers"
                                 className="bg-brand-dark text-white px-7 py-4 rounded-xl font-bold text-sm text-center hover:bg-black transition shadow-sm"
@@ -31,13 +31,13 @@ export default function GatewayHome() {
                             </Link>
                             <Link
                                 href="/shop"
-                                className="bg-white border border-brand-border text-brand-dark px-7 py-4 rounded-xl font-bold text-sm text-center hover:bg-gray-50 transition"
+                                className="bg-white border border-brand-border text-brand-dark px-7 py-4 rounded-xl font-bold text-sm text-center hover:bg-gray-50 transition shadow-xs"
                             >
                                 Try Live Demo Store
                             </Link>
                         </div>
 
-                        <div className="mt-8 sm:mt-10 pt-5 sm:pt-6 border-t border-brand-border flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-2 text-xs text-gray-500 font-semibold">
+                        <div className="mt-10 pt-6 border-t border-brand-border/80 flex flex-wrap items-center justify-center lg:justify-start gap-x-5 gap-y-2 text-xs text-gray-500 font-semibold">
                             <span className="uppercase tracking-wider text-[11px] text-gray-400 w-full sm:w-auto text-center lg:text-left">Payment Rails:</span>
                             <span>Safaricom M-Pesa</span>
                             <span className="text-gray-300">•</span>
@@ -47,14 +47,14 @@ export default function GatewayHome() {
                         </div>
                     </div>
 
-                    {/* Right Hero Image (hero.png) */}
-                    <div className="lg:col-span-6 min-w-0 w-full flex justify-center">
-                        <div className="relative w-full max-w-lg lg:max-w-none flex items-center justify-center p-2 sm:p-4">
-                            <div className="absolute w-64 h-64 sm:w-80 sm:h-80 rounded-full bg-brand-primary/15 animate-pulse blur-3xl pointer-events-none"></div>
+                    {/* Right Hero Image (hero.png) with seamless blend */}
+                    <div className="lg:col-span-5 min-w-0 w-full flex justify-center relative">
+                        <div className="absolute inset-0 bg-radial from-brand-primary/10 to-transparent rounded-full filter blur-2xl pointer-events-none"></div>
+                        <div className="relative w-full max-w-md lg:max-w-none flex items-center justify-center p-2">
                             <img
                                 src="/images/hero.png"
                                 alt="Evopay Payment Infrastructure"
-                                className="w-full h-auto max-h-[420px] lg:max-h-[500px] object-contain relative z-10 drop-shadow-2xl"
+                                className="w-full h-auto max-h-[420px] lg:max-h-[520px] object-contain relative z-10 drop-shadow-xl"
                             />
                         </div>
                     </div>
