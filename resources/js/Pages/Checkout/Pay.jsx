@@ -215,6 +215,7 @@ export default function CheckoutPay({ order }) {
                         <span>Safaricom M-Pesa</span>
                         <span>•</span>
                         <span>Mastercard MPGS</span>
+                        <span>•</span>
                         <span>Airtel Money</span>
                         <span>•</span>
                         <span>Evopay</span>
