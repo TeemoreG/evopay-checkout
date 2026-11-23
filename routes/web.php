@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\GatewayController;
 use App\Http\Controllers\HostedCheckoutController;
 use App\Http\Controllers\MerchantPortalController;
 use Illuminate\Support\Facades\Route;
@@ -12,7 +13,8 @@ use Inertia\Inertia;
 // ============================================================================
 // Evopay Payment Provider Public Pages
 // ============================================================================
-Route::get('/', fn () => Inertia::render('Gateway/Home'))->name('home');
+Route::get('/', [GatewayController::class, 'home'])->name('home');
+Route::post('/request-access', [GatewayController::class, 'requestAccess'])->name('request-access');
 Route::get('/developers', fn () => Inertia::render('Gateway/Developers'))->name('developers');
 Route::get('/pricing', fn () => Inertia::render('Gateway/Pricing'))->name('pricing');
 
