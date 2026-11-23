@@ -76,14 +76,17 @@ export default function GatewayPay({ session, merchant }) {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col justify-between sm:justify-center pt-3 sm:pt-8 pb-8 px-3 sm:px-4">
-            <Head title={`Pay ${merchant.name} — Checkout`} />
+        <div className="min-h-screen bg-slate-50 sm:bg-slate-100 text-[#1A1A1A] font-sans flex flex-col justify-between sm:justify-center sm:py-10 sm:px-4">
+            <Head title={`Pay ${merchant.name} — Evopay Checkout`} />
 
-            {/* Main Checkout Container — Paystack/Stripe Architecture */}
-            <div className="w-full max-w-[460px] mx-auto bg-white rounded-3xl border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col justify-between p-5 sm:p-8">
+            {/* Container: Fills 100% of mobile screen vertically (zero dead space below), centers as a sleek floating card on desktop */}
+            <div className="w-full sm:max-w-md mx-auto bg-white min-h-screen sm:min-h-0 sm:rounded-3xl border-0 sm:border sm:border-gray-200 sm:shadow-xl flex flex-col justify-between p-6 sm:p-8">
+                
+                {/* Top Section */}
                 <div>
-                    {/* Merchant Header — Zero Evopay Logo, Only Merchant Branding */}
-                    <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                    {/* Header Bar */}
+                    <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                        {/* Merchant Identity */}
                         <div className="flex items-center gap-2.5 min-w-0">
                             {merchant.logo_url ? (
                                 <img
@@ -97,41 +100,40 @@ export default function GatewayPay({ session, merchant }) {
                                 </div>
                             )}
                             <div className="min-w-0">
-                                <p className="text-xs sm:text-sm font-bold text-slate-800 truncate leading-tight">
+                                <p className="text-sm font-bold text-[#1A1A1A] truncate leading-tight">
                                     {merchant.name}
                                 </p>
-                                <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">
+                                <p className="text-[11px] text-gray-400 font-medium truncate mt-0.5">
                                     Ref: {session.merchant_reference}
                                 </p>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-full flex-shrink-0">
-                            <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944z" clipRule="evenodd" />
-                            </svg>
-                            <span>Encrypted</span>
+                        {/* Secured by Evopay Badge */}
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-600 bg-gray-50 border border-gray-200 px-3 py-1 rounded-full flex-shrink-0">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span>Secured by Evopay</span>
                         </div>
                     </div>
 
-                    {/* Amount Hero Section */}
-                    <div className="py-5 text-center border-b border-slate-100">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                            Amount to Pay
+                    {/* Amount Due Section */}
+                    <div className="py-6 sm:py-7 text-center border-b border-gray-100">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                            AMOUNT TO PAY
                         </p>
-                        <p className="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-1 tracking-tight">
+                        <p className="text-3xl sm:text-4xl font-extrabold text-[#1A1A1A] mt-1 tracking-tight">
                             {formatMoney(session.amount, session.currency)}
                         </p>
                         {session.customer?.name && (
-                            <p className="text-xs text-slate-500 mt-1.5 font-medium truncate">
-                                Customer: <span className="text-slate-800">{session.customer.name}</span>
+                            <p className="text-xs text-gray-500 mt-2 font-medium truncate">
+                                Customer: <span className="text-[#1A1A1A] font-semibold">{session.customer.name}</span>
                             </p>
                         )}
                     </div>
 
                     {/* Error Banner */}
                     {error && (
-                        <div className="my-4 rounded-xl border border-red-200 bg-red-50/80 p-3 text-xs text-red-700 flex items-start justify-between gap-2 shadow-xs">
+                        <div className="my-4 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-700 flex items-start justify-between gap-2 shadow-xs">
                             <div className="flex items-start gap-1.5">
                                 <span className="text-red-500 font-bold">✕</span>
                                 <p className="mt-0.5 leading-snug">{error}</p>
@@ -146,13 +148,13 @@ export default function GatewayPay({ session, merchant }) {
                         </div>
                     )}
 
-                    {/* Payment Method Selector (Paystack/Stripe 3-Column Row) */}
-                    <div className="pt-4 pb-2">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5 text-left">
-                            Select Payment Method
+                    {/* Payment Rails Selector */}
+                    <div className="pt-6 pb-2">
+                        <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 text-left">
+                            SELECT PAYMENT METHOD
                         </p>
 
-                        <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
+                        <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
                             {paymentMethods.map((pm) => {
                                 const isSelected = selected === pm.key;
                                 return (
@@ -161,43 +163,43 @@ export default function GatewayPay({ session, merchant }) {
                                         type="button"
                                         disabled={pm.disabled || isLoading}
                                         onClick={() => setSelected(pm.key)}
-                                        className={`relative flex flex-col items-center justify-between p-2.5 sm:p-3 rounded-2xl border transition-all text-center h-[98px] sm:h-[105px] cursor-pointer ${
+                                        className={`relative flex flex-col items-center justify-between p-3 rounded-2xl border transition-all text-center h-28 cursor-pointer ${
                                             pm.disabled
-                                                ? 'border-slate-200 bg-slate-50/60 opacity-40 cursor-not-allowed'
+                                                ? 'border-gray-200 bg-gray-50/60 opacity-40 cursor-not-allowed'
                                                 : isSelected
                                                     ? 'border-[#E05A26] bg-[#E05A26]/5 ring-1 ring-[#E05A26] shadow-xs'
-                                                    : 'border-slate-200 bg-white hover:border-slate-300'
+                                                    : 'border-gray-200 bg-white hover:border-gray-300'
                                         }`}
                                     >
-                                        {/* Selection Tick */}
+                                        {/* Evopay Brand Orange Selected Tick */}
                                         {isSelected && !pm.disabled && (
-                                            <span className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-[#E05A26] text-white rounded-full flex items-center justify-center text-[8px] font-bold">
+                                            <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-[#E05A26] text-white rounded-full flex items-center justify-center text-[9px] font-bold">
                                                 ✓
                                             </span>
                                         )}
 
                                         {/* Soon Badge */}
                                         {pm.disabled && (
-                                            <span className="absolute top-1.5 right-1.5 text-[7px] bg-slate-200 text-slate-600 px-1 py-0.2 rounded font-bold uppercase">
+                                            <span className="absolute top-1.5 right-1.5 text-[8px] bg-gray-200 text-gray-600 px-1.5 py-0.2 rounded font-bold uppercase">
                                                 Soon
                                             </span>
                                         )}
 
-                                        {/* Payment Logo */}
-                                        <div className="h-7 w-full flex items-center justify-center mt-1">
+                                        {/* Brand Logo */}
+                                        <div className="h-8 w-full flex items-center justify-center mt-1">
                                             <img
                                                 src={pm.image}
                                                 alt={pm.label}
-                                                className="max-h-6 max-w-[85%] object-contain"
+                                                className="max-h-7 max-w-[85%] object-contain"
                                             />
                                         </div>
 
-                                        {/* Labels */}
+                                        {/* Method Titles */}
                                         <div className="w-full">
-                                            <p className="font-bold text-[11px] sm:text-xs text-slate-800 truncate leading-tight">
+                                            <p className="font-bold text-xs text-[#1A1A1A] truncate leading-tight">
                                                 {pm.label}
                                             </p>
-                                            <p className="text-[9px] sm:text-[10px] text-slate-400 truncate mt-0.5">
+                                            <p className="text-[10px] text-gray-400 truncate mt-0.5">
                                                 {pm.subtitle}
                                             </p>
                                         </div>
@@ -208,16 +210,16 @@ export default function GatewayPay({ session, merchant }) {
                     </div>
                 </div>
 
-                {/* Primary CTA & Cancel Button */}
-                <div className="pt-6 sm:pt-7">
+                {/* Bottom Action Section (Anchored cleanly at the bottom on mobile) */}
+                <div className="pt-8 sm:pt-6">
                     <button
                         type="button"
                         onClick={handleContinue}
                         disabled={isLoading}
-                        className="w-full bg-slate-900 text-white py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-base hover:bg-black transition-all disabled:opacity-50 flex justify-center items-center gap-2 shadow-sm hover:shadow-md active:scale-[0.99] cursor-pointer"
+                        className="w-full bg-[#1A1A1A] text-white py-4 rounded-2xl font-bold text-sm sm:text-base hover:bg-black transition-all disabled:opacity-50 flex justify-center items-center gap-2 shadow-sm hover:shadow-md active:scale-[0.99] cursor-pointer"
                     >
                         {isLoading ? (
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         ) : selected === 'card' ? (
                             <>
                                 <span>Continue to Checkout</span>
@@ -228,22 +230,23 @@ export default function GatewayPay({ session, merchant }) {
                         )}
                     </button>
 
-                    {/* Cancel Navigation */}
+                    {/* Cancel & Trust Link */}
                     <div className="mt-4 text-center">
                         {session.cancel_url ? (
                             <a
                                 href={session.cancel_url}
-                                className="text-xs text-slate-400 hover:text-slate-600 font-medium transition"
+                                className="text-xs text-gray-400 hover:text-gray-600 font-medium transition"
                             >
                                 Cancel and return to store
                             </a>
                         ) : (
-                            <p className="text-[11px] text-slate-400 font-medium">
-                                256-bit SSL Encrypted Payment
+                            <p className="text-[11px] text-gray-400 font-medium">
+                                256-bit SSL Encrypted • PCI-DSS Compliant
                             </p>
                         )}
                     </div>
                 </div>
+
             </div>
         </div>
     );
