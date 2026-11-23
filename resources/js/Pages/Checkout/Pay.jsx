@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Head } from '@inertiajs/react';
 import axios from 'axios';
-import MainLayout from '../../Layouts/MainLayout';
 
 const formatMoney = (amount, currency = 'KES') =>
     `${currency} ` + Number(amount || 0).toLocaleString('en-KE', { minimumFractionDigits: 0 });
@@ -10,7 +10,6 @@ const paymentMethods = [
         key: 'mpesa',
         label: 'M-Pesa',
         subtitle: 'STK Push',
-        badge: 'Instant',
         image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000028/1_q6VZ_q0WIism6TgZ9kBIWQ_km524l.png',
         disabled: false,
     },
@@ -18,15 +17,13 @@ const paymentMethods = [
         key: 'card',
         label: 'Card',
         subtitle: 'Visa / MC',
-        badge: '3D Secure',
         image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000459/visa_mx9x3z.jpg',
         disabled: false,
     },
     {
         key: 'airtel',
         label: 'Airtel',
-        subtitle: 'Money',
-        badge: 'Soon',
+        subtitle: 'Coming soon',
         image: 'https://res.cloudinary.com/dvqjgbdhp/image/upload/v1795000336/Airtel-Money-Logo_zhsldw.png',
         disabled: true,
     },
@@ -79,60 +76,80 @@ export default function GatewayPay({ session, merchant }) {
     };
 
     return (
-        <MainLayout minimal>
-            <div className="w-full max-w-md mx-auto pt-0 sm:pt-4 pb-8 px-2 sm:px-4">
-                {/* Checkout Container: Edge-to-edge feel on mobile, sleek floating card on desktop */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl border border-brand-border p-5 sm:p-7 shadow-xs">
-                    
-                    {/* Merchant Identity & Trust Bar */}
-                    <div className="flex items-center justify-between pb-4 border-b border-brand-border">
-                        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="min-h-screen bg-slate-50 text-brand-dark font-sans flex flex-col justify-between sm:justify-center sm:py-8 sm:px-4">
+            <Head title={`Pay ${merchant.name} — Secure Checkout`} />
+
+            {/* Main App Container: Full-bleed on mobile reaching the top edge, sleek card on desktop */}
+            <div className="w-full sm:max-w-md mx-auto bg-white min-h-screen sm:min-h-0 sm:rounded-3xl sm:border sm:border-brand-border sm:shadow-xl flex flex-col justify-between p-5 sm:p-7">
+                <div>
+                    {/* Top Native App Bar: Back/Cancel on left, Merchant Brand center, Lock on right */}
+                    <div className="flex items-center justify-between pt-1 pb-4 border-b border-gray-100">
+                        {session.cancel_url ? (
+                            <a
+                                href={session.cancel_url}
+                                className="text-gray-400 hover:text-brand-dark text-xs font-semibold transition flex items-center gap-1"
+                            >
+                                <span>←</span>
+                                <span>Cancel</span>
+                            </a>
+                        ) : (
+                            <div className="w-10"></div>
+                        )}
+
+                        {/* Merchant Identity (NO Evopay Logo) */}
+                        <div className="flex items-center gap-2">
                             {merchant.logo_url ? (
-                                <img src={merchant.logo_url} alt={merchant.name} className="h-7 max-w-[110px] object-contain flex-shrink-0" />
+                                <img
+                                    src={merchant.logo_url}
+                                    alt={merchant.name}
+                                    className="h-6 max-w-[120px] object-contain"
+                                />
                             ) : (
-                                <div className="w-7 h-7 rounded-lg bg-brand-primary/10 text-brand-primary font-bold text-xs flex items-center justify-center flex-shrink-0">
+                                <div className="w-6 h-6 rounded-full bg-brand-primary/10 text-brand-primary font-bold text-xs flex items-center justify-center">
                                     {merchant.name.slice(0, 2).toUpperCase()}
                                 </div>
                             )}
-                            <span className="text-xs sm:text-sm font-bold text-brand-dark truncate">
+                            <span className="text-xs sm:text-sm font-bold text-brand-dark truncate max-w-[150px]">
                                 {merchant.name}
                             </span>
                         </div>
 
-                        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-400 bg-brand-light px-2.5 py-1 rounded-full border border-brand-border flex-shrink-0">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            <span>Secured by Evopay</span>
+                        {/* Security Indicator */}
+                        <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944z" clipRule="evenodd" />
+                            </svg>
+                            <span>Secured</span>
                         </div>
                     </div>
 
-                    {/* Amount & Reference Section (Stripe/Paystack Style) */}
-                    <div className="py-5 text-center border-b border-brand-border/60">
-                        <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-400">
+                    {/* Amount Due Display */}
+                    <div className="py-6 text-center border-b border-gray-100">
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
                             Amount to Pay
                         </p>
                         <p className="text-3xl sm:text-4xl font-extrabold text-brand-dark mt-1 tracking-tight">
                             {formatMoney(session.amount, session.currency)}
                         </p>
-                        <div className="mt-2 flex items-center justify-center gap-2 text-xs text-gray-500 font-medium">
-                            <span>Ref: <strong className="text-brand-dark">{session.merchant_reference}</strong></span>
+
+                        <div className="mt-2.5 flex items-center justify-center gap-2 text-xs text-gray-500">
+                            <span className="bg-gray-100 px-2 py-0.5 rounded text-[11px] font-medium text-gray-600">
+                                Ref: {session.merchant_reference}
+                            </span>
                             {session.customer?.name && (
-                                <>
-                                    <span>•</span>
-                                    <span className="truncate max-w-[140px]">{session.customer.name}</span>
-                                </>
+                                <span className="truncate max-w-[150px] font-medium">
+                                    • {session.customer.name}
+                                </span>
                             )}
                         </div>
                     </div>
 
                     {/* Error Banner */}
                     {error && (
-                        <div className="my-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 flex items-start justify-between gap-2 shadow-xs">
+                        <div className="my-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 flex items-start justify-between gap-2">
                             <div className="flex items-start gap-1.5">
                                 <span className="text-red-500 font-bold">✕</span>
-                                <div>
-                                    <p className="font-bold text-red-800">Payment failed or cancelled</p>
-                                    <p className="mt-0.5">{error}</p>
-                                </div>
+                                <p className="mt-0.5">{error}</p>
                             </div>
                             <button
                                 type="button"
@@ -144,73 +161,78 @@ export default function GatewayPay({ session, merchant }) {
                         </div>
                     )}
 
-                    {/* Payment Rails Header */}
-                    <div className="pt-4 pb-2">
-                        <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-400">
+                    {/* Payment Method Selector (3-in-a-Row across mobile & desktop) */}
+                    <div className="pt-6">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-3 text-left">
                             Select Payment Method
                         </p>
+
+                        <div className="grid grid-cols-3 gap-2.5">
+                            {paymentMethods.map((pm) => {
+                                const isSelected = selected === pm.key;
+                                return (
+                                    <button
+                                        key={pm.key}
+                                        type="button"
+                                        disabled={pm.disabled || isLoading}
+                                        onClick={() => setSelected(pm.key)}
+                                        className={`relative flex flex-col items-center justify-between p-3 rounded-2xl border transition-all text-center h-28 cursor-pointer ${
+                                            pm.disabled
+                                                ? 'border-gray-200 bg-gray-50 opacity-40 cursor-not-allowed'
+                                                : isSelected
+                                                    ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/25 shadow-xs'
+                                                    : 'border-gray-200 bg-white hover:border-gray-300'
+                                        }`}
+                                    >
+                                        {/* Selected Badge */}
+                                        {isSelected && !pm.disabled && (
+                                            <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-brand-primary text-white rounded-full flex items-center justify-center text-[9px] font-bold">
+                                                ✓
+                                            </span>
+                                        )}
+
+                                        {/* Soon Badge */}
+                                        {pm.disabled && (
+                                            <span className="absolute top-1.5 right-1.5 text-[8px] bg-gray-200 text-gray-600 px-1 py-0.2 rounded font-bold uppercase">
+                                                Soon
+                                            </span>
+                                        )}
+
+                                        {/* Brand Logo */}
+                                        <div className="h-8 w-full flex items-center justify-center mt-1">
+                                            <img
+                                                src={pm.image}
+                                                alt={pm.label}
+                                                className="max-h-7 max-w-[85%] object-contain"
+                                            />
+                                        </div>
+
+                                        {/* Method Titles */}
+                                        <div className="w-full">
+                                            <p className="font-bold text-xs text-brand-dark truncate leading-tight">
+                                                {pm.label}
+                                            </p>
+                                            <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                                                {pm.subtitle}
+                                            </p>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
+                </div>
 
-                    {/* 3-in-a-Row Payment Cards (Fitted for mobile screens) */}
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
-                        {paymentMethods.map((pm) => {
-                            const isSelected = selected === pm.key;
-                            return (
-                                <button
-                                    key={pm.key}
-                                    type="button"
-                                    disabled={pm.disabled || isLoading}
-                                    onClick={() => setSelected(pm.key)}
-                                    className={`relative flex flex-col items-center justify-between p-2.5 sm:p-3 rounded-xl border transition-all text-center h-24 sm:h-28 cursor-pointer ${
-                                        pm.disabled
-                                            ? 'border-brand-border bg-gray-50 opacity-45 cursor-not-allowed'
-                                            : isSelected
-                                                ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/20 shadow-xs'
-                                                : 'border-brand-border bg-white hover:border-brand-primary/40'
-                                    }`}
-                                >
-                                    {/* Selected Checkmark */}
-                                    {isSelected && !pm.disabled && (
-                                        <span className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-brand-primary text-white rounded-full flex items-center justify-center text-[8px] font-bold">
-                                            ✓
-                                        </span>
-                                    )}
-
-                                    {/* Soon Badge */}
-                                    {pm.disabled && (
-                                        <span className="absolute top-1 right-1 text-[7px] bg-gray-200 text-gray-600 px-1 py-0.2 rounded font-bold uppercase">
-                                            Soon
-                                        </span>
-                                    )}
-
-                                    {/* Logo */}
-                                    <div className="h-7 sm:h-8 w-full flex items-center justify-center mt-1">
-                                        <img src={pm.image} alt="" className="max-h-6 sm:max-h-7 max-w-[80%] object-contain" />
-                                    </div>
-
-                                    {/* Text */}
-                                    <div className="w-full">
-                                        <p className="font-bold text-[11px] sm:text-xs text-brand-dark truncate leading-tight">
-                                            {pm.label}
-                                        </p>
-                                        <p className="text-[9px] sm:text-[10px] text-gray-400 truncate mt-0.5">
-                                            {pm.subtitle}
-                                        </p>
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* Primary Pay Action Button */}
+                {/* Bottom Action Section */}
+                <div className="pt-8 sm:pt-6">
                     <button
                         type="button"
                         onClick={handleContinue}
                         disabled={isLoading}
-                        className="w-full bg-brand-dark text-white py-3.5 sm:py-4 rounded-xl font-bold text-sm hover:bg-black transition-all disabled:opacity-50 flex justify-center items-center gap-2 shadow-sm hover:shadow-md active:scale-[0.99] cursor-pointer"
+                        className="w-full bg-brand-dark text-white py-4 rounded-2xl font-bold text-sm sm:text-base hover:bg-black transition-all disabled:opacity-50 flex justify-center items-center gap-2 shadow-md hover:shadow-lg active:scale-[0.99] cursor-pointer"
                     >
                         {isLoading ? (
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         ) : selected === 'card' ? (
                             <>
                                 <span>Continue to Checkout</span>
@@ -221,24 +243,14 @@ export default function GatewayPay({ session, merchant }) {
                         )}
                     </button>
 
-                    {/* Footer Cancel & Security Badges */}
-                    <div className="mt-5 pt-4 border-t border-brand-border flex items-center justify-between text-xs text-gray-400">
-                        {session.cancel_url ? (
-                            <a href={session.cancel_url} className="text-gray-500 hover:text-brand-primary font-medium text-[11px]">
-                                ← Cancel and return
-                            </a>
-                        ) : (
-                            <span className="text-[10px] text-gray-400">Secure 256-bit SSL</span>
-                        )}
-
-                        <div className="flex items-center gap-2 text-[10px] text-gray-400">
-                            <span>Safaricom</span>
-                            <span>•</span>
-                            <span>Mastercard</span>
-                        </div>
+                    {/* Subtle Trust Footer */}
+                    <div className="mt-4 text-center">
+                        <p className="text-[10px] text-gray-400 font-medium">
+                            Secured by Evopay • PCI-DSS & 256-bit SSL Compliant
+                        </p>
                     </div>
                 </div>
             </div>
-        </MainLayout>
+        </div>
     );
 }
