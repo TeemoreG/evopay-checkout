@@ -145,158 +145,184 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
             <Head title="Evopay Platform Admin — Merchants" />
 
             {/* Top Header & Navigation */}
-            <div className="mb-8 flex flex-wrap justify-between items-end gap-4">
+            <div className="mb-8 flex flex-wrap justify-between items-center gap-4">
                 <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-brand-primary">
-                        Evopay Platform Admin
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-brand-primary">
+                        Platform Admin
                     </p>
-                    <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-dark mt-1 tracking-tight">
-                        Merchants & Gateway Overview
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-dark mt-0.5 tracking-tight">
+                        Merchants
                     </h1>
-                    <p className="text-gray-500 mt-1 text-sm">
-                        Onboard businesses, manage portal credentials, and monitor live gateway revenue.
-                    </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2">
                     <button
                         type="button"
                         onClick={() => {
                             setError(null);
                             setOnboardOpen(true);
                         }}
-                        className="bg-brand-primary text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-brand-secondary transition shadow-xs cursor-pointer"
+                        className="inline-flex items-center gap-1.5 bg-brand-primary text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-brand-secondary transition shadow-xs cursor-pointer"
                     >
-                        + Onboard Merchant
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        <span>Onboard</span>
                     </button>
+
                     <Link
                         href="/admin/transactions"
-                        className="bg-brand-dark text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-black transition"
+                        className="inline-flex items-center gap-1.5 bg-brand-dark text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-black transition"
                     >
-                        Transactions
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+                        </svg>
+                        <span>Transactions</span>
                     </Link>
+
                     <Link
                         href="/admin/demo-shop"
-                        className="bg-white border border-brand-border text-brand-dark px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-50 transition"
+                        className="inline-flex items-center gap-1.5 bg-white border border-brand-border text-brand-dark px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-50 transition"
+                        title="Demo Shop Admin"
                     >
-                        Demo Shop
+                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z" />
+                        </svg>
+                        <span className="hidden sm:inline">Demo Shop</span>
                     </Link>
+
                     <button
                         type="button"
                         onClick={() => router.post('/logout')}
-                        className="bg-white border border-brand-border text-gray-600 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-50 transition cursor-pointer"
+                        className="inline-flex items-center justify-center bg-white border border-brand-border text-gray-600 p-2.5 sm:px-3.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-50 transition cursor-pointer"
+                        title="Logout"
                     >
-                        Logout
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                        </svg>
+                        <span className="hidden sm:inline ml-1.5">Logout</span>
                     </button>
                 </div>
             </div>
 
-            {/* Platform KPI Strip */}
+            {/* Platform KPI Strip with SVG Icons */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white rounded-2xl border border-brand-border p-5 shadow-xs">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Active Merchants</p>
-                    <p className="text-2xl sm:text-3xl font-extrabold text-brand-dark mt-1.5">
-                        {activeCount}
-                        <span className="text-xs font-semibold text-gray-400 ml-1.5">/ {stats.merchants_count ?? merchants.length} total</span>
-                    </p>
-                </div>
-
-                <div className="bg-white rounded-2xl border border-brand-border p-5 shadow-xs">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Gateway Volume</p>
-                    <p className="text-2xl sm:text-3xl font-extrabold text-brand-primary mt-1.5">
-                        {formatKES(stats.paid_volume)}
-                    </p>
-                </div>
-
-                <div className="bg-white rounded-2xl border border-brand-border p-5 shadow-xs">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Est. Platform Fees</p>
-                    <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600 mt-1.5">
-                        {formatKES(estimatedCommission)}
-                    </p>
-                </div>
-
-                <div className="bg-white rounded-2xl border border-brand-border p-5 shadow-xs">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Session Conversion</p>
-                    <p className="text-2xl sm:text-3xl font-extrabold text-brand-dark mt-1.5">
-                        {conversionRate}%
-                        <span className="text-xs font-semibold text-gray-400 ml-1.5">
-                            ({stats.paid_count ?? 0}/{stats.total_sessions ?? 0})
-                        </span>
-                    </p>
-                </div>
+                <KpiCard
+                    label="Active Merchants"
+                    value={activeCount}
+                    sub={`/ ${stats.merchants_count ?? merchants.length}`}
+                    iconBg="bg-orange-50 text-brand-primary"
+                    icon={
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                        </svg>
+                    }
+                />
+                <KpiCard
+                    label="Gateway Volume"
+                    value={formatKES(stats.paid_volume)}
+                    valueColor="text-brand-primary"
+                    iconBg="bg-brand-primary/10 text-brand-primary"
+                    icon={
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+                        </svg>
+                    }
+                />
+                <KpiCard
+                    label="Est. Platform Fees"
+                    value={formatKES(estimatedCommission)}
+                    valueColor="text-emerald-600"
+                    iconBg="bg-emerald-50 text-emerald-600"
+                    icon={
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+                        </svg>
+                    }
+                />
+                <KpiCard
+                    label="Conversion"
+                    value={`${conversionRate}%`}
+                    sub={`${stats.paid_count ?? 0}/${stats.total_sessions ?? 0}`}
+                    iconBg="bg-blue-50 text-blue-600"
+                    icon={
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    }
+                />
             </div>
 
             {/* Flash Banner */}
             {bannerMessage && (
                 <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-center justify-between gap-3 text-sm font-semibold text-emerald-800">
-                    <span>{bannerMessage}</span>
+                    <div className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>{bannerMessage}</span>
+                    </div>
                     <button
                         type="button"
                         onClick={() => setBannerMessage(null)}
-                        className="text-xs font-bold text-emerald-700 hover:underline cursor-pointer"
+                        className="text-emerald-700 hover:text-emerald-900 p-1 cursor-pointer"
+                        aria-label="Dismiss"
                     >
-                        Dismiss
+                        <CloseIcon />
                     </button>
                 </div>
             )}
 
-            {/* Newly Created Credentials Banner (Shown once with Copy Buttons) */}
+            {/* Newly Created Credentials Banner */}
             {createdCreds && (
-                <div className="mb-6 rounded-2xl border-2 border-emerald-500 bg-emerald-50/90 p-5 sm:p-6 shadow-sm">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                            <span className="text-[10px] font-extrabold uppercase tracking-wider bg-emerald-600 text-white px-2.5 py-0.5 rounded-full">
-                                Copy Now · Shown Once
-                            </span>
-                            <h2 className="text-lg font-extrabold text-emerald-950 mt-2">
-                                {createdCreds.merchant.name} is ready for integration
-                            </h2>
+                <div className="mb-6 rounded-2xl border-2 border-emerald-500 bg-emerald-50/90 p-5 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 className="text-base font-extrabold text-emerald-950">
+                                    {createdCreds.merchant.name}
+                                </h2>
+                                <p className="text-[11px] font-semibold text-emerald-700">
+                                    Copy secret key now — shown once
+                                </p>
+                            </div>
                         </div>
                         <button
                             type="button"
                             onClick={() => setCreatedCreds(null)}
-                            className="text-xs font-bold text-emerald-800 hover:underline cursor-pointer"
+                            className="text-emerald-800 hover:text-emerald-950 p-1 cursor-pointer"
+                            aria-label="Close"
                         >
-                            Close
+                            <CloseIcon />
                         </button>
                     </div>
 
                     <div className="mt-4 grid sm:grid-cols-3 gap-3 text-xs">
-                        <div className="bg-white rounded-xl border border-emerald-200 p-3">
-                            <p className="text-[10px] font-bold uppercase text-gray-400">Portal Login Email</p>
-                            <p className="font-semibold text-brand-dark mt-1 truncate">{createdCreds.login_email}</p>
-                            <button
-                                type="button"
-                                onClick={() => copyValue('email', createdCreds.login_email)}
-                                className="mt-2 text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
-                            >
-                                {copiedField === 'email' ? 'Copied!' : 'Copy Email'}
-                            </button>
-                        </div>
-
-                        <div className="bg-white rounded-xl border border-emerald-200 p-3">
-                            <p className="text-[10px] font-bold uppercase text-gray-400">Public Key</p>
-                            <p className="font-mono text-brand-dark mt-1 truncate">{createdCreds.public_key}</p>
-                            <button
-                                type="button"
-                                onClick={() => copyValue('pk', createdCreds.public_key)}
-                                className="mt-2 text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
-                            >
-                                {copiedField === 'pk' ? 'Copied!' : 'Copy Public Key'}
-                            </button>
-                        </div>
-
-                        <div className="bg-white rounded-xl border border-emerald-200 p-3">
-                            <p className="text-[10px] font-bold uppercase text-gray-400">Secret Key</p>
-                            <p className="font-mono font-bold text-brand-dark mt-1 truncate">{createdCreds.secret_key}</p>
-                            <button
-                                type="button"
-                                onClick={() => copyValue('sk', createdCreds.secret_key)}
-                                className="mt-2 text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
-                            >
-                                {copiedField === 'sk' ? 'Copied!' : 'Copy Secret Key'}
-                            </button>
-                        </div>
+                        <CopyBox
+                            label="Portal Login"
+                            value={createdCreds.login_email}
+                            copied={copiedField === 'email'}
+                            onCopy={() => copyValue('email', createdCreds.login_email)}
+                        />
+                        <CopyBox
+                            label="Public Key"
+                            value={createdCreds.public_key}
+                            mono
+                            copied={copiedField === 'pk'}
+                            onCopy={() => copyValue('pk', createdCreds.public_key)}
+                        />
+                        <CopyBox
+                            label="Secret Key"
+                            value={createdCreds.secret_key}
+                            mono
+                            copied={copiedField === 'sk'}
+                            onCopy={() => copyValue('sk', createdCreds.secret_key)}
+                        />
                     </div>
                 </div>
             )}
@@ -313,7 +339,7 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                             key={tab.key}
                             type="button"
                             onClick={() => setStatusFilter(tab.key)}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                                 statusFilter === tab.key
                                     ? 'bg-brand-dark text-white'
                                     : 'bg-white border border-brand-border text-gray-600 hover:bg-gray-50'
@@ -324,29 +350,34 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                     ))}
                 </div>
 
-                <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search business name, slug, or email..."
-                    className="w-full sm:w-80 bg-white border border-brand-border rounded-xl px-4 py-2.5 text-sm"
-                />
+                <div className="relative w-full sm:w-80">
+                    <svg className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                    </svg>
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search merchant or email..."
+                        className="w-full bg-white border border-brand-border rounded-xl pl-10 pr-4 py-2.5 text-sm"
+                    />
+                </div>
             </div>
 
-            {/* Full-Width Merchants Directory Table */}
+            {/* Clean Icon-Driven Merchants Table */}
             <div className="bg-white rounded-2xl border border-brand-border shadow-xs overflow-hidden">
                 {filteredMerchants.length === 0 ? (
                     <div className="p-12 text-center">
-                        <p className="text-sm font-semibold text-gray-500">No merchants match your filter.</p>
+                        <p className="text-sm font-semibold text-gray-500">No merchants found.</p>
                         <button
                             type="button"
                             onClick={() => {
                                 setSearch('');
                                 setStatusFilter('all');
                             }}
-                            className="mt-3 text-xs font-bold text-brand-primary hover:underline cursor-pointer"
+                            className="mt-2 text-xs font-bold text-brand-primary hover:underline cursor-pointer"
                         >
-                            Clear filters
+                            Reset filters
                         </button>
                     </div>
                 ) : (
@@ -355,9 +386,9 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                             <thead className="bg-brand-light border-b border-brand-border text-[11px] font-bold uppercase tracking-wider text-gray-500">
                                 <tr>
                                     <th className="py-3.5 px-5">Merchant</th>
-                                    <th className="py-3.5 px-4">Portal Access</th>
-                                    <th className="py-3.5 px-4">Volume & Sessions</th>
-                                    <th className="py-3.5 px-4">Fee / Est. Earned</th>
+                                    <th className="py-3.5 px-4">Portal</th>
+                                    <th className="py-3.5 px-4">Volume</th>
+                                    <th className="py-3.5 px-4">Fee</th>
                                     <th className="py-3.5 px-4">Status</th>
                                     <th className="py-3.5 px-5 text-right">Actions</th>
                                 </tr>
@@ -365,85 +396,84 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                             <tbody className="divide-y divide-brand-border">
                                 {filteredMerchants.map((m) => {
                                     const merchantFeeEarned = (Number(m.paid_volume || 0) * Number(m.fee_percent || 0)) / 100;
-                                    const mRate = m.checkout_sessions_count > 0
-                                        ? Math.round((m.paid_count / m.checkout_sessions_count) * 100)
-                                        : 0;
 
                                     return (
                                         <tr key={m.id} className="hover:bg-gray-50/70 transition">
-                                            <td className="py-4 px-5">
+                                            <td className="py-3.5 px-5">
                                                 <div className="flex items-center gap-3">
                                                     {m.logo_url ? (
                                                         <img
                                                             src={m.logo_url}
                                                             alt={m.name}
-                                                            className="w-10 h-10 rounded-xl object-contain bg-white border border-brand-border p-1 flex-shrink-0"
+                                                            className="w-9 h-9 rounded-xl object-contain bg-white border border-brand-border p-1 flex-shrink-0"
                                                         />
                                                     ) : (
-                                                        <div className="w-10 h-10 rounded-xl bg-brand-primary/10 text-brand-primary font-extrabold text-xs flex items-center justify-center flex-shrink-0">
+                                                        <div className="w-9 h-9 rounded-xl bg-brand-primary/10 text-brand-primary font-extrabold text-xs flex items-center justify-center flex-shrink-0">
                                                             {m.name.slice(0, 2).toUpperCase()}
                                                         </div>
                                                     )}
-                                                    <div>
-                                                        <p className="font-bold text-brand-dark">{m.name}</p>
-                                                        <p className="text-xs text-gray-400 font-mono">{m.slug}</p>
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-brand-dark truncate">{m.name}</p>
+                                                        <p className="text-[11px] text-gray-400 font-mono truncate">{m.slug}</p>
                                                     </div>
                                                 </div>
                                             </td>
 
-                                            <td className="py-4 px-4">
-                                                {m.has_login ? (
-                                                    <div>
-                                                        <span className="inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                                                            Portal Active
-                                                        </span>
-                                                        <p className="text-xs text-gray-600 mt-1">{m.login_email}</p>
-                                                    </div>
-                                                ) : (
-                                                    <div>
-                                                        <span className="inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                                                            No Login Yet
-                                                        </span>
-                                                        <p className="text-xs text-gray-400 mt-1">{m.email || 'CLI created'}</p>
-                                                    </div>
-                                                )}
+                                            <td className="py-3.5 px-4">
+                                                <div className="flex items-center gap-2">
+                                                    <span
+                                                        className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                                            m.has_login ? 'bg-blue-500' : 'bg-amber-400'
+                                                        }`}
+                                                        title={m.has_login ? 'Portal Active' : 'No Login Configured'}
+                                                    ></span>
+                                                    <span className="text-xs text-gray-600 truncate max-w-[180px]">
+                                                        {m.login_email || m.email || '—'}
+                                                    </span>
+                                                </div>
                                             </td>
 
-                                            <td className="py-4 px-4">
-                                                <p className="font-extrabold text-brand-dark">{formatKES(m.paid_volume)}</p>
-                                                <p className="text-xs text-gray-500 mt-0.5">
-                                                    {m.paid_count}/{m.checkout_sessions_count} paid ({mRate}%)
+                                            <td className="py-3.5 px-4 whitespace-nowrap">
+                                                <p className="font-bold text-brand-dark">{formatKES(m.paid_volume)}</p>
+                                                <p className="text-[11px] text-gray-400">
+                                                    {m.paid_count}/{m.checkout_sessions_count} paid
                                                 </p>
                                             </td>
 
-                                            <td className="py-4 px-4">
+                                            <td className="py-3.5 px-4 whitespace-nowrap">
                                                 <p className="font-semibold text-brand-dark">{m.fee_percent}%</p>
-                                                <p className="text-xs text-emerald-700 font-medium mt-0.5">
-                                                    {formatKES(merchantFeeEarned)} earned
+                                                <p className="text-[11px] text-emerald-600 font-medium">
+                                                    {formatKES(merchantFeeEarned)}
                                                 </p>
                                             </td>
 
-                                            <td className="py-4 px-4">
+                                            <td className="py-3.5 px-4">
                                                 <span
-                                                    className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border ${
+                                                    className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border ${
                                                         m.status === 'active'
                                                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                                             : 'bg-red-50 text-red-700 border-red-200'
                                                     }`}
                                                 >
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${m.status === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
                                                     {m.status}
                                                 </span>
                                             </td>
 
-                                            <td className="py-4 px-5 text-right">
-                                                <div className="inline-flex items-center gap-3 text-xs font-bold">
+                                            <td className="py-3.5 px-5 text-right">
+                                                <div className="inline-flex items-center gap-1.5">
                                                     <button
                                                         type="button"
                                                         onClick={() => setInspectTarget(m)}
-                                                        className="text-gray-600 hover:text-brand-dark cursor-pointer"
+                                                        title="View Details"
+                                                        className="p-2 rounded-lg border border-brand-border bg-white text-gray-600 hover:text-brand-dark hover:bg-gray-50 transition cursor-pointer"
                                                     >
-                                                        Details
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        </svg>
                                                     </button>
+
                                                     <button
                                                         type="button"
                                                         onClick={() => {
@@ -452,18 +482,33 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                                                             setLoginPassword('');
                                                             setLoginError(null);
                                                         }}
-                                                        className="text-brand-dark hover:underline cursor-pointer"
+                                                        title={m.has_login ? 'Reset Portal Login' : 'Create Portal Login'}
+                                                        className="p-2 rounded-lg border border-brand-border bg-white text-gray-600 hover:text-brand-dark hover:bg-gray-50 transition cursor-pointer"
                                                     >
-                                                        {m.has_login ? 'Reset Login' : '+ Add Login'}
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                                                        </svg>
                                                     </button>
+
                                                     <button
                                                         type="button"
                                                         onClick={() => handleToggleStatus(m)}
-                                                        className={`hover:underline cursor-pointer ${
-                                                            m.status === 'active' ? 'text-red-600' : 'text-emerald-600'
+                                                        title={m.status === 'active' ? 'Suspend Merchant' : 'Activate Merchant'}
+                                                        className={`p-2 rounded-lg border transition cursor-pointer ${
+                                                            m.status === 'active'
+                                                                ? 'border-red-200 bg-red-50/50 text-red-600 hover:bg-red-100'
+                                                                : 'border-emerald-200 bg-emerald-50/50 text-emerald-600 hover:bg-emerald-100'
                                                         }`}
                                                     >
-                                                        {m.status === 'active' ? 'Suspend' : 'Activate'}
+                                                        {m.status === 'active' ? (
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                                            </svg>
+                                                        ) : (
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                        )}
                                                     </button>
                                                 </div>
                                             </td>
@@ -482,15 +527,15 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                     <div className="bg-white rounded-3xl border border-brand-border p-6 sm:p-8 max-w-lg w-full shadow-2xl">
                         <div className="flex items-center justify-between pb-4 border-b border-brand-border mb-5">
                             <div>
-                                <h2 className="text-lg font-extrabold text-brand-dark">Onboard New Merchant</h2>
-                                <p className="text-xs text-gray-500 mt-0.5">Creates business profile, API keys, and portal login.</p>
+                                <h2 className="text-lg font-extrabold text-brand-dark">Onboard Merchant</h2>
+                                <p className="text-xs text-gray-500 mt-0.5">Generates API keys and portal credentials.</p>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setOnboardOpen(false)}
-                                className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 font-bold text-xs cursor-pointer"
+                                className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center cursor-pointer"
                             >
-                                ✕
+                                <CloseIcon />
                             </button>
                         </div>
 
@@ -605,14 +650,14 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                     <div className="bg-white rounded-3xl border border-brand-border p-6 sm:p-7 max-w-md w-full shadow-2xl">
                         <div className="flex items-center justify-between pb-4 border-b border-brand-border mb-4">
                             <h3 className="font-extrabold text-base text-brand-dark">
-                                {loginTarget.has_login ? 'Reset' : 'Create'} Portal Login · {loginTarget.name}
+                                {loginTarget.has_login ? 'Reset' : 'Create'} Login · {loginTarget.name}
                             </h3>
                             <button
                                 type="button"
                                 onClick={() => setLoginTarget(null)}
-                                className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 text-xs font-bold cursor-pointer"
+                                className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center cursor-pointer"
                             >
-                                ✕
+                                <CloseIcon />
                             </button>
                         </div>
 
@@ -679,45 +724,23 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                             <button
                                 type="button"
                                 onClick={() => setInspectTarget(null)}
-                                className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 text-xs font-bold cursor-pointer"
+                                className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center cursor-pointer"
                             >
-                                ✕
+                                <CloseIcon />
                             </button>
                         </div>
 
                         <div className="space-y-3 text-xs">
-                            <div className="flex justify-between py-2 border-b border-brand-border/60">
-                                <span className="text-gray-500">Status</span>
-                                <span className="font-bold uppercase text-brand-dark">{inspectTarget.status}</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-brand-border/60">
-                                <span className="text-gray-500">Contact Email</span>
-                                <span className="font-semibold text-brand-dark">{inspectTarget.email || '—'}</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-brand-border/60">
-                                <span className="text-gray-500">Portal Login</span>
-                                <span className="font-semibold text-brand-dark">{inspectTarget.login_email || 'Not configured'}</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-brand-border/60">
-                                <span className="text-gray-500">Gross Paid Volume</span>
-                                <span className="font-bold text-brand-primary">{formatKES(inspectTarget.paid_volume)}</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-brand-border/60">
-                                <span className="text-gray-500">Sessions (Paid / Total)</span>
-                                <span className="font-semibold text-brand-dark">
-                                    {inspectTarget.paid_count} / {inspectTarget.checkout_sessions_count}
-                                </span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-brand-border/60">
-                                <span className="text-gray-500">Platform Fee Rate</span>
-                                <span className="font-semibold text-brand-dark">{inspectTarget.fee_percent}%</span>
-                            </div>
-                            <div className="flex justify-between py-2">
-                                <span className="text-gray-500">Joined</span>
-                                <span className="font-medium text-brand-dark">
-                                    {inspectTarget.created_at ? new Date(inspectTarget.created_at).toLocaleDateString('en-KE') : '—'}
-                                </span>
-                            </div>
+                            <DetailRow label="Status" value={inspectTarget.status.toUpperCase()} bold />
+                            <DetailRow label="Contact Email" value={inspectTarget.email || '—'} />
+                            <DetailRow label="Portal Login" value={inspectTarget.login_email || 'Not configured'} />
+                            <DetailRow label="Gross Volume" value={formatKES(inspectTarget.paid_volume)} highlight />
+                            <DetailRow label="Sessions" value={`${inspectTarget.paid_count} / ${inspectTarget.checkout_sessions_count} paid`} />
+                            <DetailRow label="Fee Rate" value={`${inspectTarget.fee_percent}%`} />
+                            <DetailRow
+                                label="Joined"
+                                value={inspectTarget.created_at ? new Date(inspectTarget.created_at).toLocaleDateString('en-KE') : '—'}
+                            />
                         </div>
 
                         <div className="mt-6 flex gap-2.5">
@@ -739,5 +762,72 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                 </div>
             )}
         </MainLayout>
+    );
+}
+
+function KpiCard({ label, value, sub, icon, iconBg, valueColor = 'text-brand-dark' }) {
+    return (
+        <div className="bg-white rounded-2xl border border-brand-border p-4 sm:p-5 shadow-xs flex items-start justify-between gap-3">
+            <div className="min-w-0">
+                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 truncate">
+                    {label}
+                </p>
+                <p className={`text-xl sm:text-2xl font-extrabold mt-1.5 truncate ${valueColor}`}>
+                    {value}
+                    {sub && <span className="text-xs font-semibold text-gray-400 ml-1">{sub}</span>}
+                </p>
+            </div>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+                {icon}
+            </div>
+        </div>
+    );
+}
+
+function CopyBox({ label, value, mono = false, copied, onCopy }) {
+    return (
+        <div className="bg-white rounded-xl border border-emerald-200 p-3 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase text-gray-400">{label}</p>
+                <p className={`${mono ? 'font-mono font-bold' : 'font-semibold'} text-brand-dark mt-0.5 truncate`}>
+                    {value}
+                </p>
+            </div>
+            <button
+                type="button"
+                onClick={onCopy}
+                className="p-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 flex-shrink-0 cursor-pointer"
+                title={`Copy ${label}`}
+            >
+                {copied ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+                    </svg>
+                )}
+            </button>
+        </div>
+    );
+}
+
+function DetailRow({ label, value, bold = false, highlight = false }) {
+    return (
+        <div className="flex justify-between py-2 border-b border-brand-border/60 last:border-b-0">
+            <span className="text-gray-500">{label}</span>
+            <span className={highlight ? 'font-bold text-brand-primary' : bold ? 'font-bold text-brand-dark' : 'font-semibold text-brand-dark'}>
+                {value}
+            </span>
+        </div>
+    );
+}
+
+function CloseIcon() {
+    return (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
     );
 }
