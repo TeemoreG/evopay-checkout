@@ -216,8 +216,6 @@ export default function CheckoutPay({ order }) {
                         <span>•</span>
                         <span>Mastercard MPGS</span>
                         <span>•</span>
-                        <span>Airtel Money</span>
-                        <span>•</span>
                         <span>Evopay</span>
                     </div>
 
