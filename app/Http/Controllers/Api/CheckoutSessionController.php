@@ -10,14 +10,26 @@ use Illuminate\Support\Facades\Validator;
 
 class CheckoutSessionController extends Controller
 {
-    /**
-     * POST /api/v1/checkout/sessions
-     * Create a new hosted checkout session for an authenticated merchant.
-     */
     public function store(Request $request): JsonResponse
     {
         $merchant = $request->attributes->get('merchant');
         $apiKey = $request->attributes->get('api_key');
+        
+        $idempotencyKey = $request->header('Idempotency-Key');
+
+        if ($idempotencyKey) {
+            $existingSession = CheckoutSession::where('merchant_id', $merchant->id)
+                ->where('idempotency_key', $idempotencyKey)
+                ->first();
+
+            if ($existingSession) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Returning existing checkout session.',
+                    'data' => $this->formatSessionResponse($existingSession),
+                ]);
+            }
+        }
 
         $validator = Validator::make($request->all(), [
             'amount' => 'required|numeric|min:1',
@@ -32,11 +44,6 @@ class CheckoutSessionController extends Controller
             'webhook_url' => 'nullable|url|max:2048',
             'metadata' => 'nullable|array',
             'expires_in_minutes' => 'nullable|integer|min:5|max:1440',
-        ], [
-            'amount.required' => 'Payment amount is required.',
-            'amount.min' => 'Payment amount must be at least 1.00.',
-            'merchant_reference.required' => 'A unique order/invoice reference from your system is required.',
-            'customer.email.email' => 'Customer email format is invalid.',
         ]);
 
         if ($validator->fails()) {
@@ -49,10 +56,11 @@ class CheckoutSessionController extends Controller
 
         $mode = $apiKey->mode ?? 'live';
         $token = CheckoutSession::generateToken($mode);
-        $expiresInMinutes = (int) ($request->input('expires_in_minutes', 120)); // default 2 hours
+        $expiresInMinutes = (int) ($request->input('expires_in_minutes', 120));
 
         $session = CheckoutSession::create([
             'token' => $token,
+            'idempotency_key' => $idempotencyKey,
             'merchant_id' => $merchant->id,
             'merchant_reference' => (string) $request->input('merchant_reference'),
             'amount' => round((float) $request->input('amount'), 2),
@@ -66,41 +74,36 @@ class CheckoutSessionController extends Controller
             'expires_at' => now()->addMinutes($expiresInMinutes),
         ]);
 
-        $checkoutUrl = url("/c/{$token}");
-
         return response()->json([
             'status' => 'success',
             'message' => 'Checkout session initialized successfully.',
-            'data' => [
-                'token' => $session->token,
-                'checkout_url' => $checkoutUrl,
-                'merchant_reference' => $session->merchant_reference,
-                'amount' => $session->amount,
-                'currency' => $session->currency,
-                'status' => $session->status,
-                'expires_at' => $session->expires_at?->toIso8601String(),
-                'created_at' => $session->created_at->toIso8601String(),
-            ],
+            'data' => $this->formatSessionResponse($session),
         ], 201);
     }
 
-    /**
-     * GET /api/v1/checkout/sessions/{token}
-     * Verify payment status using the session token.
-     */
+    private function formatSessionResponse(CheckoutSession $session): array
+    {
+        return [
+            'token' => $session->token,
+            'checkout_url' => url("/c/{$session->token}"),
+            'merchant_reference' => $session->merchant_reference,
+            'amount' => $session->amount,
+            'currency' => $session->currency,
+            'status' => $session->status,
+            'expires_at' => $session->expires_at?->toIso8601String(),
+            'created_at' => $session->created_at->toIso8601String(),
+        ];
+    }
+
     public function show(Request $request, string $token): JsonResponse
     {
         $merchant = $request->attributes->get('merchant');
-
         $session = CheckoutSession::where('token', $token)
             ->where('merchant_id', $merchant->id)
             ->first();
 
         if (!$session) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Checkout session not found.',
-            ], 404);
+            return response()->json(['status' => 'error', 'message' => 'Checkout session not found.'], 404);
         }
 
         return response()->json([
@@ -122,24 +125,16 @@ class CheckoutSessionController extends Controller
         ]);
     }
 
-    /**
-     * GET /api/v1/checkout/sessions/reference/{reference}
-     * Verify payment status using the merchant's internal order reference.
-     */
     public function showByReference(Request $request, string $reference): JsonResponse
     {
         $merchant = $request->attributes->get('merchant');
-
         $session = CheckoutSession::where('merchant_reference', $reference)
             ->where('merchant_id', $merchant->id)
             ->latest()
             ->first();
 
         if (!$session) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'No session found for this reference.',
-            ], 404);
+            return response()->json(['status' => 'error', 'message' => 'No session found for this reference.'], 404);
         }
 
         return response()->json([

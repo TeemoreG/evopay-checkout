@@ -10,6 +10,7 @@ class CheckoutSession extends Model
 {
     protected $fillable = [
         'token',
+        'idempotency_key', // Added this
         'merchant_id',
         'merchant_reference',
         'amount',
