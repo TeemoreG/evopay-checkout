@@ -342,8 +342,8 @@ class HostedCheckoutController extends Controller
         $expectedSecret = env('MPGS_WEBHOOK_SECRET');
         $incomingSecret = (string) $request->header('X-Notification-Secret', '');
 
-        if ($expectedSecret && !hash_equals((string) $expectedSecret, $incomingSecret)) {
-            Log::warning('MPGS Webhook rejected: Invalid X-Notification-Secret header.');
+        if (empty($expectedSecret) || !hash_equals((string) $expectedSecret, $incomingSecret)) {
+            Log::warning('MPGS Webhook rejected: Missing or invalid X-Notification-Secret header.');
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
@@ -354,7 +354,7 @@ class HostedCheckoutController extends Controller
             return response()->json(['status' => 'ignored'], 200);
         }
 
-        $session = CheckoutSession::where('token', $orderId)->first();
+        $session = CheckoutSession::with('merchant')->where('token', $orderId)->first();
         if (!$session || $session->isPaid()) {
             return response()->json(['status' => 'ok'], 200);
         }
