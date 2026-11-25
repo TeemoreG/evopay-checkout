@@ -8,12 +8,23 @@ use Inertia\Inertia;
 
 class AuthController extends Controller
 {
+    private function redirectForUser($user)
+    {
+        if ($user->isAdmin()) {
+            return redirect()->intended(route('admin.index'));
+        }
+
+        if ($user->isTransporter()) {
+            return redirect()->intended(route('transporter.dashboard'));
+        }
+
+        return redirect()->intended(route('merchant.dashboard'));
+    }
+
     public function showLogin()
     {
         if (Auth::check()) {
-            return Auth::user()->isAdmin()
-                ? redirect()->route('admin.index')
-                : redirect()->route('merchant.dashboard');
+            return $this->redirectForUser(Auth::user());
         }
 
         return Inertia::render('Auth/Login');
@@ -45,9 +56,17 @@ class AuthController extends Controller
             ])->onlyInput('email');
         }
 
-        return $user->isAdmin()
-            ? redirect()->intended(route('admin.index'))
-            : redirect()->intended(route('merchant.dashboard'));
+        if ($user->isTransporter() && (!$user->transporter || $user->transporter->status !== 'approved')) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors([
+                'email' => 'Your transporter account is currently pending review or suspended.',
+            ])->onlyInput('email');
+        }
+
+        return $this->redirectForUser($user);
     }
 
     public function logout(Request $request)

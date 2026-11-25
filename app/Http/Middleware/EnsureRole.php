@@ -24,9 +24,15 @@ class EnsureRole
                 return response()->json(['message' => 'Forbidden.'], 403);
             }
 
-            return $user->isAdmin()
-                ? redirect()->route('admin.index')
-                : redirect()->route('merchant.dashboard');
+            if ($user->isAdmin()) {
+                return redirect()->route('admin.index');
+            }
+
+            if ($user->isTransporter()) {
+                return redirect()->route('transporter.dashboard');
+            }
+
+            return redirect()->route('merchant.dashboard');
         }
 
         if ($user->isMerchant()) {
@@ -38,6 +44,19 @@ class EnsureRole
 
                 return redirect()->route('login')->withErrors([
                     'email' => 'Your merchant account is inactive or suspended.',
+                ]);
+            }
+        }
+
+        if ($user->isTransporter()) {
+            $transporter = $user->transporter;
+            if (!$transporter || $transporter->status !== 'approved') {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return redirect()->route('login')->withErrors([
+                    'email' => 'Your transporter account is pending review or suspended.',
                 ]);
             }
         }
