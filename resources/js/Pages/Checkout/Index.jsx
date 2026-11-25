@@ -397,7 +397,7 @@ export default function CheckoutIndex({
                                     onClick={() => setShowTransporterModal(true)}
                                     className="bg-brand-dark text-white text-xs font-bold px-3.5 py-2 rounded-xl hover:bg-black transition flex-shrink-0 cursor-pointer"
                                 >
-                                    Browse Transporters ({transporters.length})
+                                    Browse Transporters
                                 </button>
                             </div>
                         )}
