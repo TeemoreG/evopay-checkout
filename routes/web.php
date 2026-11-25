@@ -121,6 +121,7 @@ Route::post('/checkout/distance', [CheckoutController::class, 'getDistance'])
     ->middleware('throttle:public-api')
     ->name('checkout.distance');
 Route::get('/checkout/return', [CheckoutController::class, 'gatewayReturn'])->name('checkout.return');
+Route::get('/checkout/cancel', [CheckoutController::class, 'gatewayCancel'])->name('checkout.cancel');
 Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
 Route::post('/api/shop/webhook', [CheckoutController::class, 'shopWebhook'])->name('shop.evopay.webhook');
 

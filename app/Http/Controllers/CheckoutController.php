@@ -197,37 +197,53 @@ class CheckoutController extends Controller
                     'error' => 'The selected transporter was just booked by another customer or is currently unavailable. Please pick another driver.',
                 ], 422);
             }
-
-            $base = (float) $chosenTransporter->base_fare;
-            $wFee = $totalWeight * (float) $chosenTransporter->rate_per_kg;
-            $dFee = $distanceKm > 0 ? ceil($distanceKm) * (float) $chosenTransporter->rate_per_km : 0;
-            $estimatedTransportFee = round($base + $wFee + dFee, 2);
         }
 
         // Customer pays for materials online; transport fee is paid to the driver on site
         $total = round($verifiedSubtotal, 2);
 
-        // 1. Create Shop Order locally
-        $order = Order::create([
-            'order_number' => 'ORD-' . strtoupper(Str::random(8)),
-            'total_amount' => $total,
-            'status' => 'pending',
-            'payment_method' => 'evopay_gateway',
-            'items' => $verifiedItems,
-            'customer' => $data['customer'],
-            'delivery' => array_merge($data['delivery'] ?? [], [
-                'method' => $data['delivery_method'],
-                'fee' => 0.00, // Transport fee paid on arrival
-                'distance_km' => round($distanceKm, 2),
-                'total_weight_kg' => round($totalWeight, 2),
-                'estimated_transport_fee' => $estimatedTransportFee,
-                'transporter_id' => $chosenTransporter?->id,
-                'transporter_name' => $chosenTransporter?->name,
-                'transporter_phone' => $chosenTransporter?->phone,
-                'transporter_vehicle' => $chosenTransporter?->vehicle_type,
-                'transporter_plate' => $chosenTransporter?->plate_number,
-            ]),
-        ]);
+        try {
+            if ($chosenTransporter) {
+                $freeRadiusKm = (float) Setting::get('free_radius_km', 3);
+                $billableKm = $distanceKm > $freeRadiusKm ? ceil($distanceKm - $freeRadiusKm) : 0;
+
+                $base = (float) $chosenTransporter->base_fare;
+                $wFee = $totalWeight * (float) $chosenTransporter->rate_per_kg;
+                $dFee = $billableKm * (float) $chosenTransporter->rate_per_km;
+                $estimatedTransportFee = round($base + $wFee + $dFee, 2);
+            }
+
+            // 1. Create Shop Order locally
+            $order = Order::create([
+                'order_number' => 'ORD-' . strtoupper(Str::random(8)),
+                'total_amount' => $total,
+                'status' => 'pending',
+                'payment_method' => 'evopay_gateway',
+                'items' => $verifiedItems,
+                'customer' => $data['customer'],
+                'delivery' => array_merge($data['delivery'] ?? [], [
+                    'method' => $data['delivery_method'],
+                    'fee' => 0.00, // Transport fee paid on arrival
+                    'distance_km' => round($distanceKm, 2),
+                    'total_weight_kg' => round($totalWeight, 2),
+                    'estimated_transport_fee' => $estimatedTransportFee,
+                    'transporter_id' => $chosenTransporter?->id,
+                    'transporter_name' => $chosenTransporter?->name,
+                    'transporter_phone' => $chosenTransporter?->phone,
+                    'transporter_vehicle' => $chosenTransporter?->vehicle_type,
+                    'transporter_plate' => $chosenTransporter?->plate_number,
+                ]),
+            ]);
+        } catch (\Throwable $e) {
+            if ($chosenTransporter) {
+                $chosenTransporter->update(['is_available' => true]);
+            }
+            \Log::error('Checkout order creation error: ' . $e->getMessage());
+
+            return response()->json([
+                'error' => 'Something went wrong while setting up payment. Please try again.',
+            ], 500);
+        }
 
         // 2. Call Evopay Payment Provider API (/api/v1/checkout/sessions)
         $gatewayUrl = rtrim((string) (config('services.evopay_shop.gateway_url') ?: url('/')), '/');
@@ -246,7 +262,7 @@ class CheckoutController extends Controller
                         'email' => $data['customer']['email'] ?? null,
                     ],
                     'return_url' => route('checkout.return'),
-                    'cancel_url' => route('checkout.index', ['error' => 'Payment was cancelled. You can try again.']),
+                    'cancel_url' => route('checkout.cancel', ['order' => $order->order_number]),
                     'webhook_url' => route('shop.evopay.webhook'),
                     'metadata' => [
                         'source' => 'nyumba_cement_shop',
@@ -347,6 +363,30 @@ class CheckoutController extends Controller
             \Log::error("Shop return verification error: " . $e->getMessage());
             return redirect()->route('checkout.index', ['error' => 'Could not verify payment status.']);
         }
+    }
+
+    /**
+     * Shop Cancel URL: Cancel pending order and release reserved transporter.
+     */
+    public function gatewayCancel(Request $request)
+    {
+        $orderNumber = $request->query('order');
+        if ($orderNumber) {
+            $order = Order::where('order_number', $orderNumber)->first();
+            if ($order && $order->status === 'pending') {
+                $order->update([
+                    'status' => 'cancelled',
+                    'failure_reason' => 'Payment was cancelled by customer.',
+                ]);
+
+                $transporterId = $order->delivery['transporter_id'] ?? null;
+                if ($transporterId) {
+                    Transporter::where('id', $transporterId)->update(['is_available' => true]);
+                }
+            }
+        }
+
+        return redirect()->route('checkout.index', ['error' => 'Payment was cancelled. You can try again.']);
     }
 
     /**

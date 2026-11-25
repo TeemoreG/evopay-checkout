@@ -7,6 +7,7 @@ export default function AdminSettings({
     hq_lng,
     price_per_kg,
     price_per_km,
+    free_radius_km,
     unit_measurements = ['piece', 'bag', 'wheelbarrow', 'pickup', 'lorry', 'tonne'],
 }) {
     const [newUnit, setNewUnit] = useState('');
@@ -16,6 +17,7 @@ export default function AdminSettings({
         hq_lng: hq_lng,
         price_per_kg: price_per_kg ?? '20',
         price_per_km: price_per_km ?? '50',
+        free_radius_km: free_radius_km ?? '3',
         unit_measurements: unit_measurements,
     });
 
@@ -141,10 +143,10 @@ export default function AdminSettings({
                     <div className="bg-white rounded-2xl border border-brand-border p-6 shadow-xs">
                         <h2 className="text-base font-bold text-brand-dark mb-1">Delivery Pricing Rates</h2>
                         <p className="text-xs sm:text-sm text-gray-500 mb-5">
-                            Delivery fee formula: (Total Weight × Price per KG) + (Rounded KM × Price per KM).
+                            Delivery fee formula: (Total Weight × Price per KG) + (Max(0, Rounded KM − Free Radius) × Price per KM).
                         </p>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
                                     Price per KG (KSh)
@@ -177,6 +179,23 @@ export default function AdminSettings({
                                     required
                                 />
                                 {errors.price_per_km && <p className="text-red-500 text-xs mt-1">{errors.price_per_km}</p>}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
+                                    Free Radius (KM)
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    value={data.free_radius_km}
+                                    onChange={(e) => setData('free_radius_km', e.target.value)}
+                                    className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm border border-transparent"
+                                    placeholder="3"
+                                    required
+                                />
+                                {errors.free_radius_km && <p className="text-red-500 text-xs mt-1">{errors.free_radius_km}</p>}
                             </div>
                         </div>
                     </div>

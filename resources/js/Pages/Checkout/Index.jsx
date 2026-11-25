@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import MainLayout from '../../Layouts/MainLayout';
 import { useCart } from '../../Stores/cart';
@@ -8,7 +8,7 @@ import axios from 'axios';
 const formatKES = (v) =>
     'KSh ' + Number(v || 0).toLocaleString('en-KE', { minimumFractionDigits: 0 });
 
-export default function CheckoutIndex({ transporters = [] }) {
+export default function CheckoutIndex({ transporters = [], free_radius_km = 3 }) {
     const { items, setQty, removeItem } = useCart();
     const [isProcessing, setIsProcessing] = useState(false);
     const [paymentError, setPaymentError] = useState(null);
@@ -74,11 +74,14 @@ export default function CheckoutIndex({ transporters = [] }) {
     const totalWeight = items.reduce((acc, item) => acc + (item.qty * parseFloat(item.weight || 0)), 0);
 
     // Dynamic transport calculation using chosen driver's rate card
+    const freeRadius = Number(free_radius_km || 0);
+    const billableKm = distanceKm > freeRadius ? Math.ceil(distanceKm - freeRadius) : 0;
+
     let estimatedTransportFee = 0;
     if (form.delivery_method === 'transporter' && selectedTransporter) {
         const base = Number(selectedTransporter.base_fare || 0);
         const wFee = totalWeight * Number(selectedTransporter.rate_per_kg || 0);
-        const dFee = distanceKm > 0 ? Math.ceil(distanceKm) * Number(selectedTransporter.rate_per_km || 0) : 0;
+        const dFee = billableKm * Number(selectedTransporter.rate_per_km || 0);
         estimatedTransportFee = base + wFee + dFee;
     }
 
@@ -193,6 +196,11 @@ export default function CheckoutIndex({ transporters = [] }) {
                     error.response?.data?.error ||
                     'Something went wrong while setting up payment. Please try again.'
                 );
+                if (error.response?.status === 422) {
+                    setSelectedTransporter(null);
+                    setForm((f) => ({ ...f, delivery: { ...f.delivery, transporter_id: null } }));
+                    router.reload({ only: ['transporters'] });
+                }
             }
 
             setIsProcessing(false);
@@ -545,7 +553,7 @@ export default function CheckoutIndex({ transporters = [] }) {
                                     const isSelected = selectedTransporter?.id === t.id;
                                     const base = Number(t.base_fare || 0);
                                     const wFee = totalWeight * Number(t.rate_per_kg || 0);
-                                    const dFee = distanceKm > 0 ? Math.ceil(distanceKm) * Number(t.rate_per_km || 0) : 0;
+                                    const dFee = billableKm * Number(t.rate_per_km || 0);
                                     const est = base + wFee + dFee;
 
                                     return (
