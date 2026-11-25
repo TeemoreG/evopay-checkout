@@ -9,6 +9,7 @@ use App\Services\MpesaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -107,6 +108,13 @@ class HostedCheckoutController extends Controller
             ]);
         }
 
+        if ($session->isExpired()) {
+            return response()->json([
+                'status' => 'expired',
+                'error' => 'Checkout session has expired.',
+            ], 410);
+        }
+
         $request->validate([
             'phone' => 'required|string|min:9|max:15',
         ]);
@@ -165,22 +173,36 @@ class HostedCheckoutController extends Controller
                 try {
                     $query = $mpesa->stkQuery($session->mpesa_request_id);
 
-                    $session->refresh();
+                    $dispatchedEvent = DB::transaction(function () use ($session, $query) {
+                        $locked = CheckoutSession::where('id', $session->id)->lockForUpdate()->first();
 
-                    if ($session->status === 'pending') {
+                        if (!$locked || $locked->status !== 'pending') {
+                            return null;
+                        }
+
                         if ($query['state'] === 'paid') {
-                            $session->markAsPaid('mpesa');
-                            Log::info("CheckoutSession {$session->token} confirmed paid via STK Query fallback.");
-                            DispatchMerchantWebhook::dispatch($session, 'payment.succeeded');
-                        } elseif ($query['state'] === 'failed') {
+                            $locked->markAsPaid('mpesa');
+                            Log::info("CheckoutSession {$locked->token} confirmed paid via STK Query fallback.");
+                            return 'payment.succeeded';
+                        }
+
+                        if ($query['state'] === 'failed') {
                             $reason = $this->mapMpesaError(
                                 (int) ($query['result_code'] ?? 1),
                                 $query['result_desc'] ?? 'M-Pesa payment failed.'
                             );
-                            $session->markAsFailed($reason);
-                            Log::warning("CheckoutSession {$session->token} failed via STK Query ({$query['result_code']}): {$reason}");
-                            DispatchMerchantWebhook::dispatch($session, 'payment.failed');
+                            $locked->markAsFailed($reason);
+                            Log::warning("CheckoutSession {$locked->token} failed via STK Query ({$query['result_code']}): {$reason}");
+                            return 'payment.failed';
                         }
+
+                        return null;
+                    });
+
+                    $session->refresh();
+
+                    if ($dispatchedEvent) {
+                        DispatchMerchantWebhook::dispatch($session, $dispatchedEvent);
                     }
                 } catch (\Throwable $e) {
                     Log::warning("STK Query fallback error for {$session->token}: " . $e->getMessage());
@@ -209,6 +231,13 @@ class HostedCheckoutController extends Controller
                 'status' => 'redirect',
                 'url' => $this->buildReturnUrl($session),
             ]);
+        }
+
+        if ($session->isExpired()) {
+            return response()->json([
+                'status' => 'expired',
+                'error' => 'Checkout session has expired.',
+            ], 410);
         }
 
         try {
@@ -261,6 +290,10 @@ class HostedCheckoutController extends Controller
             return $this->redirectToMerchantSuccess($session);
         }
 
+        if ($session->isExpired()) {
+            return redirect()->route('gateway.show', $token);
+        }
+
         if (empty($session->mpgs_session_id)) {
             return redirect()->route('gateway.show', [
                 'token' => $token,
@@ -303,18 +336,39 @@ class HostedCheckoutController extends Controller
                 && hash_equals((string) $expectedIndicator, $resultIndicator);
 
             if ($gatewaySuccess || $indicatorMatches) {
-                $session->markAsPaid('card');
-                Cache::forget("mpgs_indicator_{$session->token}");
+                $shouldDispatch = DB::transaction(function () use ($session) {
+                    $locked = CheckoutSession::where('id', $session->id)->lockForUpdate()->first();
+                    if (!$locked || $locked->isPaid()) {
+                        return false;
+                    }
+                    $locked->markAsPaid('card');
+                    return true;
+                });
 
-                DispatchMerchantWebhook::dispatch($session, 'payment.succeeded');
+                Cache::forget("mpgs_indicator_{$session->token}");
+                $session->refresh();
+
+                if ($shouldDispatch) {
+                    DispatchMerchantWebhook::dispatch($session, 'payment.succeeded');
+                }
 
                 return $this->redirectToMerchantSuccess($session);
             }
 
             $reason = $mpgsOrder['error']['explanation'] ?? 'Card payment was declined.';
-            $session->markAsFailed($reason);
+            $shouldDispatch = DB::transaction(function () use ($session, $reason) {
+                $locked = CheckoutSession::where('id', $session->id)->lockForUpdate()->first();
+                if (!$locked || $locked->isPaid()) {
+                    return false;
+                }
+                $locked->markAsFailed($reason);
+                return true;
+            });
 
-            DispatchMerchantWebhook::dispatch($session, 'payment.failed');
+            if ($shouldDispatch) {
+                $session->refresh();
+                DispatchMerchantWebhook::dispatch($session, 'payment.failed');
+            }
 
             return redirect()->route('gateway.show', [
                 'token' => $token,
@@ -322,9 +376,19 @@ class HostedCheckoutController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error("MPGS Callback Error for Session {$session->token}: " . $e->getMessage());
-            $session->markAsFailed('Could not verify card payment.');
+            $shouldDispatch = DB::transaction(function () use ($session) {
+                $locked = CheckoutSession::where('id', $session->id)->lockForUpdate()->first();
+                if (!$locked || $locked->isPaid()) {
+                    return false;
+                }
+                $locked->markAsFailed('Could not verify card payment.');
+                return true;
+            });
 
-            DispatchMerchantWebhook::dispatch($session, 'payment.failed');
+            if ($shouldDispatch) {
+                $session->refresh();
+                DispatchMerchantWebhook::dispatch($session, 'payment.failed');
+            }
 
             return redirect()->route('gateway.show', [
                 'token' => $token,
@@ -366,11 +430,22 @@ class HostedCheckoutController extends Controller
             $result === 'SUCCESS'
             && in_array($orderStatus, ['CAPTURED', 'AUTHORIZED', 'PARTIALLY_CAPTURED'], true)
         ) {
-            $session->markAsPaid('card');
-            Cache::forget("mpgs_indicator_{$session->token}");
-            Log::info("CheckoutSession {$session->token} marked PAID via MPGS Webhook.");
+            $shouldDispatch = DB::transaction(function () use ($session) {
+                $locked = CheckoutSession::where('id', $session->id)->lockForUpdate()->first();
+                if (!$locked || $locked->isPaid()) {
+                    return false;
+                }
+                $locked->markAsPaid('card');
+                return true;
+            });
 
-            DispatchMerchantWebhook::dispatch($session, 'payment.succeeded');
+            Cache::forget("mpgs_indicator_{$session->token}");
+
+            if ($shouldDispatch) {
+                $session->refresh();
+                Log::info("CheckoutSession {$session->token} marked PAID via MPGS Webhook.");
+                DispatchMerchantWebhook::dispatch($session, 'payment.succeeded');
+            }
         } elseif (
             in_array($result, ['FAILURE', 'ERROR'], true)
             || in_array($orderStatus, ['FAILED', 'CANCELLED'], true)
@@ -379,10 +454,20 @@ class HostedCheckoutController extends Controller
                 ?? $request->input('error.explanation')
                 ?? 'Card payment was declined.';
 
-            $session->markAsFailed($reason);
-            Log::warning("CheckoutSession {$session->token} marked FAILED via MPGS Webhook: {$reason}");
+            $shouldDispatch = DB::transaction(function () use ($session, $reason) {
+                $locked = CheckoutSession::where('id', $session->id)->lockForUpdate()->first();
+                if (!$locked || $locked->isPaid()) {
+                    return false;
+                }
+                $locked->markAsFailed($reason);
+                return true;
+            });
 
-            DispatchMerchantWebhook::dispatch($session, 'payment.failed');
+            if ($shouldDispatch) {
+                $session->refresh();
+                Log::warning("CheckoutSession {$session->token} marked FAILED via MPGS Webhook: {$reason}");
+                DispatchMerchantWebhook::dispatch($session, 'payment.failed');
+            }
         }
 
         return response()->json(['status' => 'ok'], 200);

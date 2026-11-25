@@ -5,8 +5,13 @@ namespace App\Http\Controllers;
 use App\Jobs\DispatchMerchantWebhook;
 use App\Models\CheckoutSession;
 use App\Models\Order;
+use App\Models\Product;
+use App\Models\ProductUnit;
 use App\Models\Setting;
+use App\Models\Transporter;
+use App\Services\PricingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -18,24 +23,33 @@ class CheckoutController extends Controller
         return Inertia::render('Checkout/Index', [
             'price_per_kg' => (float) Setting::get('price_per_kg', 20),
             'price_per_km' => (float) Setting::get('price_per_km', 50),
+            'free_radius_km' => (float) Setting::get('free_radius_km', 3),
+            'transporters' => Transporter::approved()
+                ->latest()
+                ->get(['id', 'name', 'phone', 'vehicle_type', 'area', 'plate_number']),
         ]);
     }
 
     /**
-     * Shop Checkout: Creates local Order, then calls Evopay Gateway API via Secret Key
-     * just like any external merchant store.
+     * Shop Checkout: Verifies item pricing/weights from DB, creates local Order,
+     * then calls Evopay Gateway API via Secret Key just like any external merchant store.
      */
-    public function process(Request $request)
+    public function process(Request $request, PricingService $pricing)
     {
         $data = $request->validate([
             'items' => 'required|array|min:1',
-            'subtotal' => 'required|numeric',
-            'delivery_method' => 'required|string',
+            'items.*.productId' => 'required|integer|exists:products,id',
+            'items.*.unitId' => 'required',
+            'items.*.qty' => 'required|integer|min:1',
+            'subtotal' => 'nullable|numeric',
+            'delivery_method' => 'required|in:standard,pickup,transporter',
             'customer' => 'required|array',
             'customer.name' => 'required|string|max:255',
             'customer.phone' => 'required|string|max:20',
             'customer.email' => 'nullable|email|max:255',
             'delivery' => 'nullable|array',
+            'delivery.lat' => 'nullable|numeric',
+            'delivery.lng' => 'nullable|numeric',
         ], [
             'items.required' => 'Your cart is empty. Please add items before checking out.',
             'items.min' => 'Your cart is empty. Please add items before checking out.',
@@ -45,41 +59,122 @@ class CheckoutController extends Controller
             'delivery_method.required' => 'Please select a delivery method.',
         ]);
 
-        $secretKey = env('EVOPAY_SHOP_SECRET_KEY');
+        $secretKey = config('services.evopay_shop.secret_key');
         if (!$secretKey) {
             return response()->json([
                 'error' => 'Shop payment gateway is not configured (missing EVOPAY_SHOP_SECRET_KEY in .env).',
             ], 500);
         }
 
-        $deliveryFee = 0;
-        $distanceKm = 0;
-        $weightFee = 0;
-        $distanceFee = 0;
+        if (
+            $data['delivery_method'] === 'standard'
+            && (empty($data['delivery']['lat']) || empty($data['delivery']['lng']))
+        ) {
+            return response()->json([
+                'error' => 'Please search and select a valid delivery address.',
+            ], 422);
+        }
 
-        if ($data['delivery_method'] === 'standard' && !empty($data['delivery']['lat'])) {
+        // Recalculate subtotal and total weight strictly from DB (never trust client amounts)
+        $verifiedSubtotal = 0.0;
+        $totalWeight = 0.0;
+        $verifiedItems = [];
+
+        foreach ($data['items'] as $item) {
+            $product = Product::where('id', (int) $item['productId'])
+                ->where('is_active', true)
+                ->first();
+
+            if (!$product) {
+                return response()->json([
+                    'error' => 'One of the products in your cart is no longer available.',
+                ], 422);
+            }
+
+            $unitId = $item['unitId'];
+            if (is_numeric($unitId)) {
+                $unit = ProductUnit::where('id', (int) $unitId)
+                    ->where('product_id', $product->id)
+                    ->where('is_active', true)
+                    ->first();
+            } else {
+                // Fallback for Quick Add items that pass "{$product->id}-default"
+                $unit = ProductUnit::where('product_id', $product->id)
+                    ->where('is_active', true)
+                    ->orderBy('id')
+                    ->first();
+            }
+
+            if (!$unit) {
+                return response()->json([
+                    'error' => "Invalid unit selected for {$product->name}.",
+                ], 422);
+            }
+
+            $qty = (int) $item['qty'];
+
+            try {
+                $calc = $pricing->calculate($unit, $qty);
+            } catch (\InvalidArgumentException $e) {
+                return response()->json(['error' => $e->getMessage()], 422);
+            }
+
+            if ($calc['requires_quote']) {
+                return response()->json([
+                    'error' => "{$product->name} ({$unit->label}) requires a custom quote.",
+                ], 422);
+            }
+
+            $weight = (float) ($product->weight ?? 0);
+            $verifiedSubtotal += (float) $calc['total'];
+            $totalWeight += ($qty * $weight);
+
+            $verifiedItems[] = [
+                'productId' => $product->id,
+                'productName' => $product->name,
+                'image_url' => $product->image_url,
+                'weight' => $weight,
+                'unitId' => $unit->id,
+                'unitLabel' => $unit->label,
+                'qty' => $qty,
+                'unitPrice' => (float) $calc['unit_price'],
+                'lineTotal' => (float) $calc['total'],
+            ];
+        }
+
+        $deliveryFee = 0.0;
+        $distanceKm = 0.0;
+        $weightFee = 0.0;
+        $distanceFee = 0.0;
+        $freeRadiusApplied = false;
+
+        if ($data['delivery_method'] === 'standard') {
             $hqLat = (float) Setting::get('hq_lat', -1.2674);
             $hqLng = (float) Setting::get('hq_lng', 36.7704);
             $pricePerKg = (float) Setting::get('price_per_kg', 20);
             $pricePerKm = (float) Setting::get('price_per_km', 50);
+            $freeRadiusKm = (float) Setting::get('free_radius_km', 3);
 
             $distanceKm = $this->calculateDistance(
-                $hqLat, $hqLng,
+                $hqLat,
+                $hqLng,
                 (float) $data['delivery']['lat'],
                 (float) $data['delivery']['lng']
             );
 
-            $totalWeight = collect($data['items'])->reduce(function ($acc, $item) {
-                return $acc + ($item['qty'] * (float) ($item['weight'] ?? 0));
-            }, 0);
-
-            $weightFee = $totalWeight * $pricePerKg;
-            $distanceFee = ceil($distanceKm) * $pricePerKm;
-
-            $deliveryFee = $weightFee + $distanceFee;
+            if ($distanceKm <= $freeRadiusKm) {
+                $freeRadiusApplied = true;
+                $weightFee = 0.0;
+                $distanceFee = 0.0;
+                $deliveryFee = 0.0;
+            } else {
+                $weightFee = $totalWeight * $pricePerKg;
+                $distanceFee = ceil($distanceKm) * $pricePerKm;
+                $deliveryFee = $weightFee + $distanceFee;
+            }
         }
 
-        $total = $data['subtotal'] + $deliveryFee;
+        $total = round($verifiedSubtotal + $deliveryFee, 2);
 
         // 1. Create Shop Order locally
         $order = Order::create([
@@ -87,7 +182,7 @@ class CheckoutController extends Controller
             'total_amount' => $total,
             'status' => 'pending',
             'payment_method' => 'evopay_gateway',
-            'items' => $data['items'],
+            'items' => $verifiedItems,
             'customer' => $data['customer'],
             'delivery' => array_merge($data['delivery'] ?? [], [
                 'method' => $data['delivery_method'],
@@ -95,11 +190,12 @@ class CheckoutController extends Controller
                 'distance_km' => round($distanceKm, 2),
                 'weight_fee' => $weightFee,
                 'distance_fee' => $distanceFee,
+                'free_radius_applied' => $freeRadiusApplied,
             ]),
         ]);
 
         // 2. Call Evopay Payment Provider API (/api/v1/checkout/sessions)
-        $gatewayUrl = rtrim(env('EVOPAY_GATEWAY_URL', url('/')), '/');
+        $gatewayUrl = rtrim((string) (config('services.evopay_shop.gateway_url') ?: url('/')), '/');
 
         try {
             $response = Http::withToken($secretKey)
@@ -177,8 +273,8 @@ class CheckoutController extends Controller
             return redirect()->route('checkout.success', ['order' => $order->order_number]);
         }
 
-        $gatewayUrl = rtrim(env('EVOPAY_GATEWAY_URL', url('/')), '/');
-        $secretKey = env('EVOPAY_SHOP_SECRET_KEY');
+        $gatewayUrl = rtrim((string) (config('services.evopay_shop.gateway_url') ?: url('/')), '/');
+        $secretKey = config('services.evopay_shop.secret_key');
 
         try {
             $res = Http::withToken($secretKey)
@@ -212,15 +308,13 @@ class CheckoutController extends Controller
      */
     public function shopWebhook(Request $request)
     {
-        $webhookSecret = env('EVOPAY_SHOP_WEBHOOK_SECRET');
-        if ($webhookSecret) {
-            $signature = (string) $request->header('X-Evopay-Signature', '');
-            $expected = 'sha256=' . hash_hmac('sha256', $request->getContent(), $webhookSecret);
+        $webhookSecret = config('services.evopay_shop.webhook_secret');
+        $signature = (string) $request->header('X-Evopay-Signature', '');
+        $expected = $webhookSecret ? 'sha256=' . hash_hmac('sha256', $request->getContent(), $webhookSecret) : '';
 
-            if (!hash_equals($expected, $signature)) {
-                \Log::warning('Shop Webhook: Invalid signature received.');
-                return response()->json(['message' => 'Invalid signature'], 401);
-            }
+        if (empty($webhookSecret) || !hash_equals($expected, $signature)) {
+            \Log::warning('Shop Webhook: Missing secret or invalid signature received.');
+            return response()->json(['message' => 'Invalid signature'], 401);
         }
 
         $event = $request->input('event');
@@ -270,6 +364,9 @@ class CheckoutController extends Controller
                 'items' => $order->items,
                 'created_at' => $order->created_at?->toIso8601String(),
             ] : null,
+            'transporters' => Transporter::approved()
+                ->latest()
+                ->get(['id', 'name', 'phone', 'vehicle_type', 'area', 'plate_number']),
         ]);
     }
 
@@ -311,20 +408,45 @@ class CheckoutController extends Controller
         $resultDesc = $callbackData['ResultDesc'] ?? 'Payment failed.';
 
         $session = CheckoutSession::where('mpesa_request_id', $checkoutRequestId)->first();
-        if ($session && $session->status !== 'paid') {
-            if ($resultCode === 0) {
-                $items = $callbackData['CallbackMetadata']['Item'] ?? [];
-                $receipt = collect($items)->firstWhere('Name', 'MpesaReceiptNumber')['Value'] ?? null;
 
-                $session->markAsPaid('mpesa', $receipt);
-                \Log::info("CheckoutSession {$session->token} paid successfully. Receipt: {$receipt}");
+        if ($session) {
+            $items = $callbackData['CallbackMetadata']['Item'] ?? [];
+            $receipt = collect($items)->firstWhere('Name', 'MpesaReceiptNumber')['Value'] ?? null;
 
-                DispatchMerchantWebhook::dispatch($session, 'payment.succeeded');
-            } else {
-                $session->markAsFailed($this->mapMpesaError($resultCode, $resultDesc));
-                \Log::warning("CheckoutSession {$session->token} failed ({$resultCode}): {$resultDesc}");
+            $dispatchedEvent = DB::transaction(function () use ($session, $resultCode, $resultDesc, $receipt) {
+                $locked = CheckoutSession::where('id', $session->id)->lockForUpdate()->first();
 
-                DispatchMerchantWebhook::dispatch($session, 'payment.failed');
+                if (!$locked) {
+                    return null;
+                }
+
+                if ($resultCode === 0) {
+                    if ($locked->status !== 'paid') {
+                        $locked->markAsPaid('mpesa', $receipt);
+                        \Log::info("CheckoutSession {$locked->token} paid successfully. Receipt: {$receipt}");
+                        return 'payment.succeeded';
+                    }
+
+                    if (empty($locked->mpesa_receipt) && !empty($receipt)) {
+                        $locked->update(['mpesa_receipt' => $receipt]);
+                        \Log::info("CheckoutSession {$locked->token} backfilled M-Pesa receipt after STK Query: {$receipt}");
+                    }
+
+                    return null;
+                }
+
+                if ($locked->status === 'pending') {
+                    $locked->markAsFailed($this->mapMpesaError($resultCode, $resultDesc));
+                    \Log::warning("CheckoutSession {$locked->token} failed ({$resultCode}): {$resultDesc}");
+                    return 'payment.failed';
+                }
+
+                return null;
+            });
+
+            if ($dispatchedEvent) {
+                $session->refresh();
+                DispatchMerchantWebhook::dispatch($session, $dispatchedEvent);
             }
         }
 
@@ -348,7 +470,7 @@ class CheckoutController extends Controller
 
     private function calculateDistance($lat1, $lon1, $lat2, $lon2)
     {
-        $apiKey = env('GOOGLE_MAPS_API_KEY');
+        $apiKey = config('services.google_maps.api_key');
         $url = "https://routes.googleapis.com/directions/v2:computeRoutes";
 
         $payload = [

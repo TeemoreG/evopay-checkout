@@ -110,7 +110,7 @@ export default function AdminIndex({
     };
 
     return (
-        <MainLayout minimal>
+        <MainLayout minimal homeHref="/admin/demo-shop">
             <Head title="Admin Dashboard" />
 
             {/* SUCCESS MODAL */}
@@ -149,9 +149,9 @@ export default function AdminIndex({
                     <Link href="/admin/settings" className="bg-white border border-brand-border text-brand-dark px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-gray-50 transition">
                         Settings
                     </Link>
-                    <a href="/" className="bg-brand-primary text-white px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-brand-secondary transition">
+                    <Link href="/shop" className="bg-brand-primary text-white px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-brand-secondary transition">
                         View Store &rarr;
-                    </a>
+                    </Link>
                     <button
                         type="button"
                         onClick={() => router.post('/logout')}

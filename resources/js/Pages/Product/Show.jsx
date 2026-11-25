@@ -67,7 +67,7 @@ export default function ProductShow({ product, units }) {
 
     return (
         <MainLayout>
-            <Link href="/" className="text-sm text-gray-500 hover:text-brand-primary">
+            <Link href="/shop" className="text-sm text-gray-500 hover:text-brand-primary">
                 ← Back to Shop
             </Link>
 

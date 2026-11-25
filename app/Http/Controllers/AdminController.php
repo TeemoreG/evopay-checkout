@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductUnit;
 use App\Models\Setting;
+use App\Models\Transporter;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -360,6 +361,7 @@ class AdminController extends Controller
             'hq_lng' => Setting::get('hq_lng', '36.7704'),
             'price_per_kg' => Setting::get('price_per_kg', '20'),
             'price_per_km' => Setting::get('price_per_km', '50'),
+            'free_radius_km' => Setting::get('free_radius_km', '3'),
             'unit_measurements' => $this->getUnitMeasurements(),
         ]);
     }
@@ -371,6 +373,7 @@ class AdminController extends Controller
             'hq_lng' => 'required|numeric',
             'price_per_kg' => 'required|numeric|min:0',
             'price_per_km' => 'required|numeric|min:0',
+            'free_radius_km' => 'required|numeric|min:0',
             'unit_measurements' => 'nullable|array',
             'unit_measurements.*' => 'required|string|max:50',
         ]);
@@ -379,6 +382,7 @@ class AdminController extends Controller
         Setting::set('hq_lng', $request->hq_lng);
         Setting::set('price_per_kg', $request->price_per_kg);
         Setting::set('price_per_km', $request->price_per_km);
+        Setting::set('free_radius_km', $request->free_radius_km);
 
         if ($request->has('unit_measurements')) {
             $cleaned = collect($request->unit_measurements)
@@ -392,5 +396,59 @@ class AdminController extends Controller
         }
 
         return redirect()->back()->with('success', 'Settings updated successfully!');
+    }
+
+    public function transporters()
+    {
+        $transporters = Transporter::latest()->get();
+
+        return Inertia::render('Admin/Transporters', [
+            'transporters' => $transporters,
+        ]);
+    }
+
+    public function storeTransporter(Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:120',
+            'phone' => 'required|string|max:25',
+            'vehicle_type' => 'required|string|max:50',
+            'area' => 'nullable|string|max:120',
+            'plate_number' => 'nullable|string|max:30',
+        ]);
+
+        Transporter::create([
+            'name' => trim($data['name']),
+            'phone' => preg_replace('/[\s\-]+/', '', trim($data['phone'])),
+            'vehicle_type' => trim($data['vehicle_type']),
+            'area' => isset($data['area']) ? trim($data['area']) : null,
+            'plate_number' => isset($data['plate_number']) ? strtoupper(trim($data['plate_number'])) : null,
+            'status' => 'approved',
+        ]);
+
+        return redirect()->back()->with('success', 'Transporter added and approved.');
+    }
+
+    public function approveTransporter(Transporter $transporter)
+    {
+        $transporter->update(['status' => 'approved']);
+
+        return redirect()->back()->with('success', "{$transporter->name} approved.");
+    }
+
+    public function toggleTransporterStatus(Transporter $transporter)
+    {
+        $transporter->update([
+            'status' => $transporter->status === 'approved' ? 'suspended' : 'approved',
+        ]);
+
+        return redirect()->back()->with('success', 'Transporter status updated.');
+    }
+
+    public function destroyTransporter(Transporter $transporter)
+    {
+        $transporter->delete();
+
+        return redirect()->back()->with('success', 'Transporter removed.');
     }
 }

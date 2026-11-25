@@ -42,48 +42,77 @@ export default function AdminSettings({
     };
 
     return (
-        <MainLayout minimal>
-            <Head title="Admin Settings" />
+        <MainLayout minimal homeHref="/admin/demo-shop">
+            <Head title="Demo Shop Settings — Evopay Admin" />
 
-            <div className="mb-8 flex flex-wrap justify-between items-end gap-4">
+            {/* Top Header & Sub-Nav */}
+            <div className="mb-8 flex flex-wrap justify-between items-end gap-4 pb-6 border-b border-brand-border">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-brand-dark">Store Settings</h1>
-                    <p className="text-gray-500 mt-1">Configure delivery origin, pricing rates, and quantity measurements.</p>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-brand-primary">
+                        Demo Shop Admin
+                    </span>
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-dark mt-1">
+                        Store Settings
+                    </h1>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Configure delivery origin, pricing rates, and quantity measurements.
+                    </p>
                 </div>
-                <div className="flex gap-3">
-                    <Link href="/admin/orders" className="bg-white border border-brand-border text-brand-dark px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-gray-50 transition">
+
+                <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                        href="/admin/demo-shop"
+                        className="bg-white border border-brand-border text-brand-dark px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm hover:bg-gray-50 transition"
+                    >
+                        Inventory
+                    </Link>
+                    <Link
+                        href="/admin/orders"
+                        className="bg-white border border-brand-border text-brand-dark px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm hover:bg-gray-50 transition"
+                    >
                         Orders
                     </Link>
-                    <Link href="/admin" className="bg-white border border-brand-border text-brand-dark px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-gray-50 transition">
-                        ← Back to Inventory
+                    <Link
+                        href="/admin/settings"
+                        className="bg-brand-dark text-white px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm"
+                    >
+                        Settings
+                    </Link>
+                    <Link
+                        href="/admin"
+                        className="bg-white border border-brand-border text-gray-600 px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm hover:bg-gray-50 transition"
+                    >
+                        Platform Admin
                     </Link>
                 </div>
             </div>
 
             {recentlySuccessful && (
-                <div className="max-w-2xl mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm font-semibold text-green-800">
+                <div className="max-w-3xl mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
                     Settings saved successfully.
                 </div>
             )}
 
-            <div className="max-w-2xl">
+            <div className="max-w-3xl">
                 <form onSubmit={submit} className="space-y-6">
                     {/* HQ Coordinates */}
-                    <div className="bg-white rounded-2xl border border-brand-border p-6 shadow-sm">
-                        <h2 className="text-lg font-bold mb-1">Delivery HQ Coordinates</h2>
-                        <p className="text-sm text-gray-500 mb-5">
+                    <div className="bg-white rounded-2xl border border-brand-border p-6 shadow-xs">
+                        <h2 className="text-base font-bold text-brand-dark mb-1">Delivery HQ Coordinates</h2>
+                        <p className="text-xs sm:text-sm text-gray-500 mb-5">
                             Used as the origin when calculating driving distance for deliveries.
                         </p>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium mb-1">Latitude</label>
+                                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
+                                    Latitude
+                                </label>
                                 <input
                                     type="number"
                                     step="0.000001"
                                     value={data.hq_lat}
                                     onChange={(e) => setData('hq_lat', e.target.value)}
-                                    className="w-full bg-brand-input rounded-lg px-4 py-2.5 text-sm"
+                                    className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm border border-transparent"
                                     placeholder="-1.2674"
                                     required
                                 />
@@ -91,13 +120,15 @@ export default function AdminSettings({
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-1">Longitude</label>
+                                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
+                                    Longitude
+                                </label>
                                 <input
                                     type="number"
                                     step="0.000001"
                                     value={data.hq_lng}
                                     onChange={(e) => setData('hq_lng', e.target.value)}
-                                    className="w-full bg-brand-input rounded-lg px-4 py-2.5 text-sm"
+                                    className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm border border-transparent"
                                     placeholder="36.7704"
                                     required
                                 />
@@ -107,22 +138,24 @@ export default function AdminSettings({
                     </div>
 
                     {/* Delivery Rates */}
-                    <div className="bg-white rounded-2xl border border-brand-border p-6 shadow-sm">
-                        <h2 className="text-lg font-bold mb-1">Delivery Pricing Rates</h2>
-                        <p className="text-sm text-gray-500 mb-5">
+                    <div className="bg-white rounded-2xl border border-brand-border p-6 shadow-xs">
+                        <h2 className="text-base font-bold text-brand-dark mb-1">Delivery Pricing Rates</h2>
+                        <p className="text-xs sm:text-sm text-gray-500 mb-5">
                             Delivery fee formula: (Total Weight × Price per KG) + (Rounded KM × Price per KM).
                         </p>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium mb-1">Price per KG (KSh)</label>
+                                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
+                                    Price per KG (KSh)
+                                </label>
                                 <input
                                     type="number"
                                     step="0.01"
                                     min="0"
                                     value={data.price_per_kg}
                                     onChange={(e) => setData('price_per_kg', e.target.value)}
-                                    className="w-full bg-brand-input rounded-lg px-4 py-2.5 text-sm"
+                                    className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm border border-transparent"
                                     placeholder="20"
                                     required
                                 />
@@ -130,14 +163,16 @@ export default function AdminSettings({
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-1">Price per KM (KSh)</label>
+                                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
+                                    Price per KM (KSh)
+                                </label>
                                 <input
                                     type="number"
                                     step="0.01"
                                     min="0"
                                     value={data.price_per_km}
                                     onChange={(e) => setData('price_per_km', e.target.value)}
-                                    className="w-full bg-brand-input rounded-lg px-4 py-2.5 text-sm"
+                                    className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm border border-transparent"
                                     placeholder="50"
                                     required
                                 />
@@ -147,9 +182,9 @@ export default function AdminSettings({
                     </div>
 
                     {/* Custom Quantity Measurements */}
-                    <div className="bg-white rounded-2xl border border-brand-border p-6 shadow-sm">
-                        <h2 className="text-lg font-bold mb-1">Quantity Measurement Types</h2>
-                        <p className="text-sm text-gray-500 mb-4">
+                    <div className="bg-white rounded-2xl border border-brand-border p-6 shadow-xs">
+                        <h2 className="text-base font-bold text-brand-dark mb-1">Quantity Measurement Types</h2>
+                        <p className="text-xs sm:text-sm text-gray-500 mb-4">
                             Add any measurement unit for your products (e.g. lorry, wheelbarrow, bag, tonne, pallet).
                         </p>
 
@@ -165,12 +200,12 @@ export default function AdminSettings({
                                     }
                                 }}
                                 placeholder="e.g. lorry, wheelbarrow, half-lorry"
-                                className="flex-1 bg-brand-input rounded-lg px-4 py-2.5 text-sm"
+                                className="flex-1 bg-brand-input rounded-xl px-4 py-2.5 text-sm border border-transparent"
                             />
                             <button
                                 type="button"
                                 onClick={addMeasurement}
-                                className="bg-brand-primary text-white px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-brand-secondary transition"
+                                className="bg-brand-primary text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-brand-secondary transition cursor-pointer"
                             >
                                 + Add
                             </button>
@@ -186,7 +221,7 @@ export default function AdminSettings({
                                     <button
                                         type="button"
                                         onClick={() => removeMeasurement(unit)}
-                                        className="text-gray-400 hover:text-red-500 font-bold"
+                                        className="text-gray-400 hover:text-red-500 font-bold cursor-pointer"
                                         title="Remove measurement"
                                     >
                                         ×
@@ -199,7 +234,7 @@ export default function AdminSettings({
                     <button
                         type="submit"
                         disabled={processing}
-                        className="w-full bg-brand-dark text-white py-3.5 rounded-xl font-bold hover:bg-black transition disabled:opacity-50"
+                        className="w-full bg-brand-dark text-white py-3.5 rounded-xl font-bold text-sm hover:bg-black transition disabled:opacity-50 cursor-pointer"
                     >
                         {processing ? 'Saving...' : 'Save Settings'}
                     </button>

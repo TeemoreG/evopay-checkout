@@ -16,12 +16,12 @@ class MpesaService
 
     public function __construct()
     {
-        $this->consumerKey = env('MPESA_CONSUMER_KEY');
-        $this->consumerSecret = env('MPESA_CONSUMER_SECRET');
-        $this->shortcode = env('MPESA_SHORTCODE');
-        $this->passkey = env('MPESA_PASSKEY');
-        $this->callbackUrl = env('MPESA_CALLBACK_URL');
-        $this->env = env('MPESA_ENV', 'sandbox');
+        $this->consumerKey = config('services.mpesa.consumer_key');
+        $this->consumerSecret = config('services.mpesa.consumer_secret');
+        $this->shortcode = config('services.mpesa.shortcode');
+        $this->passkey = config('services.mpesa.passkey');
+        $this->callbackUrl = config('services.mpesa.callback_url');
+        $this->env = config('services.mpesa.env', 'sandbox');
     }
 
     public function getAccessToken()

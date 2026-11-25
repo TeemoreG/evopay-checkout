@@ -15,11 +15,11 @@ class MpgsService
 
     public function __construct()
     {
-        $this->gatewayUrl = rtrim(env('MPGS_GATEWAY_URL', 'https://ap-gateway.mastercard.com'), '/');
-        $this->merchantId = env('MPGS_MERCHANT_ID', 'EVOPAYLTD');
-        $this->apiPassword = env('MPGS_API_PASSWORD', '');
-        $this->apiVersion = env('MPGS_API_VERSION', '100');
-        $this->operation = env('MPGS_OPERATION', 'PURCHASE');
+        $this->gatewayUrl = rtrim((string) config('services.mpgs.gateway_url', 'https://ap-gateway.mastercard.com'), '/');
+        $this->merchantId = (string) config('services.mpgs.merchant_id', 'EVOPAYLTD');
+        $this->apiPassword = (string) config('services.mpgs.api_password', '');
+        $this->apiVersion = (string) config('services.mpgs.api_version', '100');
+        $this->operation = (string) config('services.mpgs.operation', 'PURCHASE');
     }
 
     public function createSession($amount, $orderId, $currency = 'KES', ?string $returnUrl = null, ?string $cancelUrl = null): array

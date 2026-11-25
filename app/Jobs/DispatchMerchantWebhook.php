@@ -30,13 +30,13 @@ class DispatchMerchantWebhook implements ShouldQueue
 
     public function handle(): void
     {
-        $session = $this->session->loadMissing('merchant');
+        $session = $this->session->fresh(['merchant']) ?? $this->session->loadMissing('merchant');
         $merchant = $session->merchant;
 
         // Use session-specific webhook_url, or fallback to merchant default
-        $targetUrl = $session->webhook_url ?: $merchant->webhook_url;
+        $targetUrl = $session->webhook_url ?: $merchant?->webhook_url;
 
-        if (!$targetUrl) {
+        if (!$merchant || !$targetUrl) {
             Log::info("Webhook skipped for Session {$session->token}: No webhook URL configured.");
             return;
         }
@@ -59,7 +59,7 @@ class DispatchMerchantWebhook implements ShouldQueue
             ],
         ];
 
-        $encodedPayload = json_encode($payload);
+        $encodedPayload = json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
         $secret = $merchant->webhook_secret ?: 'whsec_default';
         $signature = 'sha256=' . hash_hmac('sha256', $encodedPayload, $secret);
 
@@ -75,15 +75,16 @@ class DispatchMerchantWebhook implements ShouldQueue
         try {
             $response = Http::timeout(10)
                 ->withHeaders([
-                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
                     'User-Agent' => 'Evopay-Webhook/1.0',
                     'X-Evopay-Signature' => $signature,
                     'X-Evopay-Event' => $this->event,
                 ])
-                ->post($targetUrl, $payload);
+                ->withBody($encodedPayload, 'application/json')
+                ->post($targetUrl);
 
             $statusCode = $response->status();
-            $body = substr($response->body(), 0, 1000);
+            $body = mb_substr($response->body(), 0, 1000);
 
             $delivery->update([
                 'response_code' => $statusCode,
@@ -106,6 +107,8 @@ class DispatchMerchantWebhook implements ShouldQueue
 
             if ($this->attempts() < $this->tries) {
                 $this->release($this->backoff[$this->attempts() - 1] ?? 60);
+            } else {
+                $this->fail($e);
             }
         }
     }

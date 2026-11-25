@@ -7,6 +7,7 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\GatewayController;
 use App\Http\Controllers\HostedCheckoutController;
 use App\Http\Controllers\MerchantPortalController;
+use App\Http\Controllers\TransporterController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -14,12 +15,16 @@ use Inertia\Inertia;
 // Evopay Payment Provider Public Pages
 // ============================================================================
 Route::get('/', [GatewayController::class, 'home'])->name('home');
-Route::post('/request-access', [GatewayController::class, 'requestAccess'])->name('request-access');
+Route::post('/request-access', [GatewayController::class, 'requestAccess'])
+    ->middleware('throttle:public-api')
+    ->name('request-access');
 Route::get('/developers', fn () => Inertia::render('Gateway/Developers'))->name('developers');
 Route::get('/pricing', fn () => Inertia::render('Gateway/Pricing'))->name('pricing');
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('login.attempt');
+Route::post('/login', [AuthController::class, 'login'])
+    ->middleware('throttle:login')
+    ->name('login.attempt');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
 // ============================================================================
@@ -28,10 +33,16 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->n
 Route::prefix('c/{token}')->name('gateway.')->group(function () {
     Route::get('/', [HostedCheckoutController::class, 'show'])->name('show');
     Route::get('/mpesa', [HostedCheckoutController::class, 'mpesaShow'])->name('mpesa');
-    Route::post('/mpesa/stk-push', [HostedCheckoutController::class, 'mpesaStkPush'])->name('mpesa.push');
-    Route::get('/status', [HostedCheckoutController::class, 'checkStatus'])->name('status');
+    Route::post('/mpesa/stk-push', [HostedCheckoutController::class, 'mpesaStkPush'])
+        ->middleware('throttle:payment-init')
+        ->name('mpesa.push');
+    Route::get('/status', [HostedCheckoutController::class, 'checkStatus'])
+        ->middleware('throttle:status-poll')
+        ->name('status');
 
-    Route::post('/mpgs/init', [HostedCheckoutController::class, 'mpgsInit'])->name('mpgs.init');
+    Route::post('/mpgs/init', [HostedCheckoutController::class, 'mpgsInit'])
+        ->middleware('throttle:payment-init')
+        ->name('mpgs.init');
     Route::get('/mpgs/pay', [HostedCheckoutController::class, 'mpgsPay'])->name('mpgs.pay');
     Route::get('/mpgs/callback', [HostedCheckoutController::class, 'mpgsCallback'])->name('mpgs.callback');
     Route::get('/mpgs/cancel', [HostedCheckoutController::class, 'mpgsCancel'])->name('mpgs.cancel');
@@ -73,6 +84,13 @@ Route::prefix('admin')->middleware(['auth', 'role:admin'])->name('admin.')->grou
     Route::post('/products', [AdminController::class, 'storeProduct'])->name('products.store');
     Route::put('/products/{product}', [AdminController::class, 'updateProduct'])->name('products.update');
     Route::delete('/products/{product}', [AdminController::class, 'destroyProduct'])->name('products.destroy');
+
+    // Transporter Management (Admin)
+    Route::get('/transporters', [AdminController::class, 'transporters'])->name('transporters');
+    Route::post('/transporters', [AdminController::class, 'storeTransporter'])->name('transporters.store');
+    Route::post('/transporters/{transporter}/approve', [AdminController::class, 'approveTransporter'])->name('transporters.approve');
+    Route::post('/transporters/{transporter}/toggle', [AdminController::class, 'toggleTransporterStatus'])->name('transporters.toggle');
+    Route::delete('/transporters/{transporter}', [AdminController::class, 'destroyTransporter'])->name('transporters.destroy');
 });
 
 // ============================================================================
@@ -81,8 +99,18 @@ Route::prefix('admin')->middleware(['auth', 'role:admin'])->name('admin.')->grou
 Route::get('/shop', [CatalogController::class, 'index'])->name('catalog.index');
 Route::get('/products/{slug}', [CatalogController::class, 'show'])->name('product.show');
 Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
-Route::post('/checkout/process', [CheckoutController::class, 'process'])->name('checkout.process');
-Route::post('/checkout/distance', [CheckoutController::class, 'getDistance'])->name('checkout.distance');
+Route::post('/checkout/process', [CheckoutController::class, 'process'])
+    ->middleware('throttle:public-api')
+    ->name('checkout.process');
+Route::post('/checkout/distance', [CheckoutController::class, 'getDistance'])
+    ->middleware('throttle:public-api')
+    ->name('checkout.distance');
 Route::get('/checkout/return', [CheckoutController::class, 'gatewayReturn'])->name('checkout.return');
 Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
 Route::post('/api/shop/webhook', [CheckoutController::class, 'shopWebhook'])->name('shop.evopay.webhook');
+
+// Public Transporter Registration (Nyumba Cement Demo Store)
+Route::get('/shop/transporters/register', [TransporterController::class, 'create'])->name('transporters.register');
+Route::post('/shop/transporters/register', [TransporterController::class, 'store'])
+    ->middleware('throttle:public-api')
+    ->name('transporters.register.store');

@@ -37,7 +37,7 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
-            'google_maps_key' => env('GOOGLE_MAPS_API_KEY'), // <-- Added here
+            'google_maps_key' => config('services.google_maps.api_key'),
         ];
     }
 }
