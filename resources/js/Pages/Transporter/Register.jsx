@@ -95,7 +95,6 @@ export default function TransportersRegister() {
         });
     };
 
-    // Sample preview estimate (500 KG, 10 KM)
     const sampleEstimate =
         Number(data.base_fare || 0) +
         500 * Number(data.rate_per_kg || 0) +
@@ -130,23 +129,20 @@ export default function TransportersRegister() {
                 </div>
 
                 <div className="bg-white rounded-3xl border border-brand-border shadow-xs overflow-hidden">
-                    {/* Hero Banner */}
-                    <div className="bg-brand-dark text-white p-6 sm:p-8 relative overflow-hidden">
-                        <div className="relative z-10">
-                            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand-secondary bg-white/10 px-3 py-1 rounded-full">
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.25V4.5a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 4.5v9.75m12 0H2.25m12 0v5.25" />
-                                </svg>
-                                <span>Nyumba Cement Fleet Partner</span>
-                            </span>
-                            <h1 className="text-2xl sm:text-3xl font-extrabold mt-3 tracking-tight">
-                                Transporter Application
-                            </h1>
-                            <p className="text-xs sm:text-sm text-gray-300 mt-1.5 leading-relaxed max-w-lg">
-                                Register your truck, configure your haulage rates, and upload your National ID. Portal login passwords are issued by our admin team upon verification.
-                            </p>
-                        </div>
-                        <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-brand-primary/20 blur-2xl pointer-events-none" />
+                    {/* Clean Header (matches page card background, no gradient) */}
+                    <div className="bg-white border-b border-brand-border p-6 sm:p-8">
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand-primary bg-brand-primary/10 px-3 py-1 rounded-full">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.25V4.5a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 4.5v9.75m12 0H2.25m12 0v5.25" />
+                            </svg>
+                            <span>Nyumba Cement Fleet Partner</span>
+                        </span>
+                        <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-dark mt-3 tracking-tight">
+                            Transporter Application
+                        </h1>
+                        <p className="text-xs sm:text-sm text-gray-500 mt-1.5 leading-relaxed max-w-lg">
+                            Register your truck, configure your haulage rates, and upload your National ID. Portal login passwords are issued by our admin team upon verification.
+                        </p>
                     </div>
 
                     {recentlySuccessful ? (
