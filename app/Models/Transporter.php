@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Transporter extends Model
 {
@@ -14,10 +15,31 @@ class Transporter extends Model
         'area',
         'plate_number',
         'status',
+        'is_available',
+        'base_fare',
+        'rate_per_kg',
+        'rate_per_km',
     ];
+
+    protected $casts = [
+        'is_available' => 'boolean',
+        'base_fare' => 'float',
+        'rate_per_kg' => 'float',
+        'rate_per_km' => 'float',
+    ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function scopeApproved(Builder $query): Builder
     {
         return $query->where('status', 'approved');
+    }
+
+    public function scopeAvailable(Builder $query): Builder
+    {
+        return $query->where('status', 'approved')->where('is_available', true);
     }
 }

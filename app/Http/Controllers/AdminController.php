@@ -172,7 +172,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Attach or reset a portal login for an existing merchant (e.g. CLI-created Nyumba Cement)
+     * Attach or reset a portal login for an existing merchant
      */
     public function createMerchantLogin(Request $request, Merchant $merchant)
     {
@@ -400,7 +400,7 @@ class AdminController extends Controller
 
     public function transporters()
     {
-        $transporters = Transporter::latest()->get();
+        $transporters = Transporter::with('user')->latest()->get();
 
         return Inertia::render('Admin/Transporters', [
             'transporters' => $transporters,
@@ -412,26 +412,79 @@ class AdminController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:120',
             'phone' => 'required|string|max:25',
+            'email' => 'nullable|email|max:255|unique:users,email',
+            'password' => 'nullable|string|min:8',
             'vehicle_type' => 'required|string|max:50',
             'area' => 'nullable|string|max:120',
             'plate_number' => 'nullable|string|max:30',
+            'base_fare' => 'required|numeric|min:0',
+            'rate_per_kg' => 'required|numeric|min:0',
+            'rate_per_km' => 'required|numeric|min:0',
         ]);
 
-        Transporter::create([
-            'name' => trim($data['name']),
-            'phone' => preg_replace('/[\s\-]+/', '', trim($data['phone'])),
-            'vehicle_type' => trim($data['vehicle_type']),
-            'area' => isset($data['area']) ? trim($data['area']) : null,
-            'plate_number' => isset($data['plate_number']) ? strtoupper(trim($data['plate_number'])) : null,
-            'status' => 'approved',
-        ]);
+        DB::transaction(function () use ($data) {
+            $transporter = Transporter::create([
+                'name' => trim($data['name']),
+                'phone' => preg_replace('/[\s\-]+/', '', trim($data['phone'])),
+                'vehicle_type' => trim($data['vehicle_type']),
+                'area' => isset($data['area']) ? trim($data['area']) : null,
+                'plate_number' => isset($data['plate_number']) ? strtoupper(trim($data['plate_number'])) : null,
+                'status' => 'approved',
+                'is_available' => true,
+                'base_fare' => $data['base_fare'],
+                'rate_per_kg' => $data['rate_per_kg'],
+                'rate_per_km' => $data['rate_per_km'],
+            ]);
+
+            if (!empty($data['email']) && !empty($data['password'])) {
+                User::create([
+                    'name' => $transporter->name,
+                    'email' => $data['email'],
+                    'password' => $data['password'],
+                    'role' => 'transporter',
+                    'transporter_id' => $transporter->id,
+                ]);
+            }
+        });
 
         return redirect()->back()->with('success', 'Transporter added and approved.');
     }
 
+    public function createTransporterLogin(Request $request, Transporter $transporter)
+    {
+        $data = $request->validate([
+            'email' => 'required|email|max:255',
+            'password' => 'required|string|min:8',
+        ]);
+
+        $existingByEmail = User::where('email', $data['email'])
+            ->where('transporter_id', '!=', $transporter->id)
+            ->first();
+
+        if ($existingByEmail) {
+            return response()->json([
+                'message' => 'That email is already used by another account.',
+            ], 422);
+        }
+
+        User::updateOrCreate(
+            ['transporter_id' => $transporter->id, 'role' => 'transporter'],
+            [
+                'name' => $transporter->name,
+                'email' => $data['email'],
+                'password' => $data['password'],
+            ]
+        );
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Portal login saved for driver {$transporter->name}.",
+        ]);
+    }
+
     public function approveTransporter(Transporter $transporter)
     {
-        $transporter->update(['status' => 'approved']);
+        $transporter->update(['status' => 'approved', 'is_available' => true]);
 
         return redirect()->back()->with('success', "{$transporter->name} approved.");
     }
@@ -440,6 +493,7 @@ class AdminController extends Controller
     {
         $transporter->update([
             'status' => $transporter->status === 'approved' ? 'suspended' : 'approved',
+            'is_available' => $transporter->status !== 'approved',
         ]);
 
         return redirect()->back()->with('success', 'Transporter status updated.');
@@ -447,6 +501,9 @@ class AdminController extends Controller
 
     public function destroyTransporter(Transporter $transporter)
     {
+        if ($transporter->user) {
+            $transporter->user()->delete();
+        }
         $transporter->delete();
 
         return redirect()->back()->with('success', 'Transporter removed.');

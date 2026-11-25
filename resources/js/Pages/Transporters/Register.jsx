@@ -14,9 +14,14 @@ export default function TransportersRegister() {
     const { data, setData, post, processing, errors, reset, recentlySuccessful } = useForm({
         name: '',
         phone: '',
+        email: '',
+        password: '',
         vehicle_type: vehicleOptions[0],
         area: '',
         plate_number: '',
+        base_fare: '500',
+        rate_per_kg: '10',
+        rate_per_km: '30',
     });
 
     const submit = (e) => {
@@ -32,7 +37,6 @@ export default function TransportersRegister() {
             <Head title="Join as a Transporter — Nyumba Cement" />
 
             <div className="max-w-xl mx-auto py-8 sm:py-12">
-                {/* Back to Shop Link */}
                 <div className="mb-6">
                     <Link
                         href="/shop"
@@ -46,20 +50,18 @@ export default function TransportersRegister() {
                 </div>
 
                 <div className="bg-white rounded-3xl border border-brand-border p-6 sm:p-10 shadow-xs relative overflow-hidden">
-                    {/* Header Banner */}
                     <div className="mb-8">
                         <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-brand-primary bg-brand-primary/10 px-3 py-1 rounded-full">
-                            Partner Network
+                            Fleet Partner Network
                         </span>
                         <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-dark mt-3 tracking-tight">
                             Register as a Verified Transporter
                         </h1>
                         <p className="text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed">
-                            Get discovered by building material buyers. When shoppers choose independent transport at checkout or after paying, your phone number and vehicle details are displayed for them to call directly.
+                            Set your own rates and get dispatched for customer deliveries. Buyers select your vehicle at checkout, and you get called once payment is confirmed.
                         </p>
                     </div>
 
-                    {/* Success Notice */}
                     {recentlySuccessful ? (
                         <div className="py-8 text-center space-y-4">
                             <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
@@ -67,11 +69,11 @@ export default function TransportersRegister() {
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                                 </svg>
                             </div>
-                            <h2 className="text-xl font-extrabold text-brand-dark">Registration Submitted!</h2>
+                            <h2 className="text-xl font-extrabold text-brand-dark">Application Submitted!</h2>
                             <p className="text-xs sm:text-sm text-gray-600 max-w-sm mx-auto leading-relaxed">
-                                Thank you for signing up. Our admin team will verify your vehicle details and list your contact number on the checkout directory shortly.
+                                Thank you for registering. Our admin team will review your rate card and activate your driver account shortly.
                             </p>
-                            <div className="pt-4 flex flex-wrap justify-center gap-3">
+                            <div className="pt-4">
                                 <Link
                                     href="/shop"
                                     className="bg-brand-dark text-white px-6 py-3 rounded-xl font-bold text-xs sm:text-sm hover:bg-black transition"
@@ -91,7 +93,7 @@ export default function TransportersRegister() {
                                     value={data.name}
                                     onChange={(e) => setData('name', e.target.value)}
                                     placeholder="e.g. Samuel Mutiso Logistics"
-                                    className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm border border-transparent placeholder-gray-400"
+                                    className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm border border-transparent"
                                     required
                                 />
                                 {errors.name && <p className="text-red-600 text-xs mt-1 font-medium">{errors.name}</p>}
@@ -106,8 +108,8 @@ export default function TransportersRegister() {
                                         type="tel"
                                         value={data.phone}
                                         onChange={(e) => setData('phone', e.target.value)}
-                                        placeholder="e.g. 0712345678"
-                                        className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm border border-transparent placeholder-gray-400"
+                                        placeholder="0712345678"
+                                        className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm border border-transparent"
                                         required
                                     />
                                     {errors.phone && <p className="text-red-600 text-xs mt-1 font-medium">{errors.phone}</p>}
@@ -122,55 +124,94 @@ export default function TransportersRegister() {
                                         onChange={(e) => setData('vehicle_type', e.target.value)}
                                         className="w-full bg-brand-input rounded-xl px-3.5 py-3 text-sm border border-transparent text-brand-dark"
                                     >
-                                        {vehicleOptions.map((v) => (
-                                            <option key={v} value={v}>{v}</option>
-                                        ))}
+                                        {vehicleOptions.map((v) => <option key={v} value={v}>{v}</option>)}
                                     </select>
                                 </div>
                             </div>
 
                             <div className="grid sm:grid-cols-2 gap-3.5">
                                 <div>
-                                    <label className="block text-xs font-semibold text-brand-dark mb-1.5">
-                                        Primary Base / Operating Town <span className="text-red-500">*</span>
-                                    </label>
+                                    <label className="block text-xs font-semibold text-brand-dark mb-1.5">Portal Login Email</label>
+                                    <input
+                                        type="email"
+                                        value={data.email}
+                                        onChange={(e) => setData('email', e.target.value)}
+                                        placeholder="driver@logistics.co.ke"
+                                        className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm border border-transparent"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-brand-dark mb-1.5">Portal Password</label>
+                                    <input
+                                        type="password"
+                                        value={data.password}
+                                        onChange={(e) => setData('password', e.target.value)}
+                                        placeholder="min 8 chars"
+                                        className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm border border-transparent"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Rate Card Inputs */}
+                            <div className="p-4 rounded-2xl bg-brand-light border border-brand-border space-y-3">
+                                <p className="text-xs font-bold text-brand-dark uppercase tracking-wider">Your Rate Card (KSh)</p>
+                                <div className="grid sm:grid-cols-3 gap-3">
+                                    <div>
+                                        <label className="block text-[11px] font-semibold text-gray-500 mb-1">Base Fare</label>
+                                        <input
+                                            type="number"
+                                            value={data.base_fare}
+                                            onChange={(e) => setData('base_fare', e.target.value)}
+                                            className="w-full bg-white rounded-xl px-3 py-2.5 text-sm border border-brand-border"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-semibold text-gray-500 mb-1">Rate per KG</label>
+                                        <input
+                                            type="number"
+                                            value={data.rate_per_kg}
+                                            onChange={(e) => setData('rate_per_kg', e.target.value)}
+                                            className="w-full bg-white rounded-xl px-3 py-2.5 text-sm border border-brand-border"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-semibold text-gray-500 mb-1">Rate per KM</label>
+                                        <input
+                                            type="number"
+                                            value={data.rate_per_km}
+                                            onChange={(e) => setData('rate_per_km', e.target.value)}
+                                            className="w-full bg-white rounded-xl px-3 py-2.5 text-sm border border-brand-border"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid sm:grid-cols-2 gap-3.5">
+                                <div>
+                                    <label className="block text-xs font-semibold text-brand-dark mb-1.5">Primary Base Town</label>
                                     <input
                                         type="text"
                                         value={data.area}
                                         onChange={(e) => setData('area', e.target.value)}
-                                        placeholder="e.g. Mombasa Road, Kitengela"
-                                        className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm border border-transparent placeholder-gray-400"
-                                        required
+                                        placeholder="e.g. Mombasa Road"
+                                        className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm border border-transparent"
                                     />
-                                    {errors.area && <p className="text-red-600 text-xs mt-1 font-medium">{errors.area}</p>}
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-semibold text-brand-dark mb-1.5">
-                                        Vehicle Plate Number (Optional)
-                                    </label>
+                                    <label className="block text-xs font-semibold text-brand-dark mb-1.5">Plate Number</label>
                                     <input
                                         type="text"
                                         value={data.plate_number}
                                         onChange={(e) => setData('plate_number', e.target.value)}
-                                        placeholder="e.g. KDF 123A"
-                                        className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm border border-transparent placeholder-gray-400 uppercase font-mono"
+                                        placeholder="KDF 123A"
+                                        className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm border border-transparent uppercase font-mono"
                                     />
-                                    {errors.plate_number && <p className="text-red-600 text-xs mt-1 font-medium">{errors.plate_number}</p>}
                                 </div>
-                            </div>
-
-                            {/* Trust Note Card */}
-                            <div className="p-4 rounded-2xl bg-brand-light border border-brand-border space-y-1.5 text-xs text-gray-600">
-                                <div className="flex items-center gap-1.5 text-brand-dark font-bold">
-                                    <svg className="w-4 h-4 text-brand-primary" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-                                    </svg>
-                                    <span>How Transporter Listing Works</span>
-                                </div>
-                                <p>1. We do not charge listing fees or commissions on your trips.</p>
-                                <p>2. Customers will call you directly to negotiate and pay your transport fare.</p>
-                                <p>3. Keep your phone reachable to receive hauling job requests.</p>
                             </div>
 
                             <button
@@ -178,7 +219,7 @@ export default function TransportersRegister() {
                                 disabled={processing}
                                 className="w-full mt-2 bg-brand-dark text-white py-4 rounded-xl font-extrabold text-sm hover:bg-black transition cursor-pointer disabled:opacity-50"
                             >
-                                {processing ? 'Submitting Registration...' : 'Submit Transporter Details →'}
+                                {processing ? 'Submitting Application...' : 'Register Transporter Fleet →'}
                             </button>
                         </form>
                     )}

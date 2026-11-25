@@ -17,6 +17,7 @@ class User extends Authenticatable
         'password',
         'role',
         'merchant_id',
+        'transporter_id',
     ];
 
     protected $hidden = [
@@ -37,6 +38,11 @@ class User extends Authenticatable
         return $this->belongsTo(Merchant::class);
     }
 
+    public function transporter(): BelongsTo
+    {
+        return $this->belongsTo(Transporter::class);
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
@@ -45,5 +51,10 @@ class User extends Authenticatable
     public function isMerchant(): bool
     {
         return $this->role === 'merchant';
+    }
+
+    public function isTransporter(): bool
+    {
+        return $this->role === 'transporter';
     }
 }

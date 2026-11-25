@@ -8,6 +8,7 @@ use App\Http\Controllers\GatewayController;
 use App\Http\Controllers\HostedCheckoutController;
 use App\Http\Controllers\MerchantPortalController;
 use App\Http\Controllers\TransporterController;
+use App\Http\Controllers\TransporterPortalController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -66,6 +67,15 @@ Route::prefix('merchant')->middleware(['auth', 'role:merchant'])->name('merchant
 });
 
 // ============================================================================
+// Transporter Portal (Protected)
+// ============================================================================
+Route::prefix('transporter')->middleware(['auth', 'role:transporter'])->name('transporter.')->group(function () {
+    Route::get('/', [TransporterPortalController::class, 'dashboard'])->name('dashboard');
+    Route::post('/availability', [TransporterPortalController::class, 'toggleAvailability'])->name('availability');
+    Route::post('/rates', [TransporterPortalController::class, 'updateRates'])->name('rates');
+});
+
+// ============================================================================
 // Platform Admin — Purely Merchant & Gateway Management (Protected)
 // ============================================================================
 Route::prefix('admin')->middleware(['auth', 'role:admin'])->name('admin.')->group(function () {
@@ -88,6 +98,7 @@ Route::prefix('admin')->middleware(['auth', 'role:admin'])->name('admin.')->grou
     // Transporter Management (Admin)
     Route::get('/transporters', [AdminController::class, 'transporters'])->name('transporters');
     Route::post('/transporters', [AdminController::class, 'storeTransporter'])->name('transporters.store');
+    Route::post('/transporters/{transporter}/login', [AdminController::class, 'createTransporterLogin'])->name('transporters.login');
     Route::post('/transporters/{transporter}/approve', [AdminController::class, 'approveTransporter'])->name('transporters.approve');
     Route::post('/transporters/{transporter}/toggle', [AdminController::class, 'toggleTransporterStatus'])->name('transporters.toggle');
     Route::delete('/transporters/{transporter}', [AdminController::class, 'destroyTransporter'])->name('transporters.destroy');
