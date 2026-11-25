@@ -484,9 +484,9 @@ class AdminController extends Controller
             ->first();
 
         if ($existingByEmail) {
-            return response()->json([
-                'message' => 'That email is already used by another account.',
-            ], 422);
+            return back()->withErrors([
+                'email' => 'That email is already used by another account.',
+            ]);
         }
 
         User::updateOrCreate(
@@ -498,10 +498,7 @@ class AdminController extends Controller
             ]
         );
 
-        return response()->json([
-            'status' => 'success',
-            'message' => "Portal login saved for driver {$transporter->name}.",
-        ]);
+        return redirect()->back()->with('success', "Portal login saved for driver {$transporter->name}.");
     }
 
     public function approveTransporter(Transporter $transporter)

@@ -14,8 +14,6 @@ export default function TransportersRegister() {
     const { data, setData, post, processing, errors, reset, recentlySuccessful } = useForm({
         name: '',
         phone: '',
-        email: '',
-        password: '',
         vehicle_type: vehicleOptions[0],
         area: '',
         plate_number: '',
@@ -58,29 +56,57 @@ export default function TransportersRegister() {
                             Register as a Verified Transporter
                         </h1>
                         <p className="text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed">
-                            Set your own rates and get dispatched for customer deliveries. Buyers select your vehicle at checkout, and you get called once payment is confirmed.
+                            Set your haulage rates to get booked for customer deliveries. Passwords and portal access credentials are issue-controlled and assigned by the Nyumba Cement administrative team upon profile verification.
                         </p>
                     </div>
 
                     {recentlySuccessful ? (
-                        <div className="py-8 text-center space-y-4">
-                            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-                                <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                </svg>
+                        <div className="py-6 space-y-6">
+                            <div className="text-center">
+                                <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                    </svg>
+                                </div>
+                                <h2 className="text-xl font-extrabold text-brand-dark">Registration Submitted!</h2>
+                                <p className="text-xs sm:text-sm text-gray-600 max-w-md mx-auto mt-2 leading-relaxed">
+                                    Your vehicle profile and rate card have been submitted for verification. To collect your driver portal login credentials and finalize listing approval:
+                                </p>
                             </div>
-                            <h2 className="text-xl font-extrabold text-brand-dark">Application Submitted!</h2>
-                            <p className="text-xs sm:text-sm text-gray-600 max-w-sm mx-auto leading-relaxed">
-                                Thank you for registering. Our admin team will review your rate card and activate your driver account shortly.
+
+                            {/* Contact & Physical Verification Instructions */}
+                            <div className="rounded-2xl bg-brand-light border border-brand-border p-5 space-y-4 text-xs text-brand-dark">
+                                <div>
+                                    <p className="font-bold uppercase tracking-wider text-[11px] text-brand-primary mb-1">
+                                        Option 1: Email Onboarding Desk
+                                    </p>
+                                    <p className="text-gray-600">
+                                        Email our team at{' '}
+                                        <a href="mailto:support@evopay.africa?subject=Transporter%20Verification%20and%20Login%20Request" className="font-bold text-brand-dark underline hover:text-brand-primary">
+                                            support@evopay.africa
+                                        </a>{' '}
+                                        with your registered phone number to receive your secure portal login password.
+                                    </p>
+                                </div>
+
+                                <div className="border-t border-brand-border pt-3">
+                                    <p className="font-bold uppercase tracking-wider text-[11px] text-brand-primary mb-1">
+                                        Option 2: Physical Verification at Nairobi Depots
+                                    </p>
+                                    <p className="text-gray-600 leading-relaxed">
+                                        Visit the main headquarters or any major authorized hardware depot stocking Nyumba Cement in Nairobi:
+                                    </p>
+                                    <ul className="mt-2 space-y-1.5 pl-3 list-disc text-gray-700">
+                                        <li><strong>Industrial Area:</strong> Authorized hardware distributors along <strong>Enterprise Road</strong></li>
+                                        <li><strong>Gikomba / Kamukunji Area:</strong> Hardware hub along <strong>Kombo Munyiri Road</strong></li>
+                                        <li><strong>Eastlands Depot:</strong> Partner collection center along <strong>Kangundo Road</strong></li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <p className="text-center text-[11px] text-gray-400">
+                                Once verified, your phone will be unlocked for direct customer calls after material checkout.
                             </p>
-                            <div className="pt-4">
-                                <Link
-                                    href="/shop"
-                                    className="bg-brand-dark text-white px-6 py-3 rounded-xl font-bold text-xs sm:text-sm hover:bg-black transition"
-                                >
-                                    Browse Store
-                                </Link>
-                            </div>
                         </div>
                     ) : (
                         <form onSubmit={submit} className="space-y-4">
@@ -126,30 +152,6 @@ export default function TransportersRegister() {
                                     >
                                         {vehicleOptions.map((v) => <option key={v} value={v}>{v}</option>)}
                                     </select>
-                                </div>
-                            </div>
-
-                            <div className="grid sm:grid-cols-2 gap-3.5">
-                                <div>
-                                    <label className="block text-xs font-semibold text-brand-dark mb-1.5">Portal Login Email</label>
-                                    <input
-                                        type="email"
-                                        value={data.email}
-                                        onChange={(e) => setData('email', e.target.value)}
-                                        placeholder="driver@logistics.co.ke"
-                                        className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm border border-transparent"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-semibold text-brand-dark mb-1.5">Portal Password</label>
-                                    <input
-                                        type="password"
-                                        value={data.password}
-                                        onChange={(e) => setData('password', e.target.value)}
-                                        placeholder="min 8 chars"
-                                        className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm border border-transparent"
-                                    />
                                 </div>
                             </div>
 
@@ -199,7 +201,9 @@ export default function TransportersRegister() {
                                         onChange={(e) => setData('area', e.target.value)}
                                         placeholder="e.g. Mombasa Road"
                                         className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm border border-transparent"
+                                        required
                                     />
+                                    {errors.area && <p className="text-red-600 text-xs mt-1 font-medium">{errors.area}</p>}
                                 </div>
 
                                 <div>

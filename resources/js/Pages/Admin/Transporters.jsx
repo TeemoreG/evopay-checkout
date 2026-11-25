@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import axios from 'axios';
 import MainLayout from '../../Layouts/MainLayout';
 
 const statusMeta = {
@@ -37,13 +36,15 @@ export default function AdminTransporters({ transporters = [] }) {
     const [search, setSearch] = useState('');
     const [isAddOpen, setIsAddOpen] = useState(false);
 
-    // Login modal state
+    // Modal state for attaching/resetting portal login
     const [loginTarget, setLoginTarget] = useState(null);
-    const [loginEmail, setLoginEmail] = useState('');
-    const [loginPassword, setLoginPassword] = useState('');
-    const [loginSaving, setLoginSaving] = useState(false);
 
-    const form = useForm({
+    const loginForm = useForm({
+        email: '',
+        password: '',
+    });
+
+    const addForm = useForm({
         name: '',
         phone: '',
         email: '',
@@ -80,32 +81,26 @@ export default function AdminTransporters({ transporters = [] }) {
 
     const submitAdd = (e) => {
         e.preventDefault();
-        form.post('/admin/transporters', {
+        addForm.post('/admin/transporters', {
             preserveScroll: true,
             onSuccess: () => {
-                form.reset();
+                addForm.reset();
                 setIsAddOpen(false);
             },
         });
     };
 
-    const submitLogin = async (e) => {
+    const submitLogin = (e) => {
         e.preventDefault();
         if (!loginTarget) return;
-        setLoginSaving(true);
-        try {
-            await axios.post(`/admin/transporters/${loginTarget.id}/login`, {
-                email: loginEmail,
-                password: loginPassword,
-            });
-            setLoginTarget(null);
-            setLoginPassword('');
-            router.reload({ only: ['transporters'] });
-        } catch (err) {
-            alert(err.response?.data?.message || 'Failed to save driver login.');
-        } finally {
-            setLoginSaving(false);
-        }
+
+        loginForm.post(`/admin/transporters/${loginTarget.id}/login`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setLoginTarget(null);
+                loginForm.reset();
+            },
+        });
     };
 
     const approveTransporter = (id) => {
@@ -162,41 +157,54 @@ export default function AdminTransporters({ transporters = [] }) {
                 </div>
             </div>
 
-            {/* Attach Login Modal */}
+            {/* Attach Login Inline Box */}
             {loginTarget && (
                 <form onSubmit={submitLogin} className="mb-6 bg-white rounded-2xl border-2 border-brand-primary p-5 shadow-sm max-w-xl">
                     <div className="flex justify-between items-center mb-3">
                         <h3 className="font-bold text-sm text-brand-dark">
-                            {loginTarget.user ? 'Reset' : 'Create'} Portal Login for {loginTarget.name}
+                            {loginTarget.user ? 'Reset' : 'Assign'} Portal Login for {loginTarget.name}
                         </h3>
-                        <button type="button" onClick={() => setLoginTarget(null)} className="text-xs text-red-500 font-semibold cursor-pointer">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setLoginTarget(null);
+                                loginForm.reset();
+                            }}
+                            className="text-xs text-red-500 font-semibold cursor-pointer"
+                        >
                             Cancel
                         </button>
                     </div>
                     <div className="space-y-3">
-                        <input
-                            type="email"
-                            value={loginEmail}
-                            onChange={(e) => setLoginEmail(e.target.value)}
-                            placeholder="Driver login email"
-                            className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
-                            required
-                        />
-                        <input
-                            type="password"
-                            minLength={8}
-                            value={loginPassword}
-                            onChange={(e) => setLoginPassword(e.target.value)}
-                            placeholder="Password (min 8 chars)"
-                            className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
-                            required
-                        />
+                        <div>
+                            <input
+                                type="email"
+                                value={loginForm.data.email}
+                                onChange={(e) => loginForm.setData('email', e.target.value)}
+                                placeholder="Driver login email"
+                                className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
+                                required
+                            />
+                            {loginForm.errors.email && <p className="text-red-500 text-xs mt-1">{loginForm.errors.email}</p>}
+                        </div>
+                        <div>
+                            <input
+                                type="password"
+                                minLength={8}
+                                value={loginForm.data.password}
+                                onChange={(e) => loginForm.setData('password', e.target.value)}
+                                placeholder="Password (min 8 chars)"
+                                className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
+                                required
+                            />
+                            {loginForm.errors.password && <p className="text-red-500 text-xs mt-1">{loginForm.errors.password}</p>}
+                        </div>
                         <button
                             type="submit"
-                            disabled={loginSaving}
-                            className="w-full bg-brand-dark text-white rounded-xl font-bold text-sm py-3 hover:bg-black cursor-pointer"
+                            disabled={loginForm.processing}
+                            className="w-full bg-brand-dark text-white rounded-xl font-bold text-sm py-3 hover:bg-black cursor-pointer disabled:opacity-50"
                         >
-                            {loginSaving ? 'Saving...' : 'Save Driver Login'}
+                            {loginForm.processing ? 'Saving...' : 'Save Driver Login'}
                         </button>
                     </div>
                 </form>
@@ -321,8 +329,10 @@ export default function AdminTransporters({ transporters = [] }) {
                                             type="button"
                                             onClick={() => {
                                                 setLoginTarget(t);
-                                                setLoginEmail(t.user?.email || '');
-                                                setLoginPassword('');
+                                                loginForm.setData({
+                                                    email: t.user?.email || '',
+                                                    password: '',
+                                                });
                                             }}
                                             className="border border-brand-border bg-white text-brand-dark px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-50 transition cursor-pointer"
                                         >
@@ -378,12 +388,13 @@ export default function AdminTransporters({ transporters = [] }) {
                                 <label className="block text-xs font-semibold text-brand-dark mb-1">Driver / Business Name *</label>
                                 <input
                                     type="text"
-                                    value={form.data.name}
-                                    onChange={(e) => form.setData('name', e.target.value)}
+                                    value={addForm.data.name}
+                                    onChange={(e) => addForm.setData('name', e.target.value)}
                                     placeholder="e.g. Samuel Mutiso Logistics"
                                     className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm"
                                     required
                                 />
+                                {addForm.errors.name && <p className="text-red-500 text-xs mt-1">{addForm.errors.name}</p>}
                             </div>
 
                             <div className="grid sm:grid-cols-2 gap-3">
@@ -391,18 +402,19 @@ export default function AdminTransporters({ transporters = [] }) {
                                     <label className="block text-xs font-semibold text-brand-dark mb-1">Phone Number *</label>
                                     <input
                                         type="tel"
-                                        value={form.data.phone}
-                                        onChange={(e) => form.setData('phone', e.target.value)}
+                                        value={addForm.data.phone}
+                                        onChange={(e) => addForm.setData('phone', e.target.value)}
                                         placeholder="0712345678"
                                         className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm"
                                         required
                                     />
+                                    {addForm.errors.phone && <p className="text-red-500 text-xs mt-1">{addForm.errors.phone}</p>}
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-brand-dark mb-1">Vehicle Type *</label>
                                     <select
-                                        value={form.data.vehicle_type}
-                                        onChange={(e) => form.setData('vehicle_type', e.target.value)}
+                                        value={addForm.data.vehicle_type}
+                                        onChange={(e) => addForm.setData('vehicle_type', e.target.value)}
                                         className="w-full bg-brand-input rounded-xl px-3 py-2.5 text-sm"
                                     >
                                         {vehicleOptions.map((v) => <option key={v} value={v}>{v}</option>)}
@@ -415,21 +427,23 @@ export default function AdminTransporters({ transporters = [] }) {
                                     <label className="block text-xs font-semibold text-brand-dark mb-1">Portal Login Email (Optional)</label>
                                     <input
                                         type="email"
-                                        value={form.data.email}
-                                        onChange={(e) => form.setData('email', e.target.value)}
+                                        value={addForm.data.email}
+                                        onChange={(e) => addForm.setData('email', e.target.value)}
                                         placeholder="driver@logistics.co.ke"
                                         className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm"
                                     />
+                                    {addForm.errors.email && <p className="text-red-500 text-xs mt-1">{addForm.errors.email}</p>}
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-brand-dark mb-1">Portal Password (Optional)</label>
                                     <input
                                         type="password"
-                                        value={form.data.password}
-                                        onChange={(e) => form.setData('password', e.target.value)}
+                                        value={addForm.data.password}
+                                        onChange={(e) => addForm.setData('password', e.target.value)}
                                         placeholder="min 8 chars"
                                         className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm"
                                     />
+                                    {addForm.errors.password && <p className="text-red-500 text-xs mt-1">{addForm.errors.password}</p>}
                                 </div>
                             </div>
 
@@ -438,8 +452,8 @@ export default function AdminTransporters({ transporters = [] }) {
                                     <label className="block text-xs font-semibold text-brand-dark mb-1">Base Fare (KSh)</label>
                                     <input
                                         type="number"
-                                        value={form.data.base_fare}
-                                        onChange={(e) => form.setData('base_fare', e.target.value)}
+                                        value={addForm.data.base_fare}
+                                        onChange={(e) => addForm.setData('base_fare', e.target.value)}
                                         className="w-full bg-brand-input rounded-xl px-3 py-2.5 text-sm"
                                         required
                                     />
@@ -448,8 +462,8 @@ export default function AdminTransporters({ transporters = [] }) {
                                     <label className="block text-xs font-semibold text-brand-dark mb-1">Rate/KG (KSh)</label>
                                     <input
                                         type="number"
-                                        value={form.data.rate_per_kg}
-                                        onChange={(e) => form.setData('rate_per_kg', e.target.value)}
+                                        value={addForm.data.rate_per_kg}
+                                        onChange={(e) => addForm.setData('rate_per_kg', e.target.value)}
                                         className="w-full bg-brand-input rounded-xl px-3 py-2.5 text-sm"
                                         required
                                     />
@@ -458,8 +472,8 @@ export default function AdminTransporters({ transporters = [] }) {
                                     <label className="block text-xs font-semibold text-brand-dark mb-1">Rate/KM (KSh)</label>
                                     <input
                                         type="number"
-                                        value={form.data.rate_per_km}
-                                        onChange={(e) => form.setData('rate_per_km', e.target.value)}
+                                        value={addForm.data.rate_per_km}
+                                        onChange={(e) => addForm.setData('rate_per_km', e.target.value)}
                                         className="w-full bg-brand-input rounded-xl px-3 py-2.5 text-sm"
                                         required
                                     />
@@ -471,8 +485,8 @@ export default function AdminTransporters({ transporters = [] }) {
                                     <label className="block text-xs font-semibold text-brand-dark mb-1">Base Town / Area</label>
                                     <input
                                         type="text"
-                                        value={form.data.area}
-                                        onChange={(e) => form.setData('area', e.target.value)}
+                                        value={addForm.data.area}
+                                        onChange={(e) => addForm.setData('area', e.target.value)}
                                         placeholder="Mombasa Road"
                                         className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm"
                                     />
@@ -481,8 +495,8 @@ export default function AdminTransporters({ transporters = [] }) {
                                     <label className="block text-xs font-semibold text-brand-dark mb-1">Plate Number</label>
                                     <input
                                         type="text"
-                                        value={form.data.plate_number}
-                                        onChange={(e) => form.setData('plate_number', e.target.value)}
+                                        value={addForm.data.plate_number}
+                                        onChange={(e) => addForm.setData('plate_number', e.target.value)}
                                         placeholder="KDF 123A"
                                         className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm uppercase font-mono"
                                     />
@@ -491,10 +505,10 @@ export default function AdminTransporters({ transporters = [] }) {
 
                             <button
                                 type="submit"
-                                disabled={form.processing}
-                                className="w-full mt-2 bg-brand-dark text-white py-3.5 rounded-xl font-bold text-sm hover:bg-black transition cursor-pointer"
+                                disabled={addForm.processing}
+                                className="w-full mt-2 bg-brand-dark text-white py-3.5 rounded-xl font-bold text-sm hover:bg-black transition cursor-pointer disabled:opacity-50"
                             >
-                                {form.processing ? 'Saving...' : 'Save & Approve Transporter'}
+                                {addForm.processing ? 'Saving...' : 'Save & Approve Transporter'}
                             </button>
                         </form>
                     </div>

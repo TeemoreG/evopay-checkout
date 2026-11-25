@@ -52,6 +52,6 @@ class TransporterController extends Controller
             'rate_per_km' => $data['rate_per_km'],
         ]);
 
-        return redirect()->back()->with('success', 'Thank you! Your details have been submitted. Our team will review and list your number shortly.');
+        return redirect()->back()->with('success', 'Your registration has been received! Please review the verification notice on screen.');
     }
 }
