@@ -435,8 +435,8 @@ class AdminController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:120',
             'phone' => 'required|string|max:25',
-            'email' => 'nullable|email|max:255|unique:users,email',
-            'password' => 'nullable|string|min:8',
+            'email' => 'nullable|required_with:password|email|max:255|unique:users,email',
+            'password' => 'nullable|required_with:email|string|min:8',
             'vehicle_type' => 'required|string|max:50',
             'area' => 'nullable|string|max:120',
             'plate_number' => 'nullable|string|max:30',
@@ -538,7 +538,10 @@ class AdminController extends Controller
         ]);
 
         $existingByEmail = User::where('email', $data['email'])
-            ->where('transporter_id', '!=', $transporter->id)
+            ->where(function ($q) use ($transporter) {
+                $q->whereNull('transporter_id')
+                    ->orWhere('transporter_id', '!=', $transporter->id);
+            })
             ->first();
 
         if ($existingByEmail) {

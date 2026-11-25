@@ -83,6 +83,13 @@ class TransporterPortalController extends Controller
             abort(403);
         }
 
+        if ($transporter->status !== 'approved') {
+            $transporter->update(['is_available' => false]);
+            return redirect()->back()->withErrors([
+                'availability' => 'Only approved transporters can go online.',
+            ]);
+        }
+
         $transporter->update([
             'is_available' => !$transporter->is_available,
         ]);
