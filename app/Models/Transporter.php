@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Transporter extends Model
 {
@@ -14,6 +14,8 @@ class Transporter extends Model
         'vehicle_type',
         'area',
         'plate_number',
+        'id_number',
+        'id_document_path',
         'status',
         'is_available',
         'base_fare',
@@ -28,9 +30,9 @@ class Transporter extends Model
         'rate_per_km' => 'float',
     ];
 
-    public function user(): BelongsTo
+    public function user(): HasOne
     {
-        return $this->belongsTo(User::class);
+        return $this->hasOne(User::class, 'transporter_id');
     }
 
     public function scopeApproved(Builder $query): Builder

@@ -29,15 +29,30 @@ const vehicleOptions = [
     'Motorbike / Courier',
 ];
 
-const formatKES = (v) => 'KSh ' + Number(v || 0).toLocaleString('en-KE', { minimumFractionDigits: 0 });
+const formatKES = (v) =>
+    'KSh ' + Number(v || 0).toLocaleString('en-KE', { minimumFractionDigits: 0 });
 
 export default function AdminTransporters({ transporters = [] }) {
     const [filter, setFilter] = useState('all');
     const [search, setSearch] = useState('');
     const [isAddOpen, setIsAddOpen] = useState(false);
 
-    // Modal state for attaching/resetting portal login
-    const [loginTarget, setLoginTarget] = useState(null);
+    const [editingTransporter, setEditingTransporter] = useState(null);
+    const [modalTab, setModalTab] = useState('details');
+
+    const editForm = useForm({
+        name: '',
+        phone: '',
+        vehicle_type: vehicleOptions[0],
+        area: '',
+        plate_number: '',
+        id_number: '',
+        status: 'pending',
+        is_available: false,
+        base_fare: '500',
+        rate_per_kg: '10',
+        rate_per_km: '30',
+    });
 
     const loginForm = useForm({
         email: '',
@@ -52,10 +67,35 @@ export default function AdminTransporters({ transporters = [] }) {
         vehicle_type: vehicleOptions[0],
         area: '',
         plate_number: '',
+        id_number: '',
         base_fare: '500',
         rate_per_kg: '10',
         rate_per_km: '30',
     });
+
+    const openEditModal = (t, initialTab = 'details') => {
+        setEditingTransporter(t);
+        setModalTab(initialTab);
+        editForm.setData({
+            name: t.name || '',
+            phone: t.phone || '',
+            vehicle_type: t.vehicle_type || vehicleOptions[0],
+            area: t.area || '',
+            plate_number: t.plate_number || '',
+            id_number: t.id_number || '',
+            status: t.status || 'pending',
+            is_available: Boolean(t.is_available),
+            base_fare: String(t.base_fare ?? 500),
+            rate_per_kg: String(t.rate_per_kg ?? 10),
+            rate_per_km: String(t.rate_per_km ?? 30),
+        });
+        editForm.clearErrors();
+        loginForm.setData({
+            email: t.user?.email || '',
+            password: '',
+        });
+        loginForm.clearErrors();
+    };
 
     const counts = {
         all: transporters.length,
@@ -75,7 +115,8 @@ export default function AdminTransporters({ transporters = [] }) {
             t.phone?.toLowerCase().includes(q) ||
             t.area?.toLowerCase().includes(q) ||
             t.vehicle_type?.toLowerCase().includes(q) ||
-            t.plate_number?.toLowerCase().includes(q)
+            t.plate_number?.toLowerCase().includes(q) ||
+            t.id_number?.toLowerCase().includes(q)
         );
     });
 
@@ -90,32 +131,53 @@ export default function AdminTransporters({ transporters = [] }) {
         });
     };
 
-    const submitLogin = (e) => {
+    const submitEdit = (e) => {
         e.preventDefault();
-        if (!loginTarget) return;
+        if (!editingTransporter) return;
 
-        loginForm.post(`/admin/transporters/${loginTarget.id}/login`, {
+        editForm.put(`/admin/transporters/${editingTransporter.id}`, {
             preserveScroll: true,
             onSuccess: () => {
-                setLoginTarget(null);
+                setEditingTransporter(null);
+            },
+        });
+    };
+
+    const submitLogin = (e) => {
+        e.preventDefault();
+        if (!editingTransporter) return;
+
+        loginForm.post(`/admin/transporters/${editingTransporter.id}/login`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setEditingTransporter(null);
                 loginForm.reset();
             },
         });
     };
 
-    const approveTransporter = (id) => {
-        router.post(`/admin/transporters/${id}/approve`, {}, { preserveScroll: true });
+    const approveFromModal = () => {
+        if (!editingTransporter) return;
+        router.post(`/admin/transporters/${editingTransporter.id}/approve`, {}, {
+            preserveScroll: true,
+            onSuccess: () => setEditingTransporter(null),
+        });
     };
 
-    const toggleStatus = (id) => {
-        router.post(`/admin/transporters/${id}/toggle`, {}, { preserveScroll: true });
-    };
-
-    const deleteTransporter = (id, name) => {
-        if (confirm(`Remove transporter "${name}" from directory?`)) {
-            router.delete(`/admin/transporters/${id}`, { preserveScroll: true });
+    const deleteFromModal = () => {
+        if (!editingTransporter) return;
+        if (confirm(`Permanently remove "${editingTransporter.name}" from the directory?`)) {
+            router.delete(`/admin/transporters/${editingTransporter.id}`, {
+                preserveScroll: true,
+                onSuccess: () => setEditingTransporter(null),
+            });
         }
     };
+
+    const isPdfDoc = editingTransporter?.id_document_path?.toLowerCase().endsWith('.pdf');
+    const idDocUrl = editingTransporter?.id_document_path
+        ? `/admin/transporters/${editingTransporter.id}/id-document`
+        : null;
 
     return (
         <MainLayout minimal homeHref="/admin/demo-shop">
@@ -130,7 +192,7 @@ export default function AdminTransporters({ transporters = [] }) {
                         Transporters Directory & Fleet
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        Manage independent drivers, rate cards, and portal logins.
+                        Tap any driver card to inspect their National ID, edit rate cards, approve, or assign portal logins.
                     </p>
                 </div>
 
@@ -156,59 +218,6 @@ export default function AdminTransporters({ transporters = [] }) {
                     </Link>
                 </div>
             </div>
-
-            {/* Attach Login Inline Box */}
-            {loginTarget && (
-                <form onSubmit={submitLogin} className="mb-6 bg-white rounded-2xl border-2 border-brand-primary p-5 shadow-sm max-w-xl">
-                    <div className="flex justify-between items-center mb-3">
-                        <h3 className="font-bold text-sm text-brand-dark">
-                            {loginTarget.user ? 'Reset' : 'Assign'} Portal Login for {loginTarget.name}
-                        </h3>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setLoginTarget(null);
-                                loginForm.reset();
-                            }}
-                            className="text-xs text-red-500 font-semibold cursor-pointer"
-                        >
-                            Cancel
-                        </button>
-                    </div>
-                    <div className="space-y-3">
-                        <div>
-                            <input
-                                type="email"
-                                value={loginForm.data.email}
-                                onChange={(e) => loginForm.setData('email', e.target.value)}
-                                placeholder="Driver login email"
-                                className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
-                                required
-                            />
-                            {loginForm.errors.email && <p className="text-red-500 text-xs mt-1">{loginForm.errors.email}</p>}
-                        </div>
-                        <div>
-                            <input
-                                type="password"
-                                minLength={8}
-                                value={loginForm.data.password}
-                                onChange={(e) => loginForm.setData('password', e.target.value)}
-                                placeholder="Password (min 8 chars)"
-                                className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
-                                required
-                            />
-                            {loginForm.errors.password && <p className="text-red-500 text-xs mt-1">{loginForm.errors.password}</p>}
-                        </div>
-                        <button
-                            type="submit"
-                            disabled={loginForm.processing}
-                            className="w-full bg-brand-dark text-white rounded-xl font-bold text-sm py-3 hover:bg-black cursor-pointer disabled:opacity-50"
-                        >
-                            {loginForm.processing ? 'Saving...' : 'Save Driver Login'}
-                        </button>
-                    </div>
-                </form>
-            )}
 
             {/* KPI Cards Strip */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -239,7 +248,7 @@ export default function AdminTransporters({ transporters = [] }) {
                 </div>
             </div>
 
-            {/* List Table */}
+            {/* List Card */}
             <div className="bg-white rounded-2xl border border-brand-border shadow-xs overflow-hidden">
                 <div className="p-4 border-b border-brand-border bg-brand-light/60 flex flex-wrap items-center justify-between gap-3">
                     <div className="inline-flex flex-wrap gap-1.5 bg-white p-1 rounded-xl border border-brand-border">
@@ -270,7 +279,7 @@ export default function AdminTransporters({ transporters = [] }) {
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search name, phone, plate, town..."
+                            placeholder="Search name, phone, plate, ID, town..."
                             className="w-full bg-white border border-brand-border rounded-xl pl-9 pr-4 py-2 text-sm"
                         />
                     </div>
@@ -284,9 +293,14 @@ export default function AdminTransporters({ transporters = [] }) {
                             const meta = statusMeta[t.status] || statusMeta.pending;
 
                             return (
-                                <div key={t.id} className="p-4 sm:p-5 hover:bg-gray-50/50 transition flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                <button
+                                    key={t.id}
+                                    type="button"
+                                    onClick={() => openEditModal(t, 'details')}
+                                    className="w-full text-left p-4 sm:p-5 hover:bg-brand-light/70 transition flex flex-col lg:flex-row lg:items-center justify-between gap-4 cursor-pointer group"
+                                >
                                     <div className="flex items-start gap-3.5">
-                                        <div className="w-10 h-10 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <div className="w-11 h-11 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-brand-primary group-hover:text-white transition">
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.25V4.5a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 4.5v9.75m12 0H2.25m12 0v5.25" />
                                             </svg>
@@ -294,7 +308,7 @@ export default function AdminTransporters({ transporters = [] }) {
 
                                         <div>
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <span className="font-bold text-sm text-brand-dark">{t.name}</span>
+                                                <span className="font-bold text-sm text-brand-dark group-hover:text-brand-primary transition">{t.name}</span>
                                                 <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${meta.badge}`}>
                                                     <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
                                                     {meta.label}
@@ -307,70 +321,382 @@ export default function AdminTransporters({ transporters = [] }) {
                                                         {t.plate_number}
                                                     </span>
                                                 )}
+                                                {t.id_document_path && (
+                                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                                                        </svg>
+                                                        <span>ID Attached</span>
+                                                    </span>
+                                                )}
                                             </div>
 
-                                            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
-                                                <span className="font-bold text-brand-dark">{t.phone}</span>
+                                            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                                                <span className="font-semibold text-brand-dark">{t.phone}</span>
                                                 <span>·</span>
                                                 <span>{t.vehicle_type}</span>
                                                 <span>·</span>
-                                                <span>Base: <strong>{t.area || 'Nairobi'}</strong></span>
+                                                <span>Base: <strong className="text-brand-dark">{t.area || 'Nairobi'}</strong></span>
                                                 <span>·</span>
                                                 <span className="font-mono font-semibold text-brand-primary">
-                                                    Base Fare: {formatKES(t.base_fare)} | {formatKES(t.rate_per_kg)}/kg | {formatKES(t.rate_per_km)}/km
+                                                    {formatKES(t.base_fare)} base · {formatKES(t.rate_per_kg)}/kg · {formatKES(t.rate_per_km)}/km
                                                 </span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Action Buttons */}
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setLoginTarget(t);
-                                                loginForm.setData({
-                                                    email: t.user?.email || '',
-                                                    password: '',
-                                                });
-                                            }}
-                                            className="border border-brand-border bg-white text-brand-dark px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-50 transition cursor-pointer"
-                                        >
-                                            {t.user ? 'Reset Login' : '+ Add Login'}
-                                        </button>
-
-                                        {t.status === 'pending' && (
-                                            <button
-                                                type="button"
-                                                onClick={() => approveTransporter(t.id)}
-                                                className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-700 transition cursor-pointer"
-                                            >
-                                                Approve
-                                            </button>
+                                    <div className="flex items-center gap-3 self-end lg:self-center">
+                                        {t.user ? (
+                                            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                                                Portal: {t.user.email}
+                                            </span>
+                                        ) : (
+                                            <span className="text-[11px] font-semibold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-lg">
+                                                No Login Yet
+                                            </span>
                                         )}
 
-                                        <button
-                                            type="button"
-                                            onClick={() => toggleStatus(t.id)}
-                                            className="border border-brand-border bg-white text-gray-700 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-gray-50 transition cursor-pointer"
-                                        >
-                                            {t.status === 'approved' ? 'Suspend' : 'Activate'}
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => deleteTransporter(t.id, t.name)}
-                                            className="text-red-500 hover:text-red-700 px-2 py-1.5 text-xs font-semibold cursor-pointer"
-                                        >
-                                            Delete
-                                        </button>
+                                        <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-dark group-hover:text-brand-primary">
+                                            <span>Manage</span>
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                            </svg>
+                                        </span>
                                     </div>
-                                </div>
+                                </button>
                             );
                         })}
                     </div>
                 )}
             </div>
+
+            {/* Tap-to-Edit & Inspect Modal */}
+            {editingTransporter && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-xs p-4 overflow-y-auto">
+                    <div className="bg-white rounded-3xl border border-brand-border max-w-2xl w-full shadow-2xl overflow-hidden my-6">
+                        <div className="p-6 bg-brand-dark text-white flex items-start justify-between gap-4">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-brand-secondary">
+                                        Driver Profile #{editingTransporter.id}
+                                    </span>
+                                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                                        editingTransporter.status === 'approved'
+                                            ? 'bg-emerald-500/20 text-emerald-300'
+                                            : editingTransporter.status === 'pending'
+                                                ? 'bg-amber-500/20 text-amber-300'
+                                                : 'bg-red-500/20 text-red-300'
+                                    }`}>
+                                        {editingTransporter.status}
+                                    </span>
+                                </div>
+                                <h2 className="text-xl font-extrabold mt-1">{editingTransporter.name}</h2>
+                                <p className="text-xs text-gray-300 mt-0.5">
+                                    {editingTransporter.phone} · {editingTransporter.vehicle_type}
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setEditingTransporter(null)}
+                                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer transition"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Modal Tabs */}
+                        <div className="px-6 pt-4 border-b border-brand-border bg-brand-light flex flex-wrap gap-2">
+                            {[
+                                { id: 'details', label: 'Details & Rates' },
+                                { id: 'id', label: 'National ID Check' },
+                                { id: 'login', label: editingTransporter.user ? 'Portal Login' : 'Assign Login' },
+                            ].map((t) => (
+                                <button
+                                    key={t.id}
+                                    type="button"
+                                    onClick={() => setModalTab(t.id)}
+                                    className={`px-4 py-2.5 text-xs font-bold rounded-t-xl border-b-2 transition cursor-pointer ${
+                                        modalTab === t.id
+                                            ? 'border-brand-primary text-brand-primary bg-white'
+                                            : 'border-transparent text-gray-500 hover:text-brand-dark'
+                                    }`}
+                                >
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="p-6 max-h-[70vh] overflow-y-auto">
+                            {modalTab === 'details' && (
+                                <form onSubmit={submitEdit} className="space-y-4">
+                                    <div className="grid sm:grid-cols-2 gap-3.5">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-brand-dark mb-1">Driver / Business Name *</label>
+                                            <input
+                                                type="text"
+                                                value={editForm.data.name}
+                                                onChange={(e) => editForm.setData('name', e.target.value)}
+                                                className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
+                                                required
+                                            />
+                                            {editForm.errors.name && <p className="text-red-500 text-xs mt-1">{editForm.errors.name}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-brand-dark mb-1">Phone Number *</label>
+                                            <input
+                                                type="tel"
+                                                value={editForm.data.phone}
+                                                onChange={(e) => editForm.setData('phone', e.target.value)}
+                                                className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
+                                                required
+                                            />
+                                            {editForm.errors.phone && <p className="text-red-500 text-xs mt-1">{editForm.errors.phone}</p>}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid sm:grid-cols-3 gap-3.5">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-brand-dark mb-1">Vehicle Type</label>
+                                            <select
+                                                value={editForm.data.vehicle_type}
+                                                onChange={(e) => editForm.setData('vehicle_type', e.target.value)}
+                                                className="w-full bg-brand-input rounded-xl px-3 py-2.5 text-sm"
+                                            >
+                                                {vehicleOptions.map((v) => <option key={v} value={v}>{v}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-brand-dark mb-1">Plate Number</label>
+                                            <input
+                                                type="text"
+                                                value={editForm.data.plate_number}
+                                                onChange={(e) => editForm.setData('plate_number', e.target.value)}
+                                                className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm uppercase font-mono"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-brand-dark mb-1">Base Town</label>
+                                            <input
+                                                type="text"
+                                                value={editForm.data.area}
+                                                onChange={(e) => editForm.setData('area', e.target.value)}
+                                                className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid sm:grid-cols-3 gap-3.5 p-4 rounded-2xl bg-brand-light border border-brand-border">
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-gray-600 mb-1">Base Fare (KSh)</label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={editForm.data.base_fare}
+                                                onChange={(e) => editForm.setData('base_fare', e.target.value)}
+                                                className="w-full bg-white border border-brand-border rounded-xl px-3 py-2 text-sm font-mono"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-gray-600 mb-1">Rate/KG (KSh)</label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={editForm.data.rate_per_kg}
+                                                onChange={(e) => editForm.setData('rate_per_kg', e.target.value)}
+                                                className="w-full bg-white border border-brand-border rounded-xl px-3 py-2 text-sm font-mono"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-gray-600 mb-1">Rate/KM (KSh)</label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={editForm.data.rate_per_km}
+                                                onChange={(e) => editForm.setData('rate_per_km', e.target.value)}
+                                                className="w-full bg-white border border-brand-border rounded-xl px-3 py-2 text-sm font-mono"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid sm:grid-cols-3 gap-3.5">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-brand-dark mb-1">National ID #</label>
+                                            <input
+                                                type="text"
+                                                value={editForm.data.id_number}
+                                                onChange={(e) => editForm.setData('id_number', e.target.value)}
+                                                className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm font-mono"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-brand-dark mb-1">Account Status</label>
+                                            <select
+                                                value={editForm.data.status}
+                                                onChange={(e) => editForm.setData('status', e.target.value)}
+                                                className="w-full bg-brand-input rounded-xl px-3 py-2.5 text-sm"
+                                            >
+                                                <option value="pending">Pending Review</option>
+                                                <option value="approved">Approved</option>
+                                                <option value="suspended">Suspended</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex items-end">
+                                            <label className="w-full flex items-center justify-between bg-brand-light border border-brand-border rounded-xl px-3.5 py-2.5 cursor-pointer">
+                                                <span className="text-xs font-bold text-brand-dark">Online</span>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={editForm.data.is_available}
+                                                    onChange={(e) => editForm.setData('is_available', e.target.checked)}
+                                                    className="w-4 h-4 accent-emerald-600"
+                                                />
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-3 border-t border-brand-border flex flex-wrap items-center justify-between gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={deleteFromModal}
+                                            className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 hover:text-red-700 px-3 py-2 rounded-xl hover:bg-red-50 transition cursor-pointer"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                            </svg>
+                                            <span>Delete Driver</span>
+                                        </button>
+
+                                        <div className="flex items-center gap-2.5">
+                                            {editingTransporter.status === 'pending' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={approveFromModal}
+                                                    className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs hover:bg-emerald-700 transition cursor-pointer"
+                                                >
+                                                    Quick Approve
+                                                </button>
+                                            )}
+                                            <button
+                                                type="submit"
+                                                disabled={editForm.processing}
+                                                className="bg-brand-dark text-white px-5 py-2.5 rounded-xl font-bold text-xs hover:bg-black transition cursor-pointer disabled:opacity-50"
+                                            >
+                                                {editForm.processing ? 'Saving...' : 'Save Changes'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            )}
+
+                            {modalTab === 'id' && (
+                                <div className="space-y-4">
+                                    <div className="p-4 rounded-2xl bg-brand-light border border-brand-border flex items-center justify-between">
+                                        <div>
+                                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">National ID Number</p>
+                                            <p className="text-base font-extrabold font-mono text-brand-dark mt-0.5">
+                                                {editingTransporter.id_number || 'Not provided'}
+                                            </p>
+                                        </div>
+
+                                        {editingTransporter.status === 'pending' && (
+                                            <button
+                                                type="button"
+                                                onClick={approveFromModal}
+                                                className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition cursor-pointer"
+                                            >
+                                                Approve Driver
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {idDocUrl ? (
+                                        <div className="rounded-2xl border border-brand-border bg-gray-50 p-4 text-center space-y-3">
+                                            {isPdfDoc ? (
+                                                <div className="py-8">
+                                                    <svg className="w-12 h-12 text-brand-primary mx-auto mb-2" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                                    </svg>
+                                                    <p className="text-xs font-semibold text-gray-600">PDF National ID Document Uploaded</p>
+                                                </div>
+                                            ) : (
+                                                <img
+                                                    src={idDocUrl}
+                                                    alt="Driver National ID"
+                                                    className="max-h-72 mx-auto rounded-xl object-contain border border-brand-border bg-white"
+                                                />
+                                            )}
+
+                                            <a
+                                                href={idDocUrl}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-primary hover:underline"
+                                            >
+                                                <span>Open Full Document in New Tab</span>
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                                </svg>
+                                            </a>
+                                        </div>
+                                    ) : (
+                                        <div className="p-8 rounded-2xl border border-dashed border-gray-300 text-center text-xs text-gray-500">
+                                            No National ID document uploaded for this driver yet.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {modalTab === 'login' && (
+                                <form onSubmit={submitLogin} className="space-y-4">
+                                    <div className="p-4 rounded-2xl bg-brand-light border border-brand-border text-xs text-gray-600 leading-relaxed">
+                                        Assign or reset the email and password this driver will use to sign in at <strong>/login</strong> and manage their availability & rate card.
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-semibold text-brand-dark mb-1">Driver Login Email *</label>
+                                        <input
+                                            type="email"
+                                            value={loginForm.data.email}
+                                            onChange={(e) => loginForm.setData('email', e.target.value)}
+                                            placeholder="driver@logistics.co.ke"
+                                            className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm"
+                                            required
+                                        />
+                                        {loginForm.errors.email && <p className="text-red-500 text-xs mt-1">{loginForm.errors.email}</p>}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-semibold text-brand-dark mb-1">Portal Password (min 8 chars) *</label>
+                                        <input
+                                            type="password"
+                                            minLength={8}
+                                            value={loginForm.data.password}
+                                            onChange={(e) => loginForm.setData('password', e.target.value)}
+                                            placeholder="Enter a strong password"
+                                            className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm"
+                                            required
+                                        />
+                                        {loginForm.errors.password && <p className="text-red-500 text-xs mt-1">{loginForm.errors.password}</p>}
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={loginForm.processing}
+                                        className="w-full bg-brand-dark text-white py-3.5 rounded-xl font-bold text-sm hover:bg-black transition cursor-pointer disabled:opacity-50"
+                                    >
+                                        {loginForm.processing ? 'Saving Credentials...' : 'Save Driver Portal Login'}
+                                    </button>
+                                </form>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Add Transporter Modal */}
             {isAddOpen && (
@@ -379,7 +705,9 @@ export default function AdminTransporters({ transporters = [] }) {
                         <div className="flex justify-between items-center pb-4 border-b border-brand-border mb-5">
                             <h3 className="text-lg font-bold text-brand-dark">Add Transporter & Rate Card</h3>
                             <button type="button" onClick={() => setIsAddOpen(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 cursor-pointer">
-                                ✕
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
                             </button>
                         </div>
 
@@ -480,15 +808,15 @@ export default function AdminTransporters({ transporters = [] }) {
                                 </div>
                             </div>
 
-                            <div className="grid sm:grid-cols-2 gap-3">
+                            <div className="grid sm:grid-cols-3 gap-3">
                                 <div>
-                                    <label className="block text-xs font-semibold text-brand-dark mb-1">Base Town / Area</label>
+                                    <label className="block text-xs font-semibold text-brand-dark mb-1">Base Town</label>
                                     <input
                                         type="text"
                                         value={addForm.data.area}
                                         onChange={(e) => addForm.setData('area', e.target.value)}
                                         placeholder="Mombasa Road"
-                                        className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm"
+                                        className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
                                     />
                                 </div>
                                 <div>
@@ -498,7 +826,17 @@ export default function AdminTransporters({ transporters = [] }) {
                                         value={addForm.data.plate_number}
                                         onChange={(e) => addForm.setData('plate_number', e.target.value)}
                                         placeholder="KDF 123A"
-                                        className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm uppercase font-mono"
+                                        className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm uppercase font-mono"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-brand-dark mb-1">National ID #</label>
+                                    <input
+                                        type="text"
+                                        value={addForm.data.id_number}
+                                        onChange={(e) => addForm.setData('id_number', e.target.value)}
+                                        placeholder="34567890"
+                                        className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm font-mono"
                                     />
                                 </div>
                             </div>

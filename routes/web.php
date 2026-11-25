@@ -73,6 +73,7 @@ Route::prefix('transporter')->middleware(['auth', 'role:transporter'])->name('tr
     Route::get('/', [TransporterPortalController::class, 'dashboard'])->name('dashboard');
     Route::post('/availability', [TransporterPortalController::class, 'toggleAvailability'])->name('availability');
     Route::post('/rates', [TransporterPortalController::class, 'updateRates'])->name('rates');
+    Route::post('/orders/{order}/delivered', [TransporterPortalController::class, 'markOrderDelivered'])->name('orders.delivered');
 });
 
 // ============================================================================
@@ -99,6 +100,8 @@ Route::prefix('admin')->middleware(['auth', 'role:admin'])->name('admin.')->grou
     // Transporter Management (Admin)
     Route::get('/transporters', [AdminController::class, 'transporters'])->name('transporters');
     Route::post('/transporters', [AdminController::class, 'storeTransporter'])->name('transporters.store');
+    Route::put('/transporters/{transporter}', [AdminController::class, 'updateTransporter'])->name('transporters.update');
+    Route::get('/transporters/{transporter}/id-document', [AdminController::class, 'viewTransporterIdDocument'])->name('transporters.id-document');
     Route::post('/transporters/{transporter}/login', [AdminController::class, 'createTransporterLogin'])->name('transporters.login');
     Route::post('/transporters/{transporter}/approve', [AdminController::class, 'approveTransporter'])->name('transporters.approve');
     Route::post('/transporters/{transporter}/toggle', [AdminController::class, 'toggleTransporterStatus'])->name('transporters.toggle');

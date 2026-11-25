@@ -12,6 +12,7 @@ use App\Models\Transporter;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -439,18 +440,26 @@ class AdminController extends Controller
             'vehicle_type' => 'required|string|max:50',
             'area' => 'nullable|string|max:120',
             'plate_number' => 'nullable|string|max:30',
+            'id_number' => 'nullable|string|max:30',
+            'id_document' => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
             'base_fare' => 'required|numeric|min:0',
             'rate_per_kg' => 'required|numeric|min:0',
             'rate_per_km' => 'required|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($data) {
+        $idPath = $request->hasFile('id_document')
+            ? $request->file('id_document')->store('transporter-ids', 'local')
+            : null;
+
+        DB::transaction(function () use ($data, $idPath) {
             $transporter = Transporter::create([
                 'name' => trim($data['name']),
                 'phone' => preg_replace('/[\s\-]+/', '', trim($data['phone'])),
                 'vehicle_type' => trim($data['vehicle_type']),
                 'area' => isset($data['area']) ? trim($data['area']) : null,
                 'plate_number' => isset($data['plate_number']) ? strtoupper(trim($data['plate_number'])) : null,
+                'id_number' => isset($data['id_number']) ? trim($data['id_number']) : null,
+                'id_document_path' => $idPath,
                 'status' => 'approved',
                 'is_available' => true,
                 'base_fare' => $data['base_fare'],
@@ -470,6 +479,55 @@ class AdminController extends Controller
         });
 
         return redirect()->back()->with('success', 'Transporter added and approved.');
+    }
+
+    public function updateTransporter(Request $request, Transporter $transporter)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:120',
+            'phone' => 'required|string|max:25',
+            'vehicle_type' => 'required|string|max:50',
+            'area' => 'nullable|string|max:120',
+            'plate_number' => 'nullable|string|max:30',
+            'id_number' => 'nullable|string|max:30',
+            'status' => 'required|in:pending,approved,suspended',
+            'is_available' => 'required|boolean',
+            'base_fare' => 'required|numeric|min:0',
+            'rate_per_kg' => 'required|numeric|min:0',
+            'rate_per_km' => 'required|numeric|min:0',
+        ]);
+
+        $status = $data['status'];
+        $isAvailable = $status === 'approved' ? (bool) $data['is_available'] : false;
+
+        $transporter->update([
+            'name' => trim($data['name']),
+            'phone' => preg_replace('/[\s\-]+/', '', trim($data['phone'])),
+            'vehicle_type' => trim($data['vehicle_type']),
+            'area' => isset($data['area']) ? trim($data['area']) : null,
+            'plate_number' => isset($data['plate_number']) ? strtoupper(trim($data['plate_number'])) : null,
+            'id_number' => isset($data['id_number']) ? trim($data['id_number']) : null,
+            'status' => $status,
+            'is_available' => $isAvailable,
+            'base_fare' => $data['base_fare'],
+            'rate_per_kg' => $data['rate_per_kg'],
+            'rate_per_km' => $data['rate_per_km'],
+        ]);
+
+        if ($transporter->user) {
+            $transporter->user->update(['name' => $transporter->name]);
+        }
+
+        return redirect()->back()->with('success', "{$transporter->name} updated.");
+    }
+
+    public function viewTransporterIdDocument(Transporter $transporter)
+    {
+        if (!$transporter->id_document_path || !Storage::disk('local')->exists($transporter->id_document_path)) {
+            abort(404, 'ID document not found.');
+        }
+
+        return Storage::disk('local')->response($transporter->id_document_path);
     }
 
     public function createTransporterLogin(Request $request, Transporter $transporter)
@@ -520,6 +578,10 @@ class AdminController extends Controller
 
     public function destroyTransporter(Transporter $transporter)
     {
+        if ($transporter->id_document_path && Storage::disk('local')->exists($transporter->id_document_path)) {
+            Storage::disk('local')->delete($transporter->id_document_path);
+        }
+
         if ($transporter->user) {
             $transporter->user()->delete();
         }

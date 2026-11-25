@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import MainLayout from '../../Layouts/MainLayout';
 
 const formatKES = (v) =>
@@ -10,9 +10,17 @@ const statusMeta = {
         badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
         dot: 'bg-emerald-500',
     },
+    delivered: {
+        badge: 'bg-blue-50 text-blue-700 border-blue-200',
+        dot: 'bg-blue-500',
+    },
     pending: {
         badge: 'bg-amber-50 text-amber-800 border-amber-200',
         dot: 'bg-amber-500',
+    },
+    cancelled: {
+        badge: 'bg-gray-100 text-gray-600 border-gray-200',
+        dot: 'bg-gray-400',
     },
     failed: {
         badge: 'bg-red-50 text-red-700 border-red-200',
@@ -28,6 +36,7 @@ export default function AdminOrders({ orders = [] }) {
     const counts = {
         all: orders.length,
         paid: orders.filter((o) => o.status === 'paid').length,
+        delivered: orders.filter((o) => o.status === 'delivered').length,
         pending: orders.filter((o) => o.status === 'pending').length,
         failed: orders.filter((o) => o.status === 'failed').length,
     };
@@ -42,12 +51,30 @@ export default function AdminOrders({ orders = [] }) {
             order.order_number?.toLowerCase().includes(q) ||
             order.mpesa_receipt?.toLowerCase().includes(q) ||
             order.customer?.name?.toLowerCase().includes(q) ||
-            order.customer?.phone?.toLowerCase().includes(q)
+            order.customer?.phone?.toLowerCase().includes(q) ||
+            order.delivery?.transporter_name?.toLowerCase().includes(q) ||
+            order.delivery?.transporter_phone?.toLowerCase().includes(q)
         );
     });
 
-    const paidOrders = orders.filter((o) => o.status === 'paid');
-    const totalRevenue = paidOrders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+    const settledOrders = orders.filter((o) => o.status === 'paid' || o.status === 'delivered');
+    const totalRevenue = settledOrders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+
+    const updateStatus = (order, newStatus) => {
+        if (newStatus === 'delivered') {
+            const hasDriver = Boolean(order.delivery?.transporter_id);
+            const msg = hasDriver
+                ? `Mark ${order.order_number} as delivered? This will automatically mark ${order.delivery.transporter_name} back Online.`
+                : `Mark ${order.order_number} as delivered?`;
+            if (!confirm(msg)) return;
+        }
+
+        router.post(
+            `/admin/orders/${order.id}/status`,
+            { status: newStatus },
+            { preserveScroll: true }
+        );
+    };
 
     return (
         <MainLayout minimal homeHref="/admin/demo-shop">
@@ -60,35 +87,41 @@ export default function AdminOrders({ orders = [] }) {
                         Demo Shop Admin
                     </span>
                     <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-dark mt-1">
-                        Orders
+                        Orders & Fulfillment
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        Track customer orders, delivery details, and Evopay payment receipts.
+                        Track customer orders, assigned transporters, and update delivery status.
                     </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
                     <Link
                         href="/admin/demo-shop"
-                        className="bg-white border border-brand-border text-brand-dark px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm hover:bg-gray-50 transition"
+                        className="bg-white border border-brand-border text-brand-dark px-3.5 py-2 rounded-xl font-semibold text-xs sm:text-sm hover:bg-gray-50 transition"
                     >
                         Inventory
                     </Link>
                     <Link
                         href="/admin/orders"
-                        className="bg-brand-dark text-white px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm"
+                        className="bg-brand-dark text-white px-3.5 py-2 rounded-xl font-semibold text-xs sm:text-sm"
                     >
                         Orders
                     </Link>
                     <Link
+                        href="/admin/transporters"
+                        className="bg-white border border-brand-border text-brand-dark px-3.5 py-2 rounded-xl font-semibold text-xs sm:text-sm hover:bg-gray-50 transition"
+                    >
+                        Transporters
+                    </Link>
+                    <Link
                         href="/admin/settings"
-                        className="bg-white border border-brand-border text-brand-dark px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm hover:bg-gray-50 transition"
+                        className="bg-white border border-brand-border text-brand-dark px-3.5 py-2 rounded-xl font-semibold text-xs sm:text-sm hover:bg-gray-50 transition"
                     >
                         Settings
                     </Link>
                     <Link
                         href="/admin"
-                        className="bg-white border border-brand-border text-gray-600 px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm hover:bg-gray-50 transition"
+                        className="bg-white border border-brand-border text-gray-600 px-3.5 py-2 rounded-xl font-semibold text-xs sm:text-sm hover:bg-gray-50 transition"
                     >
                         Platform Admin
                     </Link>
@@ -96,7 +129,7 @@ export default function AdminOrders({ orders = [] }) {
             </div>
 
             {/* KPI Strip */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white rounded-2xl border border-brand-border p-5 shadow-xs">
                     <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
                         Total Orders
@@ -107,15 +140,23 @@ export default function AdminOrders({ orders = [] }) {
                 </div>
                 <div className="bg-white rounded-2xl border border-brand-border p-5 shadow-xs">
                     <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                        Paid Orders
+                        Paid (In Transit)
                     </p>
                     <p className="text-2xl font-extrabold text-emerald-600 mt-1.5">
-                        {paidOrders.length}
+                        {counts.paid}
                     </p>
                 </div>
                 <div className="bg-white rounded-2xl border border-brand-border p-5 shadow-xs">
                     <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                        Paid Revenue
+                        Delivered
+                    </p>
+                    <p className="text-2xl font-extrabold text-blue-600 mt-1.5">
+                        {counts.delivered}
+                    </p>
+                </div>
+                <div className="bg-white rounded-2xl border border-brand-border p-5 shadow-xs">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                        Settled Revenue
                     </p>
                     <p className="text-2xl font-extrabold text-brand-primary mt-1.5">
                         {formatKES(totalRevenue)}
@@ -125,10 +166,9 @@ export default function AdminOrders({ orders = [] }) {
 
             {/* Main Table Card */}
             <div className="bg-white rounded-2xl border border-brand-border shadow-xs overflow-hidden">
-                {/* Filter Toolbar */}
                 <div className="p-4 border-b border-brand-border bg-brand-light/60 flex flex-wrap items-center justify-between gap-3">
                     <div className="inline-flex flex-wrap gap-1.5 bg-white p-1 rounded-xl border border-brand-border">
-                        {['all', 'paid', 'pending', 'failed'].map((tab) => (
+                        {['all', 'paid', 'delivered', 'pending', 'failed'].map((tab) => (
                             <button
                                 key={tab}
                                 type="button"
@@ -147,7 +187,7 @@ export default function AdminOrders({ orders = [] }) {
                                             : 'bg-gray-100 text-gray-500'
                                     }`}
                                 >
-                                    {counts[tab]}
+                                    {counts[tab] ?? 0}
                                 </span>
                             </button>
                         ))}
@@ -171,7 +211,7 @@ export default function AdminOrders({ orders = [] }) {
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search order #, receipt, name or phone..."
+                            placeholder="Search order #, receipt, customer, driver..."
                             className="w-full bg-white border border-brand-border rounded-xl pl-9 pr-4 py-2 text-sm"
                         />
                     </div>
@@ -184,15 +224,11 @@ export default function AdminOrders({ orders = [] }) {
                 ) : (
                     <div className="divide-y divide-brand-border">
                         {filtered.map((order) => {
-                            const meta = statusMeta[order.status] || {
-                                badge: 'bg-gray-100 text-gray-700 border-gray-200',
-                                dot: 'bg-gray-400',
-                            };
+                            const meta = statusMeta[order.status] || statusMeta.cancelled;
                             const isExpanded = expandedId === order.id;
 
                             return (
                                 <div key={order.id} className="p-4 sm:p-5 hover:bg-gray-50/50 transition">
-                                    {/* Top Row */}
                                     <div className="flex flex-wrap items-center justify-between gap-3">
                                         <div className="flex flex-wrap items-center gap-2.5">
                                             <span className="font-mono font-bold text-sm text-brand-dark">
@@ -214,8 +250,8 @@ export default function AdminOrders({ orders = [] }) {
                                             )}
                                         </div>
 
-                                        <div className="flex items-center gap-4">
-                                            <div className="text-right">
+                                        <div className="flex flex-wrap items-center gap-2.5">
+                                            <div className="text-right mr-1">
                                                 <p className="text-base font-extrabold text-brand-dark">
                                                     {formatKES(order.total_amount)}
                                                 </p>
@@ -223,6 +259,20 @@ export default function AdminOrders({ orders = [] }) {
                                                     {new Date(order.created_at).toLocaleString('en-KE')}
                                                 </p>
                                             </div>
+
+                                            {order.status === 'paid' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateStatus(order, 'delivered')}
+                                                    className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition cursor-pointer inline-flex items-center gap-1"
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                                    </svg>
+                                                    <span>Mark Delivered</span>
+                                                </button>
+                                            )}
+
                                             <button
                                                 type="button"
                                                 onClick={() => setExpandedId(isExpanded ? null : order.id)}
@@ -240,8 +290,23 @@ export default function AdminOrders({ orders = [] }) {
                                             {order.customer?.phone ? ` · ${order.customer.phone}` : ''}
                                         </span>
                                         <span className="capitalize">
-                                            {order.delivery?.method || 'standard'} delivery ({formatKES(order.delivery?.fee || 0)})
+                                            {order.delivery?.method === 'transporter'
+                                                ? 'Independent Transporter'
+                                                : order.delivery?.method === 'pickup'
+                                                    ? 'Store Pickup'
+                                                    : 'Standard Delivery'}
                                         </span>
+                                        {order.delivery?.transporter_name && (
+                                            <span className="inline-flex items-center gap-1 font-semibold text-brand-primary">
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.25V4.5a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 4.5v9.75m12 0H2.25m12 0v5.25" />
+                                                </svg>
+                                                <span>
+                                                    Driver: {order.delivery.transporter_name}
+                                                    {order.delivery.transporter_plate ? ` (${order.delivery.transporter_plate})` : ''}
+                                                </span>
+                                            </span>
+                                        )}
                                         <span>
                                             {(order.items || []).length} item{(order.items || []).length === 1 ? '' : 's'}
                                         </span>
@@ -259,19 +324,45 @@ export default function AdminOrders({ orders = [] }) {
                                                 {order.customer?.email && (
                                                     <p className="text-gray-500 text-xs">{order.customer.email}</p>
                                                 )}
+
+                                                <div className="mt-3">
+                                                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+                                                        Change Status
+                                                    </label>
+                                                    <select
+                                                        value={order.status}
+                                                        onChange={(e) => updateStatus(order, e.target.value)}
+                                                        className="bg-brand-input rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand-dark"
+                                                    >
+                                                        <option value="pending">Pending</option>
+                                                        <option value="paid">Paid</option>
+                                                        <option value="delivered">Delivered (Frees Driver)</option>
+                                                        <option value="cancelled">Cancelled (Frees Driver)</option>
+                                                        <option value="failed">Failed</option>
+                                                    </select>
+                                                </div>
                                             </div>
 
                                             <div>
                                                 <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">
-                                                    Delivery
+                                                    Delivery & Transporter
                                                 </p>
                                                 <p className="font-semibold text-brand-dark capitalize">
-                                                    {order.delivery?.method || 'standard'} ({formatKES(order.delivery?.fee || 0)})
+                                                    {order.delivery?.method || 'standard'}
                                                 </p>
                                                 {order.delivery?.formatted && (
                                                     <p className="text-gray-600 text-xs mt-0.5">
                                                         {order.delivery.formatted} ({order.delivery.distance_km || 0} km)
                                                     </p>
+                                                )}
+                                                {order.delivery?.transporter_name && (
+                                                    <div className="mt-2 p-2.5 rounded-xl bg-brand-light border border-brand-border text-xs space-y-0.5">
+                                                        <p className="font-bold text-brand-dark">{order.delivery.transporter_name}</p>
+                                                        <p className="text-gray-500">{order.delivery.transporter_phone}</p>
+                                                        <p className="font-semibold text-brand-primary">
+                                                            Est. Haul Fee: {formatKES(order.delivery.estimated_transport_fee || 0)}
+                                                        </p>
+                                                    </div>
                                                 )}
                                             </div>
 
