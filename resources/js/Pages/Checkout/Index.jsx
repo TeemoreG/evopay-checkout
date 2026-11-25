@@ -14,12 +14,15 @@ export default function CheckoutIndex({ transporters = [] }) {
     const [paymentError, setPaymentError] = useState(null);
     const [distanceKm, setDistanceKm] = useState(0);
     const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
+
+    // Keep transporter list hidden behind drawer/modal by default
+    const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [selectedTransporter, setSelectedTransporter] = useState(null);
 
     const [form, setForm] = useState({
         customer: { name: '', phone: '', email: '' },
         delivery: { formatted: '', lat: null, lng: null, placeId: '', landmark: '', notes: '', transporter_id: null },
-        delivery_method: 'transporter', // Default to independent transporter
+        delivery_method: 'transporter', // 'transporter' or 'pickup'
     });
 
     const [errors, setErrors] = useState({});
@@ -31,12 +34,13 @@ export default function CheckoutIndex({ transporters = [] }) {
             setPaymentError(urlError);
             window.history.replaceState({}, '', window.location.pathname);
         }
-        // Auto-select first available transporter if none selected
+
+        // Auto-select first driver if available
         if (transporters.length > 0 && !selectedTransporter) {
             setSelectedTransporter(transporters[0]);
-            setForm(f => ({
+            setForm((f) => ({
                 ...f,
-                delivery: { ...f.delivery, transporter_id: transporters[0].id }
+                delivery: { ...f.delivery, transporter_id: transporters[0].id },
             }));
         }
     }, [transporters]);
@@ -69,19 +73,19 @@ export default function CheckoutIndex({ transporters = [] }) {
     const subtotal = items.reduce((n, i) => n + i.lineTotal, 0);
     const totalWeight = items.reduce((acc, item) => acc + (item.qty * parseFloat(item.weight || 0)), 0);
 
-    // Calculate dynamic transport fee based on selected transporter's rate card
+    // Dynamic transport calculation using chosen driver's rate card
     let estimatedTransportFee = 0;
     if (form.delivery_method === 'transporter' && selectedTransporter) {
         const base = Number(selectedTransporter.base_fare || 0);
-        const weightFee = totalWeight * Number(selectedTransporter.rate_per_kg || 0);
-        const distanceFee = distanceKm > 0 ? Math.ceil(distanceKm) * Number(selectedTransporter.rate_per_km || 0) : 0;
-        estimatedTransportFee = base + weightFee + distanceFee;
+        const wFee = totalWeight * Number(selectedTransporter.rate_per_kg || 0);
+        const dFee = distanceKm > 0 ? Math.ceil(distanceKm) * Number(selectedTransporter.rate_per_km || 0) : 0;
+        estimatedTransportFee = base + wFee + dFee;
     }
 
-    const total = subtotal; // Materials paid online; transport fee is paid to driver upon delivery
+    const total = subtotal; // Materials paid online; driver paid on delivery
 
     const handleAddressSelect = async (address) => {
-        setForm(f => ({ ...f, delivery: { ...f.delivery, ...address } }));
+        setForm((f) => ({ ...f, delivery: { ...f.delivery, ...address } }));
         clearFieldError('delivery.formatted');
 
         if (address.lat && address.lng) {
@@ -124,7 +128,7 @@ export default function CheckoutIndex({ transporters = [] }) {
                 errs['delivery.formatted'] = 'Please search and select your site destination address.';
             }
             if (!form.delivery.transporter_id) {
-                errs['delivery.transporter_id'] = 'Please select an available transporter for your delivery.';
+                errs['delivery.transporter_id'] = 'Please click "Browse Transporters" and select an available driver.';
             }
         }
 
@@ -164,8 +168,6 @@ export default function CheckoutIndex({ transporters = [] }) {
                 delivery: {
                     ...form.delivery,
                     estimated_transport_fee: estimatedTransportFee,
-                    transporter_name: selectedTransporter?.name,
-                    transporter_phone: selectedTransporter?.phone,
                 },
             });
 
@@ -314,11 +316,11 @@ export default function CheckoutIndex({ transporters = [] }) {
                     )}
 
                     <Section title="Fulfillment method">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-                            {/* 1. Choose Transporter */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                            {/* 1. Hire Transporter */}
                             <button
                                 type="button"
-                                onClick={() => setForm(f => ({ ...f, delivery_method: 'transporter' }))}
+                                onClick={() => setForm((f) => ({ ...f, delivery_method: 'transporter' }))}
                                 className={`text-left rounded-xl border p-4 transition cursor-pointer ${
                                     form.delivery_method === 'transporter'
                                         ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/25'
@@ -329,13 +331,13 @@ export default function CheckoutIndex({ transporters = [] }) {
                                     <p className="font-bold text-sm text-brand-dark">Hire Transporter</p>
                                     <p className="font-bold text-brand-primary text-sm">Pay on Site</p>
                                 </div>
-                                <p className="text-[11px] text-gray-500">Select an available driver for haulage</p>
+                                <p className="text-[11px] text-gray-500">Book an independent driver; pay upon delivery</p>
                             </button>
 
                             {/* 2. Store Pickup */}
                             <button
                                 type="button"
-                                onClick={() => setForm(f => ({ ...f, delivery_method: 'pickup' }))}
+                                onClick={() => setForm((f) => ({ ...f, delivery_method: 'pickup' }))}
                                 className={`text-left rounded-xl border p-4 transition cursor-pointer ${
                                     form.delivery_method === 'pickup'
                                         ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/25'
@@ -346,73 +348,60 @@ export default function CheckoutIndex({ transporters = [] }) {
                                     <p className="font-bold text-sm text-brand-dark">Store Pickup</p>
                                     <p className="font-bold text-brand-primary text-sm">FREE</p>
                                 </div>
-                                <p className="text-[11px] text-gray-500">Collect from our warehouse</p>
+                                <p className="text-[11px] text-gray-500">Collect directly from our warehouse</p>
                             </button>
                         </div>
 
-                        {/* Transporter Selection List */}
+                        {/* Selected Transporter Card with "Browse Transporters" button */}
                         {form.delivery_method === 'transporter' && (
-                            <div className="space-y-3 pt-3 border-t border-brand-border">
-                                <div className="flex justify-between items-center">
-                                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                                        Select Available Transporter ({transporters.length})
-                                    </h3>
-                                    <span className="text-[11px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">
-                                        Online & Ready
-                                    </span>
+                            <div className="p-4 rounded-2xl bg-brand-light border border-brand-border space-y-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                                            Assigned Transporter
+                                        </p>
+                                        <p className="text-xs text-gray-400 mt-0.5">
+                                            Driver phone details will be unlocked on your receipt after payment.
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsPickerOpen(true)}
+                                        className="bg-brand-dark text-white px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-black transition cursor-pointer flex items-center gap-1.5"
+                                    >
+                                        <span>Browse Transporters ({transporters.length} online)</span>
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                        </svg>
+                                    </button>
                                 </div>
 
-                                {transporters.length === 0 ? (
-                                    <div className="p-6 rounded-2xl bg-brand-light border border-brand-border text-center text-xs text-gray-500">
-                                        No independent drivers are currently online. Please select <strong>Store Pickup</strong> or check back shortly.
+                                {selectedTransporter ? (
+                                    <div className="p-3.5 rounded-xl bg-white border border-brand-border flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-9 h-9 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-bold text-xs">
+                                                ✓
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-sm text-brand-dark">{selectedTransporter.name}</p>
+                                                <p className="text-xs text-gray-500">
+                                                    {selectedTransporter.vehicle_type} {selectedTransporter.plate_number ? `· ${selectedTransporter.plate_number}` : ''}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="text-right flex-shrink-0">
+                                            <p className="text-[11px] font-semibold text-gray-400">Est. Haul Fee</p>
+                                            <p className="text-sm font-extrabold text-brand-primary">{formatKES(estimatedTransportFee)}</p>
+                                        </div>
                                     </div>
                                 ) : (
-                                    <div className="space-y-2.5">
-                                        {transporters.map((t) => {
-                                            const isSelected = selectedTransporter?.id === t.id;
-                                            // calculate individual transporter estimate for preview
-                                            const base = Number(t.base_fare || 0);
-                                            const wFee = totalWeight * Number(t.rate_per_kg || 0);
-                                            const dFee = distanceKm > 0 ? Math.ceil(distanceKm) * Number(t.rate_per_km || 0) : 0;
-                                            const est = base + wFee + dFee;
-
-                                            return (
-                                                <div
-                                                    key={t.id}
-                                                    onClick={() => {
-                                                        setSelectedTransporter(t);
-                                                        setForm(f => ({
-                                                            ...f,
-                                                            delivery: { ...f.delivery, transporter_id: t.id }
-                                                        }));
-                                                        clearFieldError('delivery.transporter_id');
-                                                    }}
-                                                    className={`p-4 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
-                                                        isSelected
-                                                            ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/20'
-                                                            : 'border-brand-border bg-white hover:border-gray-300'
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'border-brand-primary bg-brand-primary text-white' : 'border-gray-300 bg-white'}`}>
-                                                            {isSelected && <span className="text-[10px] font-bold">✓</span>}
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-bold text-sm text-brand-dark">{t.name}</p>
-                                                            <p className="text-xs text-gray-500">{t.vehicle_type} {t.plate_number ? `· ${t.plate_number}` : ''}</p>
-                                                            {t.area && <p className="text-[11px] text-gray-400">Base: {t.area}</p>}
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="text-right flex-shrink-0">
-                                                        <p className="text-xs font-bold text-brand-primary">Est. Haulage</p>
-                                                        <p className="text-sm font-extrabold text-brand-dark">{formatKES(est)}</p>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                    <div className="p-4 rounded-xl bg-white border border-dashed border-gray-300 text-center text-xs text-gray-500">
+                                        No driver selected yet. Click <strong>Browse Transporters</strong> to choose one.
                                     </div>
                                 )}
+
                                 {errors['delivery.transporter_id'] && (
                                     <p className="text-xs text-red-600 font-medium">{errors['delivery.transporter_id']}</p>
                                 )}
@@ -491,10 +480,10 @@ export default function CheckoutIndex({ transporters = [] }) {
                                     ) : (
                                         <>
                                             <span className="font-medium text-brand-primary">
-                                                {selectedTransporter ? formatKES(estimatedTransportFee) : 'Select Driver'}
+                                                {selectedTransporter ? formatKES(estimatedTransportFee) : 'Pick Driver'}
                                             </span>
                                             <div className="text-[10px] text-gray-400 mt-0.5">
-                                                Pay directly to driver on site
+                                                Pay driver upon arrival
                                             </div>
                                         </>
                                     )}
@@ -527,6 +516,89 @@ export default function CheckoutIndex({ transporters = [] }) {
                     </div>
                 </aside>
             </form>
+
+            {/* Modal: Browse Transporters (Only shows online/available drivers) */}
+            {isPickerOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+                    <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl relative">
+                        <div className="flex justify-between items-center pb-4 border-b border-brand-border mb-4">
+                            <div>
+                                <h3 className="text-lg font-bold text-brand-dark">Select Transporter</h3>
+                                <p className="text-xs text-gray-500">Only currently online drivers are listed.</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsPickerOpen(false)}
+                                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {transporters.length === 0 ? (
+                            <div className="py-8 text-center text-xs text-gray-500">
+                                No transporters are currently online. Please choose Store Pickup or check back shortly.
+                            </div>
+                        ) : (
+                            <div className="space-y-2.5">
+                                {transporters.map((t) => {
+                                    const isSelected = selectedTransporter?.id === t.id;
+                                    const base = Number(t.base_fare || 0);
+                                    const wFee = totalWeight * Number(t.rate_per_kg || 0);
+                                    const dFee = distanceKm > 0 ? Math.ceil(distanceKm) * Number(t.rate_per_km || 0) : 0;
+                                    const est = base + wFee + dFee;
+
+                                    return (
+                                        <div
+                                            key={t.id}
+                                            onClick={() => {
+                                                setSelectedTransporter(t);
+                                                setForm((f) => ({
+                                                    ...f,
+                                                    delivery: { ...f.delivery, transporter_id: t.id },
+                                                }));
+                                                clearFieldError('delivery.transporter_id');
+                                                setIsPickerOpen(false);
+                                            }}
+                                            className={`p-4 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
+                                                isSelected
+                                                    ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/20'
+                                                    : 'border-brand-border bg-white hover:border-gray-300'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'border-brand-primary bg-brand-primary text-white' : 'border-gray-300 bg-white'}`}>
+                                                    {isSelected && <span className="text-[10px] font-bold">✓</span>}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-sm text-brand-dark">{t.name}</p>
+                                                    <p className="text-xs text-gray-500">{t.vehicle_type} {t.plate_number ? `· ${t.plate_number}` : ''}</p>
+                                                    {t.area && <p className="text-[11px] text-gray-400">Base: {t.area}</p>}
+                                                </div>
+                                            </div>
+
+                                            <div className="text-right flex-shrink-0">
+                                                <p className="text-xs font-bold text-brand-primary">Est. Fee</p>
+                                                <p className="text-sm font-extrabold text-brand-dark">{formatKES(est)}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <div className="mt-5 pt-4 border-t border-brand-border">
+                            <button
+                                type="button"
+                                onClick={() => setIsPickerOpen(false)}
+                                className="w-full bg-brand-dark text-white py-3 rounded-xl font-bold text-xs cursor-pointer"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </MainLayout>
     );
 }

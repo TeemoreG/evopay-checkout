@@ -24,15 +24,25 @@ class CheckoutController extends Controller
             'price_per_kg' => (float) Setting::get('price_per_kg', 20),
             'price_per_km' => (float) Setting::get('price_per_km', 50),
             'free_radius_km' => (float) Setting::get('free_radius_km', 3),
-            'transporters' => Transporter::approved()
+            'transporters' => Transporter::available()
                 ->latest()
-                ->get(['id', 'name', 'phone', 'vehicle_type', 'area', 'plate_number']),
+                ->get([
+                    'id',
+                    'name',
+                    'phone',
+                    'vehicle_type',
+                    'area',
+                    'plate_number',
+                    'base_fare',
+                    'rate_per_kg',
+                    'rate_per_km',
+                ]),
         ]);
     }
 
     /**
-     * Shop Checkout: Verifies item pricing/weights from DB, creates local Order,
-     * then calls Evopay Gateway API via Secret Key just like any external merchant store.
+     * Shop Checkout: Verifies item pricing/weights from DB, verifies transporter availability,
+     * locks the driver to prevent double-booking, creates local Order, and requests a session from Evopay.
      */
     public function process(Request $request, PricingService $pricing)
     {
@@ -42,7 +52,7 @@ class CheckoutController extends Controller
             'items.*.unitId' => 'required',
             'items.*.qty' => 'required|integer|min:1',
             'subtotal' => 'nullable|numeric',
-            'delivery_method' => 'required|in:standard,pickup,transporter',
+            'delivery_method' => 'required|in:pickup,transporter',
             'customer' => 'required|array',
             'customer.name' => 'required|string|max:255',
             'customer.phone' => 'required|string|max:20',
@@ -50,6 +60,8 @@ class CheckoutController extends Controller
             'delivery' => 'nullable|array',
             'delivery.lat' => 'nullable|numeric',
             'delivery.lng' => 'nullable|numeric',
+            'delivery.formatted' => 'nullable|string|max:500',
+            'delivery.transporter_id' => 'nullable|integer',
         ], [
             'items.required' => 'Your cart is empty. Please add items before checking out.',
             'items.min' => 'Your cart is empty. Please add items before checking out.',
@@ -66,16 +78,21 @@ class CheckoutController extends Controller
             ], 500);
         }
 
-        if (
-            $data['delivery_method'] === 'standard'
-            && (empty($data['delivery']['lat']) || empty($data['delivery']['lng']))
-        ) {
-            return response()->json([
-                'error' => 'Please search and select a valid delivery address.',
-            ], 422);
+        if ($data['delivery_method'] === 'transporter') {
+            if (empty($data['delivery']['formatted'])) {
+                return response()->json([
+                    'error' => 'Please search and select a valid delivery address.',
+                ], 422);
+            }
+
+            if (empty($data['delivery']['transporter_id'])) {
+                return response()->json([
+                    'error' => 'Please select an available transporter for your delivery.',
+                ], 422);
+            }
         }
 
-        // Recalculate subtotal and total weight strictly from DB (never trust client amounts)
+        // Recalculate subtotal and total weight strictly from DB
         $verifiedSubtotal = 0.0;
         $totalWeight = 0.0;
         $verifiedItems = [];
@@ -98,7 +115,6 @@ class CheckoutController extends Controller
                     ->where('is_active', true)
                     ->first();
             } else {
-                // Fallback for Quick Add items that pass "{$product->id}-default"
                 $unit = ProductUnit::where('product_id', $product->id)
                     ->where('is_active', true)
                     ->orderBy('id')
@@ -142,39 +158,54 @@ class CheckoutController extends Controller
             ];
         }
 
-        $deliveryFee = 0.0;
         $distanceKm = 0.0;
-        $weightFee = 0.0;
-        $distanceFee = 0.0;
-        $freeRadiusApplied = false;
+        $estimatedTransportFee = 0.0;
+        $chosenTransporter = null;
 
-        if ($data['delivery_method'] === 'standard') {
-            $hqLat = (float) Setting::get('hq_lat', -1.2674);
-            $hqLng = (float) Setting::get('hq_lng', 36.7704);
-            $pricePerKg = (float) Setting::get('price_per_kg', 20);
-            $pricePerKm = (float) Setting::get('price_per_km', 50);
-            $freeRadiusKm = (float) Setting::get('free_radius_km', 3);
+        // If customer chooses transporter, verify and lock the driver
+        if ($data['delivery_method'] === 'transporter') {
+            if (!empty($data['delivery']['lat']) && !empty($data['delivery']['lng'])) {
+                $hqLat = (float) Setting::get('hq_lat', -1.2674);
+                $hqLng = (float) Setting::get('hq_lng', 36.7704);
 
-            $distanceKm = $this->calculateDistance(
-                $hqLat,
-                $hqLng,
-                (float) $data['delivery']['lat'],
-                (float) $data['delivery']['lng']
-            );
-
-            if ($distanceKm <= $freeRadiusKm) {
-                $freeRadiusApplied = true;
-                $weightFee = 0.0;
-                $distanceFee = 0.0;
-                $deliveryFee = 0.0;
-            } else {
-                $weightFee = $totalWeight * $pricePerKg;
-                $distanceFee = ceil($distanceKm) * $pricePerKm;
-                $deliveryFee = $weightFee + $distanceFee;
+                $distanceKm = $this->calculateDistance(
+                    $hqLat,
+                    $hqLng,
+                    (float) $data['delivery']['lat'],
+                    (float) $data['delivery']['lng']
+                );
             }
+
+            // Atomic check & reserve transporter so two users can't book the same driver
+            $transporterId = (int) $data['delivery']['transporter_id'];
+            $chosenTransporter = DB::transaction(function () use ($transporterId) {
+                $driver = Transporter::where('id', $transporterId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$driver || $driver->status !== 'approved' || !$driver->is_available) {
+                    return null;
+                }
+
+                // Mark driver as unavailable immediately upon selection
+                $driver->update(['is_available' => false]);
+                return $driver;
+            });
+
+            if (!$chosenTransporter) {
+                return response()->json([
+                    'error' => 'The selected transporter was just booked by another customer or is currently unavailable. Please pick another driver.',
+                ], 422);
+            }
+
+            $base = (float) $chosenTransporter->base_fare;
+            $wFee = $totalWeight * (float) $chosenTransporter->rate_per_kg;
+            $dFee = $distanceKm > 0 ? ceil($distanceKm) * (float) $chosenTransporter->rate_per_km : 0;
+            $estimatedTransportFee = round($base + $wFee + dFee, 2);
         }
 
-        $total = round($verifiedSubtotal + $deliveryFee, 2);
+        // Customer pays for materials online; transport fee is paid to the driver on site
+        $total = round($verifiedSubtotal, 2);
 
         // 1. Create Shop Order locally
         $order = Order::create([
@@ -186,11 +217,15 @@ class CheckoutController extends Controller
             'customer' => $data['customer'],
             'delivery' => array_merge($data['delivery'] ?? [], [
                 'method' => $data['delivery_method'],
-                'fee' => $deliveryFee,
+                'fee' => 0.00, // Transport fee paid on arrival
                 'distance_km' => round($distanceKm, 2),
-                'weight_fee' => $weightFee,
-                'distance_fee' => $distanceFee,
-                'free_radius_applied' => $freeRadiusApplied,
+                'total_weight_kg' => round($totalWeight, 2),
+                'estimated_transport_fee' => $estimatedTransportFee,
+                'transporter_id' => $chosenTransporter?->id,
+                'transporter_name' => $chosenTransporter?->name,
+                'transporter_phone' => $chosenTransporter?->phone,
+                'transporter_vehicle' => $chosenTransporter?->vehicle_type,
+                'transporter_plate' => $chosenTransporter?->plate_number,
             ]),
         ]);
 
@@ -216,6 +251,7 @@ class CheckoutController extends Controller
                     'metadata' => [
                         'source' => 'nyumba_cement_shop',
                         'delivery_method' => $data['delivery_method'],
+                        'transporter_id' => $chosenTransporter?->id,
                     ],
                 ]);
 
@@ -226,10 +262,15 @@ class CheckoutController extends Controller
                     'failure_reason' => $errMsg,
                 ]);
 
+                // Release the driver if session creation fails
+                if ($chosenTransporter) {
+                    $chosenTransporter->update(['is_available' => true]);
+                }
+
                 return response()->json(['error' => $errMsg], 502);
             }
 
-            // Store the gateway session token on the order for reference
+            // Store gateway session token on order
             $order->update([
                 'mpesa_request_id' => $response->json('data.token'),
             ]);
@@ -245,6 +286,11 @@ class CheckoutController extends Controller
                 'status' => 'failed',
                 'failure_reason' => 'Gateway connection error. Please try again.',
             ]);
+
+            // Release driver back if network drops
+            if ($chosenTransporter) {
+                $chosenTransporter->update(['is_available' => true]);
+            }
 
             return response()->json([
                 'error' => 'Unable to reach Evopay Payment Gateway. Please try again.',
@@ -340,6 +386,12 @@ class CheckoutController extends Controller
                     'status' => 'failed',
                     'failure_reason' => $data['failure_reason'] ?? 'Payment failed.',
                 ]);
+
+                // Release transporter if payment failed
+                $transporterId = $order->delivery['transporter_id'] ?? null;
+                if ($transporterId) {
+                    Transporter::where('id', $transporterId)->update(['is_available' => true]);
+                }
             }
         }
 
@@ -364,9 +416,6 @@ class CheckoutController extends Controller
                 'items' => $order->items,
                 'created_at' => $order->created_at?->toIso8601String(),
             ] : null,
-            'transporters' => Transporter::approved()
-                ->latest()
-                ->get(['id', 'name', 'phone', 'vehicle_type', 'area', 'plate_number']),
         ]);
     }
 
@@ -382,13 +431,14 @@ class CheckoutController extends Controller
         $hqLng = (float) Setting::get('hq_lng', 36.7704);
 
         $distanceKm = $this->calculateDistance(
-            $hqLat, $hqLng,
+            $hqLat,
+            $hqLng,
             (float) $request->lat,
             (float) $request->lng
         );
 
         return response()->json([
-            'distance_km' => round($distanceKm, 1)
+            'distance_km' => round($distanceKm, 1),
         ]);
     }
 
@@ -452,7 +502,7 @@ class CheckoutController extends Controller
 
         return response()->json([
             'ResultCode' => 0,
-            'ResultDesc' => 'Callback received successfully'
+            'ResultDesc' => 'Callback received successfully',
         ]);
     }
 
@@ -476,22 +526,22 @@ class CheckoutController extends Controller
         $payload = [
             "origin" => [
                 "location" => [
-                    "latLng" => ["latitude" => (float) $lat1, "longitude" => (float) $lon1]
-                ]
+                    "latLng" => ["latitude" => (float) $lat1, "longitude" => (float) $lon1],
+                ],
             ],
             "destination" => [
                 "location" => [
-                    "latLng" => ["latitude" => (float) $lat2, "longitude" => (float) $lon2]
-                ]
+                    "latLng" => ["latitude" => (float) $lat2, "longitude" => (float) $lon2],
+                ],
             ],
             "travelMode" => "DRIVE",
-            "routingPreference" => "TRAFFIC_AWARE"
+            "routingPreference" => "TRAFFIC_AWARE",
         ];
 
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
             'X-Goog-Api-Key' => $apiKey,
-            'X-Goog-FieldMask' => 'routes.distanceMeters'
+            'X-Goog-FieldMask' => 'routes.distanceMeters',
         ])->post($url, $payload);
 
         if ($response->successful()) {

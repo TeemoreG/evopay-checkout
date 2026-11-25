@@ -89,6 +89,7 @@ Route::prefix('admin')->middleware(['auth', 'role:admin'])->name('admin.')->grou
     // Transition Demo Shop Admin (Separate from main Gateway Admin)
     Route::get('/demo-shop', [AdminController::class, 'index'])->name('demo-shop');
     Route::get('/orders', [AdminController::class, 'orders'])->name('orders');
+    Route::post('/orders/{order}/status', [AdminController::class, 'updateOrderStatus'])->name('orders.status');
     Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
     Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
     Route::post('/products', [AdminController::class, 'storeProduct'])->name('products.store');

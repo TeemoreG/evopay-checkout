@@ -236,6 +236,28 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Update order delivery status.
+     * When marked as 'delivered' or 'cancelled', automatically mark assigned transporter as available again.
+     */
+    public function updateOrderStatus(Request $request, Order $order)
+    {
+        $data = $request->validate([
+            'status' => 'required|in:pending,paid,delivered,cancelled,failed',
+        ]);
+
+        $order->update(['status' => $data['status']]);
+
+        if (in_array($data['status'], ['delivered', 'cancelled'], true)) {
+            $transporterId = $order->delivery['transporter_id'] ?? null;
+            if ($transporterId) {
+                Transporter::where('id', $transporterId)->update(['is_available' => true]);
+            }
+        }
+
+        return redirect()->back()->with('success', 'Order status updated successfully.');
+    }
+
     public function storeProduct(Request $request)
     {
         $request->validate([
@@ -277,7 +299,7 @@ class AdminController extends Controller
                     'min_qty' => 1,
                     'max_qty' => null,
                     'unit_price' => $unitData['price'],
-                    'is_active' => true
+                    'is_active' => true,
                 ]);
             }
         }
@@ -322,7 +344,7 @@ class AdminController extends Controller
                             'min_qty' => 1,
                             'max_qty' => null,
                             'unit_price' => $unitData['price'],
-                            'is_active' => true
+                            'is_active' => true,
                         ]);
                     }
                 } else {
@@ -339,7 +361,7 @@ class AdminController extends Controller
                         'min_qty' => 1,
                         'max_qty' => null,
                         'unit_price' => $unitData['price'],
-                        'is_active' => true
+                        'is_active' => true,
                     ]);
                 }
             }
