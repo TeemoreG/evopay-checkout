@@ -73,8 +73,8 @@ Route::prefix('transporter')->middleware(['auth', 'role:transporter'])->name('tr
     Route::get('/', [TransporterPortalController::class, 'dashboard'])->name('dashboard');
     Route::post('/availability', [TransporterPortalController::class, 'toggleAvailability'])->name('availability');
     Route::post('/rates', [TransporterPortalController::class, 'updateRates'])->name('rates');
-    Route::post('/orders/{order}/delivered', [TransporterPortalController::class,
-    Route::post('/profile', [TransporterPortalController::class, 'updateProfile'])->name('profile'); 'markOrderDelivered'])->name('orders.delivered');
+    Route::post('/profile', [TransporterPortalController::class, 'updateProfile'])->name('profile');
+    Route::post('/orders/{order}/delivered', [TransporterPortalController::class, 'markOrderDelivered'])->name('orders.delivered');
 });
 
 // ============================================================================
