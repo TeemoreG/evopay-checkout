@@ -7,6 +7,7 @@ use App\Models\ApiKey;
 use App\Models\CheckoutSession;
 use App\Models\WebhookDelivery;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -36,21 +37,144 @@ class MerchantPortalController extends Controller
             ]);
 
         $paidQuery = CheckoutSession::where('merchant_id', $merchant->id)->where('status', 'paid');
+        $grossPaid = (float) (clone $paidQuery)->sum('amount');
+        $feePercent = (float) $merchant->fee_percent;
+        $totalFees = round(($grossPaid * $feePercent) / 100, 2);
+
+        // Calculate withdrawals
+        $withdrawn = (float) DB::table('settlements')
+            ->where('merchant_id', $merchant->id)
+            ->whereIn('status', ['pending', 'processing', 'completed'])
+            ->sum('amount');
+
+        // Calculate refunds
+        $refunded = (float) DB::table('refunds')
+            ->where('merchant_id', $merchant->id)
+            ->where('status', 'completed')
+            ->sum('amount');
+
+        $availableBalance = max(0, round($grossPaid - $totalFees - $withdrawn - $refunded, 2));
+
+        $settlements = DB::table('settlements')
+            ->where('merchant_id', $merchant->id)
+            ->latest()
+            ->limit(10)
+            ->get();
 
         return Inertia::render('Merchant/Dashboard', [
             'merchant' => [
                 'name' => $merchant->name,
                 'slug' => $merchant->slug,
                 'logo_url' => $merchant->logo_url,
-                'fee_percent' => (float) $merchant->fee_percent,
+                'fee_percent' => $feePercent,
+                'settlement_details' => $merchant->settlement_details ?? [],
+            ],
+            'wallet' => [
+                'available_balance' => $availableBalance,
+                'gross_volume' => $grossPaid,
+                'total_fees' => $totalFees,
+                'total_withdrawn' => $withdrawn,
+                'total_refunded' => $refunded,
             ],
             'stats' => [
-                'total_volume' => (float) (clone $paidQuery)->sum('amount'),
+                'total_volume' => $grossPaid,
                 'paid_count' => (clone $paidQuery)->count(),
                 'total_count' => CheckoutSession::where('merchant_id', $merchant->id)->count(),
             ],
             'sessions' => $sessions,
+            'settlements' => $settlements,
         ]);
+    }
+
+    public function withdraw(Request $request)
+    {
+        $merchant = $request->user()->merchant;
+
+        $data = $request->validate([
+            'amount' => 'required|numeric|min:100',
+            'channel' => 'required|in:mpesa,bank',
+            'phone' => 'required_if:channel,mpesa|nullable|string|max:20',
+            'bank_name' => 'required_if:channel,bank|nullable|string|max:100',
+            'account_number' => 'required_if:channel,bank|nullable|string|max:50',
+        ]);
+
+        // Compute live available balance atomically
+        $grossPaid = (float) CheckoutSession::where('merchant_id', $merchant->id)->where('status', 'paid')->sum('amount');
+        $totalFees = round(($grossPaid * (float) $merchant->fee_percent) / 100, 2);
+        $withdrawn = (float) DB::table('settlements')
+            ->where('merchant_id', $merchant->id)
+            ->whereIn('status', ['pending', 'processing', 'completed'])
+            ->sum('amount');
+        $refunded = (float) DB::table('refunds')
+            ->where('merchant_id', $merchant->id)
+            ->where('status', 'completed')
+            ->sum('amount');
+
+        $available = max(0, round($grossPaid - $totalFees - $withdrawn - $refunded, 2));
+
+        if ((float) $data['amount'] > $available) {
+            return back()->withErrors([
+                'amount' => 'Requested withdrawal exceeds your available wallet balance of KES ' . number_format($available, 2),
+            ]);
+        }
+
+        $destination = $data['channel'] === 'mpesa'
+            ? ['phone' => preg_replace('/[\s\-]+/', '', $data['phone'])]
+            : ['bank_name' => $data['bank_name'], 'account_number' => $data['account_number']];
+
+        DB::table('settlements')->insert([
+            'merchant_id' => $merchant->id,
+            'amount' => round((float) $data['amount'], 2),
+            'currency' => 'KES',
+            'channel' => $data['channel'],
+            'destination' => json_encode($destination),
+            'status' => 'pending',
+            'reference' => 'SET-' . strtoupper(Str::random(8)),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Withdrawal request submitted for settlement.');
+    }
+
+    public function refund(Request $request, CheckoutSession $session)
+    {
+        $merchant = $request->user()->merchant;
+
+        if ($session->merchant_id !== $merchant->id) {
+            abort(403);
+        }
+
+        if ($session->status !== 'paid') {
+            return back()->withErrors(['refund' => 'Only fully paid sessions can be refunded.']);
+        }
+
+        $data = $request->validate([
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        DB::transaction(function () use ($merchant, $session, $data) {
+            $session->update([
+                'status' => 'refunded',
+                'failure_reason' => $data['reason'] ?? 'Refund issued by merchant.',
+            ]);
+
+            DB::table('refunds')->insert([
+                'merchant_id' => $merchant->id,
+                'checkout_session_id' => $session->id,
+                'amount' => $session->amount,
+                'currency' => $session->currency,
+                'reason' => $data['reason'] ?? 'Merchant initiated refund',
+                'status' => 'completed',
+                'reference' => 'REF-' . strtoupper(Str::random(8)),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DispatchMerchantWebhook::dispatch($session, 'payment.refunded');
+        });
+
+        return redirect()->back()->with('success', "Session {$session->merchant_reference} has been refunded.");
     }
 
     public function developers(Request $request)

@@ -64,6 +64,8 @@ Route::prefix('merchant')->middleware(['auth', 'role:merchant'])->name('merchant
     Route::delete('/api-keys/{apiKey}', [MerchantPortalController::class, 'revokeApiKey'])->name('api-keys.revoke');
     Route::post('/webhook-secret', [MerchantPortalController::class, 'rotateWebhookSecret'])->name('webhook-secret.rotate');
     Route::post('/webhooks/{delivery}/retry', [MerchantPortalController::class, 'retryWebhook'])->name('webhooks.retry');
+    Route::post('/withdraw', [MerchantPortalController::class, 'withdraw'])->name('withdraw');
+    Route::post('/sessions/{session}/refund', [MerchantPortalController::class, 'refund'])->name('refund');
 });
 
 // ============================================================================
