@@ -112,8 +112,9 @@ export default function TransportersRegister() {
     const [step, setStep] = useState(1);
     const [stepError, setStepError] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
+    const [isSubmitted, setIsSubmitted] = useState(false);
 
-    const { data, setData, post, processing, errors, reset, recentlySuccessful } = useForm({
+    const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         phone: '',
         email: '',
@@ -186,6 +187,7 @@ export default function TransportersRegister() {
             forceFormData: true,
             preserveScroll: true,
             onSuccess: () => {
+                setIsSubmitted(true);
                 reset();
                 setPreviewUrl(null);
                 setStep(1);
@@ -233,6 +235,9 @@ export default function TransportersRegister() {
                 <div className="bg-white rounded-3xl border border-brand-border shadow-xs overflow-hidden">
                     {/* Header */}
                     <div className="p-6 sm:p-8 border-b border-brand-border">
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full">
+                            Bolt-Style Driver Network
+                        </span>
                         <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-dark mt-2 tracking-tight">
                             Drive & Earn with Nyumba
                         </h1>
@@ -241,8 +246,8 @@ export default function TransportersRegister() {
                         </p>
                     </div>
 
-                    {recentlySuccessful ? (
-                        /* High-Converting Success Confirmation Page with Fast-Track Admin Contact */
+                    {isSubmitted ? (
+                        /* Permanent Success Confirmation View — Never auto-dismisses */
                         <div className="p-6 sm:p-9 space-y-6">
                             <div className="text-center space-y-3">
                                 <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-2xl font-bold">
@@ -252,7 +257,7 @@ export default function TransportersRegister() {
                                     Application Submitted!
                                 </h2>
                                 <p className="text-xs sm:text-sm text-gray-600 max-w-md mx-auto leading-relaxed">
-                                    Your account and driver portal are created. An administrator needs to verify your National ID before you can turn <strong>Online</strong>.
+                                    Your account and driver portal credentials have been received. An administrator will verify your National ID before you can turn <strong>Online</strong>.
                                 </p>
                             </div>
 
@@ -263,7 +268,7 @@ export default function TransportersRegister() {
                                         Fast-Track Verification
                                     </span>
                                     <h3 className="text-sm font-extrabold text-emerald-950 mt-1.5">
-                                        Contact Safety Desk to approve within 15 minutes:
+                                        Contact Safety Desk for immediate approval:
                                     </h3>
                                 </div>
 
@@ -300,12 +305,22 @@ export default function TransportersRegister() {
                                 </ul>
                             </div>
 
-                            <Link
-                                href="/login"
-                                className="block w-full bg-brand-dark text-white text-center py-3.5 rounded-xl font-bold text-sm hover:bg-black transition"
-                            >
-                                Go to Sign In Page →
-                            </Link>
+                            <div className="space-y-2 pt-2">
+                                <Link
+                                    href="/login"
+                                    className="block w-full bg-brand-dark text-white text-center py-3.5 rounded-xl font-bold text-sm hover:bg-black transition"
+                                >
+                                    Proceed to Driver Sign In →
+                                </Link>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setIsSubmitted(false)}
+                                    className="block w-full text-center text-xs font-bold text-gray-500 hover:text-brand-dark py-2 cursor-pointer"
+                                >
+                                    Submit another application
+                                </button>
+                            </div>
                         </div>
                     ) : (
                         <div className="p-6 sm:p-8">
