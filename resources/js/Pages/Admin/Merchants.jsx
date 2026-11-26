@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import axios from 'axios';
-import MainLayout from '../../Layouts/MainLayout';
+import AdminLayout from '../../Layouts/AdminLayout';
 
 const formatKES = (v) =>
     'KSh ' + Number(v || 0).toLocaleString('en-KE', { minimumFractionDigits: 0 });
@@ -141,362 +141,297 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
     };
 
     return (
-        <MainLayout minimal homeHref="/admin">
-            <Head title="Evopay Platform Admin — Merchants" />
-
-            <div className="flex flex-col lg:flex-row gap-6 items-start">
-                {/* Desktop Platform Admin Sidebar */}
-                <aside className="w-full lg:w-64 bg-white rounded-3xl border border-brand-border p-4 shadow-xs space-y-1.5 flex-shrink-0">
-                    <div className="p-3 mb-2 border-b border-brand-border">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-brand-primary">Platform Admin</p>
-                        <h2 className="text-sm font-extrabold text-brand-dark mt-0.5">Gateway Control</h2>
-                    </div>
-
-                    <Link
-                        href="/admin"
-                        className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-bold text-xs bg-brand-dark text-white shadow-xs"
-                    >
-                        <span>Merchants Directory</span>
-                    </Link>
-
-                    <Link
-                        href="/admin/transactions"
-                        className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-bold text-xs text-gray-600 hover:text-brand-dark hover:bg-gray-50 transition"
-                    >
-                        <span>Global Transactions</span>
-                    </Link>
-
-                    <div className="pt-3 border-t border-brand-border my-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-3.5 mb-1.5">
-                            Demo Store Admin
+        <AdminLayout title="Merchants Directory — Evopay Admin">
+            <div className="space-y-6">
+                {/* Header Strip */}
+                <div className="flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-dark tracking-tight">
+                            Merchants Directory
+                        </h1>
+                        <p className="text-gray-500 text-xs sm:text-sm mt-0.5">
+                            Manage API credentials, portal access, and fee rates across all connected stores.
                         </p>
-                        <Link
-                            href="/admin/demo-shop"
-                            className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:text-brand-dark hover:bg-gray-50 transition"
-                        >
-                            <span>Products / Inventory</span>
-                        </Link>
-                        <Link
-                            href="/admin/orders"
-                            className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:text-brand-dark hover:bg-gray-50 transition"
-                        >
-                            <span>Shop Orders</span>
-                        </Link>
-                        <Link
-                            href="/admin/transporters"
-                            className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:text-brand-dark hover:bg-gray-50 transition"
-                        >
-                            <span>Transporter Fleet</span>
-                        </Link>
-                        <Link
-                            href="/admin/settings"
-                            className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:text-brand-dark hover:bg-gray-50 transition"
-                        >
-                            <span>Shop HQ & Rates</span>
-                        </Link>
                     </div>
 
                     <button
                         type="button"
-                        onClick={() => router.post('/logout')}
-                        className="w-full text-left px-3.5 py-2.5 rounded-xl font-bold text-xs text-red-600 hover:bg-red-50 transition cursor-pointer mt-4"
+                        onClick={() => {
+                            setError(null);
+                            setOnboardOpen(true);
+                        }}
+                        className="bg-brand-primary text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-brand-secondary transition shadow-xs cursor-pointer"
                     >
-                        Sign Out
+                        + Onboard Merchant
                     </button>
-                </aside>
+                </div>
 
-                {/* Main Content Area */}
-                <div className="flex-1 w-full min-w-0 space-y-6">
-                    {/* Top Action Header */}
-                    <div className="flex flex-wrap justify-between items-center gap-3">
-                        <div>
-                            <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-dark tracking-tight">
-                                Merchants & Gateway Overview
-                            </h1>
-                            <p className="text-gray-500 text-xs sm:text-sm mt-0.5">
-                                Onboard clients, issue API keys, and track live platform revenue.
-                            </p>
-                        </div>
+                {/* Metrics */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 shadow-xs">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Active Merchants</p>
+                        <p className="text-2xl font-extrabold text-brand-dark mt-1">
+                            {activeCount}
+                            <span className="text-xs font-semibold text-gray-400 ml-1.5">/ {merchants.length} total</span>
+                        </p>
+                    </div>
 
+                    <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 shadow-xs">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Gateway Volume</p>
+                        <p className="text-2xl font-extrabold text-brand-primary mt-1">
+                            {formatKES(stats.paid_volume)}
+                        </p>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 shadow-xs">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Est. Platform Revenue</p>
+                        <p className="text-2xl font-extrabold text-emerald-600 mt-1">
+                            {formatKES(estimatedCommission)}
+                        </p>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 shadow-xs">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Session Conversion</p>
+                        <p className="text-2xl font-extrabold text-brand-dark mt-1">
+                            {conversionRate}%
+                            <span className="text-xs font-semibold text-gray-400 ml-1.5">
+                                ({stats.paid_count ?? 0}/{stats.total_sessions ?? 0})
+                            </span>
+                        </p>
+                    </div>
+                </div>
+
+                {/* Banner messages */}
+                {bannerMessage && (
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-center justify-between gap-3 text-sm font-semibold text-emerald-800">
+                        <span>{bannerMessage}</span>
                         <button
                             type="button"
-                            onClick={() => {
-                                setError(null);
-                                setOnboardOpen(true);
-                            }}
-                            className="bg-brand-primary text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-brand-secondary transition shadow-xs cursor-pointer"
+                            onClick={() => setBannerMessage(null)}
+                            className="text-xs font-bold text-emerald-700 hover:underline cursor-pointer"
                         >
-                            + Onboard Merchant
+                            Dismiss
                         </button>
                     </div>
+                )}
 
-                    {/* Platform KPI Strip */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="bg-white rounded-2xl border border-brand-border p-4 sm:p-5 shadow-xs">
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Active Merchants</p>
-                            <p className="text-2xl font-extrabold text-brand-dark mt-1">
-                                {activeCount}
-                                <span className="text-xs font-semibold text-gray-400 ml-1.5">/ {merchants.length} total</span>
-                            </p>
-                        </div>
-
-                        <div className="bg-white rounded-2xl border border-brand-border p-4 sm:p-5 shadow-xs">
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Gateway Volume</p>
-                            <p className="text-2xl font-extrabold text-brand-primary mt-1">
-                                {formatKES(stats.paid_volume)}
-                            </p>
-                        </div>
-
-                        <div className="bg-white rounded-2xl border border-brand-border p-4 sm:p-5 shadow-xs">
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Est. Platform Revenue</p>
-                            <p className="text-2xl font-extrabold text-emerald-600 mt-1">
-                                {formatKES(estimatedCommission)}
-                            </p>
-                        </div>
-
-                        <div className="bg-white rounded-2xl border border-brand-border p-4 sm:p-5 shadow-xs">
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Session Conversion</p>
-                            <p className="text-2xl font-extrabold text-brand-dark mt-1">
-                                {conversionRate}%
-                                <span className="text-xs font-semibold text-gray-400 ml-1.5">
-                                    ({stats.paid_count ?? 0}/{stats.total_sessions ?? 0})
+                {createdCreds && (
+                    <div className="rounded-2xl border-2 border-emerald-500 bg-emerald-50/90 p-5 shadow-sm space-y-3">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                                    Shown Once
                                 </span>
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Banner messages */}
-                    {bannerMessage && (
-                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-center justify-between gap-3 text-sm font-semibold text-emerald-800">
-                            <span>{bannerMessage}</span>
+                                <h3 className="text-sm font-extrabold text-emerald-950 mt-1">
+                                    {createdCreds.merchant.name} is ready for integration
+                                </h3>
+                            </div>
                             <button
                                 type="button"
-                                onClick={() => setBannerMessage(null)}
-                                className="text-xs font-bold text-emerald-700 hover:underline cursor-pointer"
+                                onClick={() => setCreatedCreds(null)}
+                                className="text-xs font-bold text-emerald-800 hover:underline cursor-pointer"
                             >
                                 Dismiss
                             </button>
                         </div>
-                    )}
 
-                    {createdCreds && (
-                        <div className="rounded-2xl border-2 border-emerald-500 bg-emerald-50/90 p-5 shadow-sm space-y-3">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-                                        Shown Once
-                                    </span>
-                                    <h3 className="text-sm font-extrabold text-emerald-950 mt-1">
-                                        {createdCreds.merchant.name} is ready for integration
-                                    </h3>
-                                </div>
+                        <div className="grid sm:grid-cols-3 gap-3 text-xs">
+                            <div className="bg-white rounded-xl border border-emerald-200 p-3">
+                                <p className="text-[10px] font-bold uppercase text-gray-400">Login Email</p>
+                                <p className="font-semibold text-brand-dark mt-0.5 truncate">{createdCreds.login_email}</p>
                                 <button
                                     type="button"
-                                    onClick={() => setCreatedCreds(null)}
-                                    className="text-xs font-bold text-emerald-800 hover:underline cursor-pointer"
+                                    onClick={() => copyValue('email', createdCreds.login_email)}
+                                    className="mt-1 text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
                                 >
-                                    Dismiss
+                                    {copiedField === 'email' ? 'Copied!' : 'Copy Email'}
                                 </button>
                             </div>
-
-                            <div className="grid sm:grid-cols-3 gap-3 text-xs">
-                                <div className="bg-white rounded-xl border border-emerald-200 p-3">
-                                    <p className="text-[10px] font-bold uppercase text-gray-400">Login Email</p>
-                                    <p className="font-semibold text-brand-dark mt-0.5 truncate">{createdCreds.login_email}</p>
-                                    <button
-                                        type="button"
-                                        onClick={() => copyValue('email', createdCreds.login_email)}
-                                        className="mt-1 text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
-                                    >
-                                        {copiedField === 'email' ? 'Copied!' : 'Copy Email'}
-                                    </button>
-                                </div>
-                                <div className="bg-white rounded-xl border border-emerald-200 p-3">
-                                    <p className="text-[10px] font-bold uppercase text-gray-400">Public Key</p>
-                                    <p className="font-mono text-brand-dark mt-0.5 truncate">{createdCreds.public_key}</p>
-                                    <button
-                                        type="button"
-                                        onClick={() => copyValue('pk', createdCreds.public_key)}
-                                        className="mt-1 text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
-                                    >
-                                        {copiedField === 'pk' ? 'Copied!' : 'Copy Public Key'}
-                                    </button>
-                                </div>
-                                <div className="bg-white rounded-xl border border-emerald-200 p-3">
-                                    <p className="text-[10px] font-bold uppercase text-gray-400">Secret Key</p>
-                                    <p className="font-mono font-bold text-brand-dark mt-0.5 truncate">{createdCreds.secret_key}</p>
-                                    <button
-                                        type="button"
-                                        onClick={() => copyValue('sk', createdCreds.secret_key)}
-                                        className="mt-1 text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
-                                    >
-                                        {copiedField === 'sk' ? 'Copied!' : 'Copy Secret Key'}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Toolbar */}
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex gap-1.5 bg-white p-1 rounded-xl border border-brand-border">
-                            {[
-                                { key: 'all', label: `All (${merchants.length})` },
-                                { key: 'active', label: `Active (${activeCount})` },
-                                { key: 'suspended', label: `Suspended (${suspendedCount})` },
-                            ].map((tab) => (
+                            <div className="bg-white rounded-xl border border-emerald-200 p-3">
+                                <p className="text-[10px] font-bold uppercase text-gray-400">Public Key</p>
+                                <p className="font-mono text-brand-dark mt-0.5 truncate">{createdCreds.public_key}</p>
                                 <button
-                                    key={tab.key}
                                     type="button"
-                                    onClick={() => setStatusFilter(tab.key)}
-                                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                                        statusFilter === tab.key
-                                            ? 'bg-brand-dark text-white'
-                                            : 'text-gray-600 hover:text-brand-dark hover:bg-gray-50'
-                                    }`}
+                                    onClick={() => copyValue('pk', createdCreds.public_key)}
+                                    className="mt-1 text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
                                 >
-                                    {tab.label}
+                                    {copiedField === 'pk' ? 'Copied!' : 'Copy Public Key'}
                                 </button>
-                            ))}
+                            </div>
+                            <div className="bg-white rounded-xl border border-emerald-200 p-3">
+                                <p className="text-[10px] font-bold uppercase text-gray-400">Secret Key</p>
+                                <p className="font-mono font-bold text-brand-dark mt-0.5 truncate">{createdCreds.secret_key}</p>
+                                <button
+                                    type="button"
+                                    onClick={() => copyValue('sk', createdCreds.secret_key)}
+                                    className="mt-1 text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                                >
+                                    {copiedField === 'sk' ? 'Copied!' : 'Copy Secret Key'}
+                                </button>
+                            </div>
                         </div>
+                    </div>
+                )}
 
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search name, slug, or email..."
-                            className="w-full sm:w-72 bg-white border border-brand-border rounded-xl px-4 py-2 text-sm"
-                        />
+                {/* Toolbar */}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex gap-1.5 bg-white p-1 rounded-xl border border-gray-200">
+                        {[
+                            { key: 'all', label: `All (${merchants.length})` },
+                            { key: 'active', label: `Active (${activeCount})` },
+                            { key: 'suspended', label: `Suspended (${suspendedCount})` },
+                        ].map((tab) => (
+                            <button
+                                key={tab.key}
+                                type="button"
+                                onClick={() => setStatusFilter(tab.key)}
+                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                    statusFilter === tab.key
+                                        ? 'bg-brand-dark text-white'
+                                        : 'text-gray-600 hover:text-brand-dark hover:bg-gray-50'
+                                }`}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
                     </div>
 
-                    {/* Table */}
-                    <div className="bg-white rounded-2xl border border-brand-border shadow-xs overflow-hidden">
-                        {filteredMerchants.length === 0 ? (
-                            <div className="p-12 text-center text-sm text-gray-500">
-                                No merchants match your search filter.
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-brand-light border-b border-brand-border text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                                        <tr>
-                                            <th className="py-3.5 px-5">Merchant</th>
-                                            <th className="py-3.5 px-4">Portal Account</th>
-                                            <th className="py-3.5 px-4">Paid Volume</th>
-                                            <th className="py-3.5 px-4">Fee Rate</th>
-                                            <th className="py-3.5 px-4">Status</th>
-                                            <th className="py-3.5 px-5 text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-brand-border">
-                                        {filteredMerchants.map((m) => {
-                                            const mRate = m.checkout_sessions_count > 0
-                                                ? Math.round((m.paid_count / m.checkout_sessions_count) * 100)
-                                                : 0;
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search name, slug, or email..."
+                        className="w-full sm:w-72 bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm"
+                    />
+                </div>
 
-                                            return (
-                                                <tr key={m.id} className="hover:bg-gray-50/70 transition">
-                                                    <td className="py-4 px-5">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-9 h-9 rounded-xl bg-brand-primary/10 text-brand-primary font-extrabold text-xs flex items-center justify-center flex-shrink-0">
-                                                                {m.name.slice(0, 2).toUpperCase()}
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-bold text-brand-dark leading-tight">{m.name}</p>
-                                                                <p className="text-xs text-gray-400 font-mono mt-0.5">{m.slug}</p>
-                                                            </div>
+                {/* Table */}
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+                    {filteredMerchants.length === 0 ? (
+                        <div className="p-12 text-center text-sm text-gray-500">
+                            No merchants match your search filter.
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-gray-50 border-b border-gray-200 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                                    <tr>
+                                        <th className="py-3.5 px-5">Merchant</th>
+                                        <th className="py-3.5 px-4">Portal Account</th>
+                                        <th className="py-3.5 px-4">Paid Volume</th>
+                                        <th className="py-3.5 px-4">Fee Rate</th>
+                                        <th className="py-3.5 px-4">Status</th>
+                                        <th className="py-3.5 px-5 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {filteredMerchants.map((m) => {
+                                        const mRate = m.checkout_sessions_count > 0
+                                            ? Math.round((m.paid_count / m.checkout_sessions_count) * 100)
+                                            : 0;
+
+                                        return (
+                                            <tr key={m.id} className="hover:bg-gray-50/70 transition">
+                                                <td className="py-4 px-5">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-9 h-9 rounded-xl bg-brand-primary/10 text-brand-primary font-extrabold text-xs flex items-center justify-center flex-shrink-0">
+                                                            {m.name.slice(0, 2).toUpperCase()}
                                                         </div>
-                                                    </td>
+                                                        <div>
+                                                            <p className="font-bold text-brand-dark leading-tight">{m.name}</p>
+                                                            <p className="text-xs text-gray-400 font-mono mt-0.5">{m.slug}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
 
-                                                    <td className="py-4 px-4">
-                                                        {m.has_login ? (
-                                                            <div>
-                                                                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                                                                    Portal Active
-                                                                </span>
-                                                                <p className="text-xs text-gray-600 mt-1">{m.login_email}</p>
-                                                            </div>
-                                                        ) : (
-                                                            <div>
-                                                                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                                                                    No Login Yet
-                                                                </span>
-                                                                <p className="text-xs text-gray-400 mt-1">{m.email || '—'}</p>
-                                                            </div>
-                                                        )}
-                                                    </td>
+                                                <td className="py-4 px-4">
+                                                    {m.has_login ? (
+                                                        <div>
+                                                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                                                Portal Active
+                                                            </span>
+                                                            <p className="text-xs text-gray-600 mt-1">{m.login_email}</p>
+                                                        </div>
+                                                    ) : (
+                                                        <div>
+                                                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                                                No Login Yet
+                                                            </span>
+                                                            <p className="text-xs text-gray-400 mt-1">{m.email || '—'}</p>
+                                                        </div>
+                                                    )}
+                                                </td>
 
-                                                    <td className="py-4 px-4">
-                                                        <p className="font-extrabold text-brand-dark">{formatKES(m.paid_volume)}</p>
-                                                        <p className="text-xs text-gray-500 mt-0.5">
-                                                            {m.paid_count}/{m.checkout_sessions_count} paid ({mRate}%)
-                                                        </p>
-                                                    </td>
+                                                <td className="py-4 px-4">
+                                                    <p className="font-extrabold text-brand-dark">{formatKES(m.paid_volume)}</p>
+                                                    <p className="text-xs text-gray-500 mt-0.5">
+                                                        {m.paid_count}/{m.checkout_sessions_count} paid ({mRate}%)
+                                                    </p>
+                                                </td>
 
-                                                    <td className="py-4 px-4">
-                                                        <p className="font-semibold text-brand-dark">{m.fee_percent}%</p>
-                                                    </td>
+                                                <td className="py-4 px-4">
+                                                    <p className="font-semibold text-brand-dark">{m.fee_percent}%</p>
+                                                </td>
 
-                                                    <td className="py-4 px-4">
-                                                        <span
-                                                            className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full border ${
-                                                                m.status === 'active'
-                                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                                                    : 'bg-red-50 text-red-700 border-red-200'
+                                                <td className="py-4 px-4">
+                                                    <span
+                                                        className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full border ${
+                                                            m.status === 'active'
+                                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                                : 'bg-red-50 text-red-700 border-red-200'
+                                                        }`}
+                                                    >
+                                                        {m.status}
+                                                    </span>
+                                                </td>
+
+                                                <td className="py-4 px-5 text-right">
+                                                    <div className="inline-flex items-center gap-3 text-xs font-bold">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setInspectTarget(m)}
+                                                            className="text-gray-600 hover:text-brand-dark cursor-pointer"
+                                                        >
+                                                            Details
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setLoginTarget(m);
+                                                                setLoginEmail(m.login_email || m.email || '');
+                                                                setLoginPassword('');
+                                                                setLoginError(null);
+                                                            }}
+                                                            className="text-brand-dark hover:underline cursor-pointer"
+                                                        >
+                                                            {m.has_login ? 'Reset Login' : '+ Add Login'}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleToggleStatus(m)}
+                                                            className={`hover:underline cursor-pointer ${
+                                                                m.status === 'active' ? 'text-red-600' : 'text-emerald-600'
                                                             }`}
                                                         >
-                                                            {m.status}
-                                                        </span>
-                                                    </td>
-
-                                                    <td className="py-4 px-5 text-right">
-                                                        <div className="inline-flex items-center gap-3 text-xs font-bold">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setInspectTarget(m)}
-                                                                className="text-gray-600 hover:text-brand-dark cursor-pointer"
-                                                            >
-                                                                Details
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setLoginTarget(m);
-                                                                    setLoginEmail(m.login_email || m.email || '');
-                                                                    setLoginPassword('');
-                                                                    setLoginError(null);
-                                                                }}
-                                                                className="text-brand-dark hover:underline cursor-pointer"
-                                                            >
-                                                                {m.has_login ? 'Reset Login' : '+ Add Login'}
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleToggleStatus(m)}
-                                                                className={`hover:underline cursor-pointer ${
-                                                                    m.status === 'active' ? 'text-red-600' : 'text-emerald-600'
-                                                                }`}
-                                                            >
-                                                                {m.status === 'active' ? 'Suspend' : 'Activate'}
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
+                                                            {m.status === 'active' ? 'Suspend' : 'Activate'}
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </div>
 
             {/* MODAL: Onboard New Merchant */}
             {onboardOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
-                    <div className="bg-white rounded-3xl border border-brand-border p-6 sm:p-8 max-w-lg w-full shadow-2xl">
-                        <div className="flex items-center justify-between pb-4 border-b border-brand-border mb-5">
+                    <div className="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 max-w-lg w-full shadow-2xl">
+                        <div className="flex items-center justify-between pb-4 border-b border-gray-200 mb-5">
                             <div>
                                 <h2 className="text-lg font-extrabold text-brand-dark">Onboard New Merchant</h2>
                                 <p className="text-xs text-gray-500 mt-0.5">Creates business profile, API keys, and portal login.</p>
@@ -523,7 +458,7 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                                     type="text"
                                     value={form.name}
                                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                    className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm"
+                                    className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm border border-transparent"
                                     placeholder="e.g. Nairobi Hardware Ltd"
                                     required
                                 />
@@ -536,7 +471,7 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                                         type="email"
                                         value={form.email}
                                         onChange={(e) => setForm({ ...form, email: e.target.value })}
-                                        className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm"
+                                        className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm border border-transparent"
                                         placeholder="owner@business.co.ke"
                                         required
                                     />
@@ -548,7 +483,7 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                                         minLength={8}
                                         value={form.password}
                                         onChange={(e) => setForm({ ...form, password: e.target.value })}
-                                        className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm"
+                                        className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm border border-transparent"
                                         placeholder="Min 8 characters"
                                         required
                                     />
@@ -565,7 +500,7 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                                         max="50"
                                         value={form.fee_percent}
                                         onChange={(e) => setForm({ ...form, fee_percent: e.target.value })}
-                                        className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm"
+                                        className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm border border-transparent"
                                     />
                                 </div>
                                 <div>
@@ -573,7 +508,7 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                                     <select
                                         value={form.mode}
                                         onChange={(e) => setForm({ ...form, mode: e.target.value })}
-                                        className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm"
+                                        className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm border border-transparent"
                                     >
                                         <option value="live">Live (Production)</option>
                                         <option value="test">Test (Sandbox)</option>
@@ -588,7 +523,7 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                                     value={form.logo_url}
                                     onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
                                     placeholder="https://..."
-                                    className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm"
+                                    className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm border border-transparent"
                                 />
                             </div>
 
@@ -599,7 +534,7 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                                     value={form.webhook_url}
                                     onChange={(e) => setForm({ ...form, webhook_url: e.target.value })}
                                     placeholder="https://theirshop.co.ke/api/evopay/webhook"
-                                    className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm"
+                                    className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm border border-transparent"
                                 />
                             </div>
 
@@ -618,8 +553,8 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
             {/* MODAL: Attach / Reset Login */}
             {loginTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-                    <div className="bg-white rounded-3xl border border-brand-border p-6 sm:p-7 max-w-md w-full shadow-2xl">
-                        <div className="flex items-center justify-between pb-4 border-b border-brand-border mb-4">
+                    <div className="bg-white rounded-3xl border border-gray-200 p-6 sm:p-7 max-w-md w-full shadow-2xl">
+                        <div className="flex items-center justify-between pb-4 border-b border-gray-200 mb-4">
                             <h3 className="font-extrabold text-base text-brand-dark">
                                 {loginTarget.has_login ? 'Reset' : 'Create'} Portal Login · {loginTarget.name}
                             </h3>
@@ -645,7 +580,7 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                                     type="email"
                                     value={loginEmail}
                                     onChange={(e) => setLoginEmail(e.target.value)}
-                                    className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm"
+                                    className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm border border-transparent"
                                     required
                                 />
                             </div>
@@ -657,7 +592,7 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                                     minLength={8}
                                     value={loginPassword}
                                     onChange={(e) => setLoginPassword(e.target.value)}
-                                    className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm"
+                                    className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm border border-transparent"
                                     required
                                 />
                             </div>
@@ -677,8 +612,8 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
             {/* MODAL: Details Inspector */}
             {inspectTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-                    <div className="bg-white rounded-3xl border border-brand-border p-6 sm:p-7 max-w-md w-full shadow-2xl">
-                        <div className="flex items-center justify-between pb-4 border-b border-brand-border mb-4">
+                    <div className="bg-white rounded-3xl border border-gray-200 p-6 sm:p-7 max-w-md w-full shadow-2xl">
+                        <div className="flex items-center justify-between pb-4 border-b border-gray-200 mb-4">
                             <div>
                                 <h3 className="font-extrabold text-base text-brand-dark">{inspectTarget.name}</h3>
                                 <p className="text-xs font-mono text-gray-400">{inspectTarget.slug}</p>
@@ -693,19 +628,19 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                         </div>
 
                         <div className="space-y-3 text-xs">
-                            <div className="flex justify-between py-2 border-b border-brand-border/60">
+                            <div className="flex justify-between py-2 border-b border-gray-100">
                                 <span className="text-gray-500">Status</span>
                                 <span className="font-bold uppercase text-brand-dark">{inspectTarget.status}</span>
                             </div>
-                            <div className="flex justify-between py-2 border-b border-brand-border/60">
+                            <div className="flex justify-between py-2 border-b border-gray-100">
                                 <span className="text-gray-500">Portal Login Email</span>
                                 <span className="font-semibold text-brand-dark">{inspectTarget.login_email || 'Not configured'}</span>
                             </div>
-                            <div className="flex justify-between py-2 border-b border-brand-border/60">
+                            <div className="flex justify-between py-2 border-b border-gray-100">
                                 <span className="text-gray-500">Paid Volume</span>
                                 <span className="font-bold text-brand-primary">{formatKES(inspectTarget.paid_volume)}</span>
                             </div>
-                            <div className="flex justify-between py-2 border-b border-brand-border/60">
+                            <div className="flex justify-between py-2 border-b border-gray-100">
                                 <span className="text-gray-500">Platform Fee</span>
                                 <span className="font-semibold text-brand-dark">{inspectTarget.fee_percent}%</span>
                             </div>
@@ -715,7 +650,7 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                             <button
                                 type="button"
                                 onClick={() => setInspectTarget(null)}
-                                className="w-full bg-brand-light border border-brand-border text-brand-dark py-3 rounded-xl font-bold text-xs hover:bg-gray-100 transition cursor-pointer"
+                                className="w-full bg-gray-100 text-brand-dark py-3 rounded-xl font-bold text-xs hover:bg-gray-200 transition cursor-pointer"
                             >
                                 Close
                             </button>
@@ -723,6 +658,6 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                     </div>
                 </div>
             )}
-        </MainLayout>
+        </AdminLayout>
     );
 }
