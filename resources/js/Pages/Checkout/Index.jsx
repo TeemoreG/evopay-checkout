@@ -8,6 +8,155 @@ import axios from 'axios';
 const formatKES = (v) =>
     'KSh ' + Number(v || 0).toLocaleString('en-KE', { minimumFractionDigits: 0 });
 
+function VehicleIllustration({ type = '', className = 'w-12 h-12' }) {
+    const t = type.toLowerCase();
+
+    // 1. Motorbike / Courier
+    if (t.includes('motorbike') || t.includes('courier') || t.includes('bike')) {
+        return (
+            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+                <rect width="64" height="64" rx="16" fill="#E8F8F0" />
+                {/* Wheels */}
+                <circle cx="17" cy="43" r="8" fill="#2F313F" />
+                <circle cx="17" cy="43" r="4.5" fill="#E8F8F0" />
+                <circle cx="47" cy="43" r="8" fill="#2F313F" />
+                <circle cx="47" cy="43" r="4.5" fill="#E8F8F0" />
+                {/* Frame & Fork */}
+                <path d="M17 43L28 32H38L47 43" stroke="#2F313F" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M42 27L47 43" stroke="#2F313F" strokeWidth="3" strokeLinecap="round" />
+                {/* Body & Fuel tank */}
+                <path d="M26 31C26 27 29 25 33 25H39L36 32H26Z" fill="#32BB78" />
+                {/* Seat */}
+                <path d="M22 28H28L29 32H20C20 30 21 28 22 28Z" fill="#2F313F" />
+                {/* Courier Cargo Box */}
+                <rect x="13" y="17" width="12" height="11" rx="3" fill="#32BB78" />
+                <path d="M13 21H25" stroke="#24945E" strokeWidth="1.5" />
+                {/* Handlebar & Windshield */}
+                <path d="M41 23L44 20H47" stroke="#2F313F" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
+        );
+    }
+
+    // 2. Canter (3 - 5 Tonnes)
+    if (t.includes('canter')) {
+        return (
+            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+                <rect width="64" height="64" rx="16" fill="#E8F8F0" />
+                {/* Cargo Box */}
+                <rect x="9" y="18" width="28" height="23" rx="3" fill="#32BB78" />
+                <rect x="9" y="34" width="28" height="7" fill="#24945E" />
+                {/* Cab */}
+                <path d="M37 23H48C50.5 23 52 25 52 28V41H37V23Z" fill="#2F313F" />
+                {/* Cab Window */}
+                <path d="M40 26H47C48.5 26 49.5 27 49.5 28.5V33H40V26Z" fill="#E8F8F0" />
+                {/* Bumper */}
+                <rect x="50" y="38" width="4" height="3" rx="1.5" fill="#F48356" />
+                {/* Wheels */}
+                <circle cx="18" cy="45" r="5.5" fill="#2F313F" />
+                <circle cx="18" cy="45" r="3" fill="#E8F8F0" />
+                <circle cx="45" cy="45" r="5.5" fill="#2F313F" />
+                <circle cx="45" cy="45" r="3" fill="#E8F8F0" />
+            </svg>
+        );
+    }
+
+    // 3. Tipper / Lorry (7 - 10 Tonnes)
+    if (t.includes('tipper') || t.includes('lorry')) {
+        return (
+            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+                <rect width="64" height="64" rx="16" fill="#E8F8F0" />
+                {/* Heavy Tipper Bed */}
+                <path d="M8 21H36L34 40H8V21Z" fill="#32BB78" />
+                <path d="M14 21V40M22 21V40M30 21V40" stroke="#24945E" strokeWidth="1.5" />
+                {/* Hydraulic Cylinder */}
+                <path d="M34 38L37 32" stroke="#F48356" strokeWidth="2.5" strokeLinecap="round" />
+                {/* Cab */}
+                <path d="M38 21H51C53 21 54 22.5 54 25V40H38V21Z" fill="#2F313F" />
+                <path d="M41 24H49C50 24 51 25 51 26V31H41V24Z" fill="#E8F8F0" />
+                {/* Headlight */}
+                <circle cx="53" cy="36" r="1.5" fill="#F8B803" />
+                {/* Wheels (Heavy-duty dual rear) */}
+                <circle cx="14" cy="45" r="5.5" fill="#2F313F" />
+                <circle cx="14" cy="45" r="3" fill="#E8F8F0" />
+                <circle cx="27" cy="45" r="5.5" fill="#2F313F" />
+                <circle cx="27" cy="45" r="3" fill="#E8F8F0" />
+                <circle cx="46" cy="45" r="5.5" fill="#2F313F" />
+                <circle cx="46" cy="45" r="3" fill="#E8F8F0" />
+            </svg>
+        );
+    }
+
+    // 4. Trailer / Prime Mover (20+ Tonnes)
+    if (t.includes('trailer') || t.includes('prime') || t.includes('mover')) {
+        return (
+            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+                <rect width="64" height="64" rx="16" fill="#E8F8F0" />
+                {/* Trailer Flatbed & Shipping Container */}
+                <rect x="6" y="20" width="31" height="20" rx="2" fill="#32BB78" />
+                <path d="M12 20V40M18 20V40M24 20V40M30 20V40" stroke="#24945E" strokeWidth="1.2" />
+                {/* Coupling Hook */}
+                <rect x="36" y="37" width="4" height="3" fill="#2F313F" />
+                {/* High-Cab Prime Mover */}
+                <path d="M39 17H49C51 17 53 19 53 22V40H39V17Z" fill="#2F313F" />
+                <path d="M42 21H49C50 21 51 22 51 23V29H42V21Z" fill="#E8F8F0" />
+                {/* Exhaust Stack */}
+                <rect x="40" y="13" width="2" height="5" rx="1" fill="#F48356" />
+                {/* Wheels */}
+                <circle cx="11" cy="45" r="4.5" fill="#2F313F" />
+                <circle cx="11" cy="45" r="2.5" fill="#E8F8F0" />
+                <circle cx="21" cy="45" r="4.5" fill="#2F313F" />
+                <circle cx="21" cy="45" r="2.5" fill="#E8F8F0" />
+                <circle cx="47" cy="45" r="5" fill="#2F313F" />
+                <circle cx="47" cy="45" r="2.5" fill="#E8F8F0" />
+            </svg>
+        );
+    }
+
+    // 5. Tuk-Tuk / Delivery Van
+    if (t.includes('tuk') || t.includes('van')) {
+        return (
+            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+                <rect width="64" height="64" rx="16" fill="#E8F8F0" />
+                {/* Aerodynamic Van Body */}
+                <path d="M10 24C10 21.8 11.8 20 14 20H37L48 26C51 28 52 30 52 33V42H10V24Z" fill="#32BB78" />
+                <rect x="10" y="36" width="42" height="6" fill="#24945E" />
+                {/* Windshield & Cabin Window */}
+                <path d="M37 23H44L48 28H37V23Z" fill="#2F313F" />
+                <rect x="26" y="23" width="9" height="8" rx="1.5" fill="#E8F8F0" />
+                {/* Wheels */}
+                <circle cx="18" cy="45" r="5" fill="#2F313F" />
+                <circle cx="18" cy="45" r="2.5" fill="#E8F8F0" />
+                <circle cx="43" cy="45" r="5" fill="#2F313F" />
+                <circle cx="43" cy="45" r="2.5" fill="#E8F8F0" />
+            </svg>
+        );
+    }
+
+    // Default: Pickup (1 - 2 Tonnes)
+    return (
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+            <rect width="64" height="64" rx="16" fill="#E8F8F0" />
+            {/* Open Cargo Bed */}
+            <path d="M9 31H28V41H9V31Z" fill="#32BB78" />
+            {/* Cargo Bags inside */}
+            <rect x="11" y="27" width="7" height="5" rx="1" fill="#F8B803" />
+            <rect x="18" y="27" width="7" height="5" rx="1" fill="#F48356" />
+            {/* Cab */}
+            <path d="M28 24C28 22 30 20 32 20H40L48 28V41H28V24Z" fill="#32BB78" />
+            {/* Cab Windows */}
+            <path d="M31 23H39V29H31V23Z" fill="#2F313F" />
+            <path d="M41 23H43L47 28H41V23Z" fill="#2F313F" />
+            {/* Side Protective Strip */}
+            <rect x="9" y="37" width="44" height="4" fill="#24945E" />
+            {/* Wheels */}
+            <circle cx="18" cy="44" r="5.5" fill="#2F313F" />
+            <circle cx="18" cy="44" r="3" fill="#E8F8F0" />
+            <circle cx="43" cy="44" r="5.5" fill="#2F313F" />
+            <circle cx="43" cy="44" r="3" fill="#E8F8F0" />
+        </svg>
+    );
+}
+
 export default function CheckoutIndex({ transporters = [], free_radius_km = 3 }) {
     const { items, setQty, removeItem } = useCart();
     const [isProcessing, setIsProcessing] = useState(false);
@@ -387,7 +536,7 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                             </button>
                         </div>
 
-                        {/* Selected Transporter Card with "Browse Transporters" button */}
+                        {/* Selected Transporter Card with Bolt-style Illustration */}
                         {form.delivery_method === 'transporter' && (
                             <div className="p-4 rounded-2xl bg-brand-light border border-brand-border space-y-3">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -413,22 +562,33 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                                 </div>
 
                                 {selectedTransporter ? (
-                                    <div className="p-3.5 rounded-xl bg-white border border-brand-border flex items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-bold text-xs">
-                                                ✓
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-sm text-brand-dark">{selectedTransporter.name}</p>
-                                                <p className="text-xs text-gray-500">
-                                                    {selectedTransporter.vehicle_type} {selectedTransporter.plate_number ? `· ${selectedTransporter.plate_number}` : ''}
+                                    <div className="p-3.5 rounded-2xl bg-white border border-brand-border flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3.5 min-w-0">
+                                            <VehicleIllustration
+                                                type={selectedTransporter.vehicle_type}
+                                                className="w-14 h-14 flex-shrink-0"
+                                            />
+                                            <div className="min-w-0">
+                                                <p className="font-bold text-sm text-brand-dark truncate">
+                                                    {selectedTransporter.name}
                                                 </p>
+                                                <p className="text-xs text-gray-500 truncate">
+                                                    {selectedTransporter.vehicle_type}
+                                                    {selectedTransporter.plate_number ? ` · ${selectedTransporter.plate_number}` : ''}
+                                                </p>
+                                                {selectedTransporter.area && (
+                                                    <p className="text-[11px] text-gray-400 truncate">
+                                                        Base: {selectedTransporter.area}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
 
                                         <div className="text-right flex-shrink-0">
                                             <p className="text-[11px] font-semibold text-gray-400">Est. Haul Fee</p>
-                                            <p className="text-sm font-extrabold text-brand-primary">{formatKES(estimatedTransportFee)}</p>
+                                            <p className="text-sm font-extrabold text-brand-primary">
+                                                {formatKES(estimatedTransportFee)}
+                                            </p>
                                         </div>
                                     </div>
                                 ) : (
@@ -552,7 +712,7 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                 </aside>
             </form>
 
-            {/* Modal: Browse Transporters (Only shows online/available drivers) */}
+            {/* Modal: Browse Transporters with Bolt-style Illustration Cards */}
             {isPickerOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
                     <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl relative">
@@ -595,20 +755,30 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                                                 clearFieldError('delivery.transporter_id');
                                                 setIsPickerOpen(false);
                                             }}
-                                            className={`p-4 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
+                                            className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
                                                 isSelected
                                                     ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/20'
                                                     : 'border-brand-border bg-white hover:border-gray-300'
                                             }`}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'border-brand-primary bg-brand-primary text-white' : 'border-gray-300 bg-white'}`}>
-                                                    {isSelected && <span className="text-[10px] font-bold">✓</span>}
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold text-sm text-brand-dark">{t.name}</p>
-                                                    <p className="text-xs text-gray-500">{t.vehicle_type} {t.plate_number ? `· ${t.plate_number}` : ''}</p>
-                                                    {t.area && <p className="text-[11px] text-gray-400">Base: {t.area}</p>}
+                                            <div className="flex items-center gap-3.5 min-w-0">
+                                                <VehicleIllustration
+                                                    type={t.vehicle_type}
+                                                    className="w-14 h-14 flex-shrink-0"
+                                                />
+                                                <div className="min-w-0">
+                                                    <p className="font-bold text-sm text-brand-dark truncate">
+                                                        {t.name}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500 truncate">
+                                                        {t.vehicle_type}
+                                                        {t.plate_number ? ` · ${t.plate_number}` : ''}
+                                                    </p>
+                                                    {t.area && (
+                                                        <p className="text-[11px] text-gray-400 truncate">
+                                                            Base: {t.area}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
 
