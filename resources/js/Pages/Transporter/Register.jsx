@@ -233,9 +233,6 @@ export default function TransportersRegister() {
                 <div className="bg-white rounded-3xl border border-brand-border shadow-xs overflow-hidden">
                     {/* Header */}
                     <div className="p-6 sm:p-8 border-b border-brand-border">
-                        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full">
-                            Bolt-Style Driver Network
-                        </span>
                         <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-dark mt-2 tracking-tight">
                             Drive & Earn with Nyumba
                         </h1>
