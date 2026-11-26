@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Transporter;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -32,14 +34,49 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => 'required|email',
+        $data = $request->validate([
+            'email' => 'required|string',
             'password' => 'required|string',
+        ], [
+            'email.required' => 'Please enter your email or phone number.',
         ]);
 
-        if (!Auth::attempt($credentials, $request->boolean('remember'))) {
+        $input = trim($data['email']);
+        $password = $data['password'];
+        $resolvedEmail = null;
+
+        // 1. Try finding user directly by email
+        if (filter_var($input, FILTER_VALIDATE_EMAIL)) {
+            $resolvedEmail = $input;
+        } else {
+            // 2. Try matching phone number on transporters
+            $cleanedPhone = preg_replace('/[\s\-]+/', '', $input);
+            $digitsOnly = preg_replace('/\D/', '', $cleanedPhone);
+
+            $transporter = Transporter::with('user')
+                ->where('phone', $cleanedPhone)
+                ->orWhere('phone', $digitsOnly)
+                ->orWhere('phone', 'like', '%' . substr($digitsOnly, -9))
+                ->first();
+
+            if ($transporter && $transporter->user) {
+                $resolvedEmail = $transporter->user->email;
+            } elseif ($transporter && !$transporter->user) {
+                return back()->withErrors([
+                    'email' => 'Your driver registration is still pending review. Please contact admin for approval.',
+                ])->onlyInput('email');
+            }
+        }
+
+        if (!$resolvedEmail) {
             return back()->withErrors([
-                'email' => 'Invalid email or password.',
+                'email' => 'No account found with that email or phone number.',
+            ])->onlyInput('email');
+        }
+
+        if (!Auth::attempt(['email' => $resolvedEmail, 'password' => $password], $request->boolean('remember'))) {
+            return back()->withErrors([
+                'email' => 'Invalid email/phone or password.',
             ])->onlyInput('email');
         }
 
@@ -62,7 +99,7 @@ class AuthController extends Controller
             $request->session()->regenerateToken();
 
             return back()->withErrors([
-                'email' => 'Your transporter account is currently pending review or suspended.',
+                'email' => 'Your driver account is pending admin approval. Please contact the safety desk.',
             ])->onlyInput('email');
         }
 
