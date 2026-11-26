@@ -1,24 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import MainLayout from '../../Layouts/MainLayout';
 
-const statusMeta = {
-    approved: {
-        badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        dot: 'bg-emerald-500',
-        label: 'Approved',
-    },
-    pending: {
-        badge: 'bg-amber-50 text-amber-800 border-amber-200',
-        dot: 'bg-amber-500',
-        label: 'Pending Review',
-    },
-    suspended: {
-        badge: 'bg-red-50 text-red-700 border-red-200',
-        dot: 'bg-red-500',
-        label: 'Suspended',
-    },
-};
+const formatKES = (v) =>
+    'KSh ' + Number(v || 0).toLocaleString('en-KE', { minimumFractionDigits: 0 });
 
 const vehicleOptions = [
     'Pickup (1 - 2 Tonnes)',
@@ -29,22 +14,60 @@ const vehicleOptions = [
     'Motorbike / Courier',
 ];
 
-const formatKES = (v) =>
-    'KSh ' + Number(v || 0).toLocaleString('en-KE', { minimumFractionDigits: 0 });
+const orderStatusMeta = {
+    paid: {
+        badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        dot: 'bg-emerald-500',
+        label: 'Ready for Pickup',
+    },
+    delivered: {
+        badge: 'bg-blue-50 text-blue-700 border-blue-200',
+        dot: 'bg-blue-500',
+        label: 'Delivered',
+    },
+    pending: {
+        badge: 'bg-amber-50 text-amber-800 border-amber-200',
+        dot: 'bg-amber-500',
+        label: 'Awaiting Payment',
+    },
+    cancelled: {
+        badge: 'bg-gray-100 text-gray-600 border-gray-200',
+        dot: 'bg-gray-400',
+        label: 'Cancelled',
+    },
+    failed: {
+        badge: 'bg-red-50 text-red-700 border-red-200',
+        dot: 'bg-red-500',
+        label: 'Failed',
+    },
+};
 
-export default function AdminTransporters({ transporters = [] }) {
-    const [filter, setFilter] = useState('all');
-    const [search, setSearch] = useState('');
-    const [isAddOpen, setIsAddOpen] = useState(false);
+export default function TransporterDashboard({ transporter, stats = {}, orders = [] }) {
+    const [activeTab, setActiveTab] = useState('jobs');
+    const [jobFilter, setJobFilter] = useState('active');
+    const [simWeight, setSimWeight] = useState(500);
+    const [simKm, setSimKm] = useState(12);
 
-    const [editingTransporter, setEditingTransporter] = useState(null);
-    const [modalTab, setModalTab] = useState('details');
+    const rateForm = useForm({
+        vehicle_type: transporter.vehicle_type || vehicleOptions[0],
+        base_fare: transporter.base_fare,
+        rate_per_kg: transporter.rate_per_kg,
+        rate_per_km: transporter.rate_per_km,
+        area: transporter.area || '',
+        plate_number: transporter.plate_number || '',
+    });
+
+    const profileForm = useForm({
+        name: transporter.name || '',
+        phone: transporter.phone || '',
+        area: transporter.area || '',
+        plate_number: transporter.plate_number || '',
+        id_number: transporter.id_number || '',
+    });
 
     useEffect(() => {
         const refresh = () => {
-            if (!editingTransporter && !isAddOpen) {
-                router.reload({ only: ['transporters'], preserveScroll: true });
-            }
+            router.reload({ only: ['transporter', 'stats', 'orders'], preserveScroll: true });
         };
         window.addEventListener('focus', refresh);
         const timer = setInterval(refresh, 10000);
@@ -52,784 +75,456 @@ export default function AdminTransporters({ transporters = [] }) {
             window.removeEventListener('focus', refresh);
             clearInterval(timer);
         };
-    }, [editingTransporter, isAddOpen]);
+    }, []);
 
-    const editForm = useForm({
-        name: '',
-        phone: '',
-        vehicle_type: vehicleOptions[0],
-        area: '',
-        plate_number: '',
-        id_number: '',
-        status: 'pending',
-        is_available: false,
-        base_fare: '500',
-        rate_per_kg: '10',
-        rate_per_km: '30',
-    });
-
-    const loginForm = useForm({
-        email: '',
-        password: '',
-    });
-
-    const addForm = useForm({
-        name: '',
-        phone: '',
-        email: '',
-        password: '',
-        vehicle_type: vehicleOptions[0],
-        area: '',
-        plate_number: '',
-        id_number: '',
-        base_fare: '500',
-        rate_per_kg: '10',
-        rate_per_km: '30',
-    });
-
-    const openEditModal = (t, initialTab = 'details') => {
-        setEditingTransporter(t);
-        setModalTab(initialTab);
-        editForm.setData({
-            name: t.name || '',
-            phone: t.phone || '',
-            vehicle_type: t.vehicle_type || vehicleOptions[0],
-            area: t.area || '',
-            plate_number: t.plate_number || '',
-            id_number: t.id_number || '',
-            status: t.status || 'pending',
-            is_available: Boolean(t.is_available),
-            base_fare: String(t.base_fare ?? 500),
-            rate_per_kg: String(t.rate_per_kg ?? 10),
-            rate_per_km: String(t.rate_per_km ?? 30),
-        });
-        editForm.clearErrors();
-        loginForm.setData({
-            email: t.user?.email || '',
-            password: '',
-        });
-        loginForm.clearErrors();
-    };
-
-    const counts = {
-        all: transporters.length,
-        approved: transporters.filter((t) => t.status === 'approved').length,
-        pending: transporters.filter((t) => t.status === 'pending').length,
-        suspended: transporters.filter((t) => t.status === 'suspended').length,
-    };
-
-    const filtered = transporters.filter((t) => {
-        if (filter !== 'all' && t.status !== filter) return false;
-
-        const q = search.trim().toLowerCase();
-        if (!q) return true;
-
-        return (
-            t.name?.toLowerCase().includes(q) ||
-            t.phone?.toLowerCase().includes(q) ||
-            t.area?.toLowerCase().includes(q) ||
-            t.vehicle_type?.toLowerCase().includes(q) ||
-            t.plate_number?.toLowerCase().includes(q) ||
-            t.id_number?.toLowerCase().includes(q)
-        );
-    });
-
-    const submitAdd = (e) => {
+    const submitRates = (e) => {
         e.preventDefault();
-        addForm.post('/admin/transporters', {
-            preserveScroll: true,
-            onSuccess: () => {
-                addForm.reset();
-                setIsAddOpen(false);
-            },
-        });
+        rateForm.post('/transporter/rates', { preserveScroll: true });
     };
 
-    const submitEdit = (e) => {
+    const submitProfile = (e) => {
         e.preventDefault();
-        if (!editingTransporter) return;
-
-        editForm.put(`/admin/transporters/${editingTransporter.id}`, {
-            preserveScroll: true,
-            onSuccess: () => {
-                setEditingTransporter(null);
-            },
-        });
+        profileForm.post('/transporter/profile', { preserveScroll: true });
     };
 
-    const submitLogin = (e) => {
-        e.preventDefault();
-        if (!editingTransporter) return;
-
-        loginForm.post(`/admin/transporters/${editingTransporter.id}/login`, {
-            preserveScroll: true,
-            onSuccess: () => {
-                setEditingTransporter(null);
-                loginForm.reset();
-            },
-        });
+    const toggleAvailability = () => {
+        router.post('/transporter/availability', {}, { preserveScroll: true });
     };
 
-    const approveFromModal = () => {
-        if (!editingTransporter) return;
-        router.post(`/admin/transporters/${editingTransporter.id}/approve`, {}, {
-            preserveScroll: true,
-            onSuccess: () => setEditingTransporter(null),
-        });
-    };
-
-    const deleteFromModal = () => {
-        if (!editingTransporter) return;
-        if (confirm(`Permanently remove "${editingTransporter.name}" from the directory?`)) {
-            router.delete(`/admin/transporters/${editingTransporter.id}`, {
-                preserveScroll: true,
-                onSuccess: () => setEditingTransporter(null),
-            });
+    const markDelivered = (orderId, orderNumber) => {
+        if (confirm(`Confirm order ${orderNumber} is offloaded and delivered? This will also mark you back Online.`)) {
+            router.post(`/transporter/orders/${orderId}/delivered`, {}, { preserveScroll: true });
         }
     };
 
-    const isPdfDoc = editingTransporter?.id_document_path?.toLowerCase().endsWith('.pdf');
-    const idDocUrl = editingTransporter?.id_document_path
-        ? `/admin/transporters/${editingTransporter.id}/id-document`
-        : null;
+    const filteredOrders = orders.filter((o) => {
+        if (jobFilter === 'active') return o.status === 'paid';
+        if (jobFilter === 'completed') return o.status === 'delivered';
+        return true;
+    });
+
+    const simulatedTotal =
+        Number(rateForm.data.base_fare || 0) +
+        Number(simWeight || 0) * Number(rateForm.data.rate_per_kg || 0) +
+        Number(simKm || 0) * Number(rateForm.data.rate_per_km || 0);
+
+    const buildMapsUrl = (delivery) => {
+        if (delivery?.lat && delivery?.lng) {
+            return `https://www.google.com/maps/search/?api=1&query=${delivery.lat},${delivery.lng}`;
+        }
+        if (delivery?.formatted) {
+            return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(delivery.formatted)}`;
+        }
+        return null;
+    };
+
+    const initials = (transporter.name || 'D')
+        .split(' ')
+        .map((p) => p[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase();
 
     return (
-        <MainLayout minimal homeHref="/admin/demo-shop">
-            <Head title="Transporters Directory — Evopay Admin" />
+        <MainLayout minimal homeHref="/transporter">
+            <Head title={`${transporter.name} — Driver Portal`} />
 
-            <div className="mb-8 flex flex-wrap justify-between items-end gap-4 pb-6 border-b border-brand-border">
-                <div>
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-brand-primary">
-                        Demo Shop Admin
-                    </span>
-                    <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-dark mt-1">
-                        Transporters Directory & Fleet
-                    </h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Tap any driver card to inspect their National ID, edit rate cards, approve, or assign portal logins.
-                    </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={() => setIsAddOpen(true)}
-                        className="bg-brand-primary text-white px-4 py-2 rounded-xl font-bold text-xs sm:text-sm hover:bg-brand-secondary transition flex items-center gap-1.5 shadow-sm cursor-pointer"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        <span>Add Transporter</span>
-                    </button>
-                    <Link href="/admin/demo-shop" className="bg-white border border-brand-border text-brand-dark px-3.5 py-2 rounded-xl font-semibold text-xs sm:text-sm hover:bg-gray-50 transition">
-                        Inventory
-                    </Link>
-                    <Link href="/admin/orders" className="bg-white border border-brand-border text-brand-dark px-3.5 py-2 rounded-xl font-semibold text-xs sm:text-sm hover:bg-gray-50 transition">
-                        Orders
-                    </Link>
-                    <Link href="/admin/settings" className="bg-white border border-brand-border text-brand-dark px-3.5 py-2 rounded-xl font-semibold text-xs sm:text-sm hover:bg-gray-50 transition">
-                        Settings
-                    </Link>
-                </div>
-            </div>
-
-            {/* KPI Cards Strip */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white rounded-2xl border border-brand-border p-5 shadow-xs">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Total Registered</p>
-                    <p className="text-2xl font-extrabold text-brand-dark mt-1.5">{counts.all}</p>
-                </div>
-                <div className="bg-white rounded-2xl border border-brand-border p-5 shadow-xs">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Approved & Listed</p>
-                    <p className="text-2xl font-extrabold text-emerald-600 mt-1.5">{counts.approved}</p>
-                </div>
-                <div className="bg-white rounded-2xl border border-brand-border p-5 shadow-xs">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Pending Review</p>
-                    <p className="text-2xl font-extrabold text-amber-600 mt-1.5">{counts.pending}</p>
-                </div>
-                <div className="bg-white rounded-2xl border border-brand-border p-5 shadow-xs">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Driver Join Page</p>
-                    <Link
-                        href="/shop/transporters/register"
-                        target="_blank"
-                        className="mt-1.5 inline-flex items-center gap-1 text-xs font-bold text-brand-primary hover:underline"
-                    >
-                        <span>Open Register Link</span>
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                        </svg>
-                    </Link>
-                </div>
-            </div>
-
-            {/* List Card */}
-            <div className="bg-white rounded-2xl border border-brand-border shadow-xs overflow-hidden">
-                <div className="p-4 border-b border-brand-border bg-brand-light/60 flex flex-wrap items-center justify-between gap-3">
-                    <div className="inline-flex flex-wrap gap-1.5 bg-white p-1 rounded-xl border border-brand-border">
-                        {['all', 'approved', 'pending', 'suspended'].map((tab) => (
-                            <button
-                                key={tab}
-                                type="button"
-                                onClick={() => setFilter(tab)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition cursor-pointer flex items-center gap-1.5 ${
-                                    filter === tab
-                                        ? 'bg-brand-dark text-white shadow-xs'
-                                        : 'text-gray-600 hover:text-brand-dark hover:bg-gray-50'
-                                }`}
-                            >
-                                <span>{tab}</span>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filter === tab ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                                    {counts[tab] ?? 0}
-                                </span>
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="relative w-full sm:w-80">
-                        <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search name, phone, plate, ID, town..."
-                            className="w-full bg-white border border-brand-border rounded-xl pl-9 pr-4 py-2 text-sm"
-                        />
-                    </div>
-                </div>
-
-                {filtered.length === 0 ? (
-                    <div className="p-12 text-center text-gray-500 text-sm">No transporters found.</div>
-                ) : (
-                    <div className="divide-y divide-brand-border">
-                        {filtered.map((t) => {
-                            const meta = statusMeta[t.status] || statusMeta.pending;
-
-                            return (
-                                <button
-                                    key={t.id}
-                                    type="button"
-                                    onClick={() => openEditModal(t, 'details')}
-                                    className="w-full text-left p-4 sm:p-5 hover:bg-brand-light/70 transition flex flex-col lg:flex-row lg:items-center justify-between gap-4 cursor-pointer group"
-                                >
-                                    <div className="flex items-start gap-3.5">
-                                        <div className="w-11 h-11 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-brand-primary group-hover:text-white transition">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.25V4.5a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 4.5v9.75m12 0H2.25m12 0v5.25" />
-                                            </svg>
-                                        </div>
-
-                                        <div>
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="font-bold text-sm text-brand-dark group-hover:text-brand-primary transition">{t.name}</span>
-                                                <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${meta.badge}`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
-                                                    {meta.label}
-                                                </span>
-                                                <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${t.is_available ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'}`}>
-                                                    {t.is_available ? 'Online' : 'Offline'}
-                                                </span>
-                                                {t.plate_number && (
-                                                    <span className="font-mono text-[11px] font-semibold text-gray-600 bg-brand-input px-2 py-0.5 rounded-md">
-                                                        {t.plate_number}
-                                                    </span>
-                                                )}
-                                                {t.id_document_path && (
-                                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
-                                                        </svg>
-                                                        <span>ID Attached</span>
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-                                                <span className="font-semibold text-brand-dark">{t.phone}</span>
-                                                <span>·</span>
-                                                <span>{t.vehicle_type}</span>
-                                                <span>·</span>
-                                                <span>Base: <strong className="text-brand-dark">{t.area || 'Nairobi'}</strong></span>
-                                                <span>·</span>
-                                                <span className="font-mono font-semibold text-brand-primary">
-                                                    {formatKES(t.base_fare)} base · {formatKES(t.rate_per_kg)}/kg · {formatKES(t.rate_per_km)}/km
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3 self-end lg:self-center">
-                                        {t.user ? (
-                                            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                                                Portal: {t.user.email}
-                                            </span>
-                                        ) : (
-                                            <span className="text-[11px] font-semibold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-lg">
-                                                No Login Yet
-                                            </span>
-                                        )}
-
-                                        <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-dark group-hover:text-brand-primary">
-                                            <span>Manage</span>
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                                            </svg>
-                                        </span>
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
-
-            {/* Tap-to-Edit & Inspect Modal */}
-            {editingTransporter && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-xs p-4 overflow-y-auto">
-                    <div className="bg-white rounded-3xl border border-brand-border max-w-2xl w-full shadow-2xl overflow-hidden my-6">
-                        <div className="p-6 bg-brand-dark text-white flex items-start justify-between gap-4">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-brand-secondary">
-                                        Driver Profile #{editingTransporter.id}
-                                    </span>
-                                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                                        editingTransporter.status === 'approved'
-                                            ? 'bg-emerald-500/20 text-emerald-300'
-                                            : editingTransporter.status === 'pending'
-                                                ? 'bg-amber-500/20 text-amber-300'
-                                                : 'bg-red-500/20 text-red-300'
-                                    }`}>
-                                        {editingTransporter.status}
+            <div className="max-w-2xl mx-auto pb-24 md:pb-12 px-1 sm:px-0">
+                {/* Modern App Header Shell */}
+                <div className="bg-white rounded-3xl border border-brand-border p-5 shadow-xs mb-5 space-y-4">
+                    {/* Driver Identity Row */}
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-12 h-12 rounded-2xl bg-brand-primary/10 text-brand-primary font-black text-sm flex items-center justify-center flex-shrink-0 border border-brand-primary/20">
+                                {initials}
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                    <h1 className="text-base sm:text-lg font-extrabold text-brand-dark truncate leading-tight">
+                                        {transporter.name}
+                                    </h1>
+                                    <span className="text-[10px] font-bold uppercase text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-md">
+                                        Verified
                                     </span>
                                 </div>
-                                <h2 className="text-xl font-extrabold mt-1">{editingTransporter.name}</h2>
-                                <p className="text-xs text-gray-300 mt-0.5">
-                                    {editingTransporter.phone} · {editingTransporter.vehicle_type}
+                                <p className="text-xs text-gray-500 truncate mt-0.5">
+                                    {transporter.vehicle_type}
+                                    {transporter.plate_number ? ` · ${transporter.plate_number}` : ''}
+                                </p>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => router.post('/logout')}
+                            className="text-xs font-bold text-gray-500 hover:text-brand-dark px-2.5 py-1.5 rounded-lg border border-brand-border hover:bg-gray-50 transition cursor-pointer flex-shrink-0"
+                        >
+                            Sign out
+                        </button>
+                    </div>
+
+                    {/* Quick Metric Cards (Driver app score-style) */}
+                    <div className="grid grid-cols-2 gap-2.5 pt-1">
+                        <div className="bg-brand-light rounded-2xl p-3 border border-brand-border/80">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                Active Deliveries
+                            </span>
+                            <p className="text-xl font-extrabold text-brand-dark mt-0.5">
+                                {stats.active_jobs ?? 0}
+                            </p>
+                        </div>
+                        <div className="bg-brand-light rounded-2xl p-3 border border-brand-border/80">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                Completed Trips
+                            </span>
+                            <p className="text-xl font-extrabold text-brand-dark mt-0.5">
+                                {stats.completed_jobs ?? 0}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Interactive Go-Online / Offline Switch Strip */}
+                    <button
+                        type="button"
+                        role="switch"
+                        aria-checked={transporter.is_available}
+                        onClick={toggleAvailability}
+                        className={`w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                            transporter.is_available
+                                ? 'bg-emerald-50 border-emerald-300'
+                                : 'bg-gray-50 border-brand-border'
+                        }`}
+                    >
+                        <div className="flex items-center gap-2.5">
+                            <span
+                                className={`w-3 h-3 rounded-full ${
+                                    transporter.is_available ? 'bg-emerald-600' : 'bg-gray-400'
+                                }`}
+                            />
+                            <div className="text-left">
+                                <p
+                                    className={`text-xs font-extrabold leading-tight ${
+                                        transporter.is_available ? 'text-emerald-900' : 'text-gray-700'
+                                    }`}
+                                >
+                                    {transporter.is_available ? 'You are Online' : 'You are Offline'}
+                                </p>
+                                <p className="text-[11px] text-gray-500">
+                                    {transporter.is_available
+                                        ? 'Ready and visible for new client dispatches'
+                                        : 'Paused · Tap to go online and accept jobs'}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Visual Switch Control */}
+                        <span
+                            className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+                                transporter.is_available ? 'bg-emerald-600' : 'bg-gray-300'
+                            }`}
+                        >
+                            <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-xs transition-transform ${
+                                    transporter.is_available ? 'translate-x-6' : 'translate-x-1'
+                                }`}
+                            />
+                        </span>
+                    </button>
+                </div>
+
+                {/* Earnings & Weight Float Strip */}
+                <div className="grid grid-cols-2 gap-3 mb-5">
+                    <div className="bg-white rounded-2xl border border-brand-border p-4 shadow-xs">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                            Estimated Earnings
+                        </span>
+                        <p className="text-lg sm:text-xl font-black text-brand-primary mt-1">
+                            {formatKES(stats.estimated_earnings ?? 0)}
+                        </p>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-brand-border p-4 shadow-xs">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                            Total Cargo Hauled
+                        </span>
+                        <p className="text-lg sm:text-xl font-extrabold text-brand-dark mt-1">
+                            {stats.total_weight_kg ?? 0}{' '}
+                            <span className="text-xs font-semibold text-gray-500">KG</span>
+                        </p>
+                    </div>
+                </div>
+
+                {/* App Segment Tabs */}
+                <div className="bg-white p-1 rounded-2xl border border-brand-border flex items-center justify-between gap-1 mb-5 shadow-xs">
+                    {[
+                        { id: 'jobs', label: `Jobs (${orders.length})` },
+                        { id: 'rates', label: 'Rate Card' },
+                        { id: 'profile', label: 'Driver Profile' },
+                    ].map((tab) => (
+                        <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer text-center ${
+                                activeTab === tab.id
+                                    ? 'bg-brand-dark text-white shadow-xs'
+                                    : 'text-gray-600 hover:text-brand-dark'
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* PAGE 1: Dispatch Jobs */}
+                {activeTab === 'jobs' && (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between gap-2 px-1">
+                            <h2 className="text-sm font-extrabold text-brand-dark uppercase tracking-wider">
+                                Dispatch List
+                            </h2>
+                            <div className="inline-flex gap-1 bg-white p-1 rounded-xl border border-brand-border">
+                                {[
+                                    { id: 'active', label: 'Active' },
+                                    { id: 'completed', label: 'Done' },
+                                    { id: 'all', label: 'All' },
+                                ].map((f) => (
+                                    <button
+                                        key={f.id}
+                                        type="button"
+                                        onClick={() => setJobFilter(f.id)}
+                                        className={`px-3 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                                            jobFilter === f.id
+                                                ? 'bg-brand-dark text-white'
+                                                : 'text-gray-500 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {f.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {filteredOrders.length === 0 ? (
+                            <div className="bg-white rounded-3xl border border-brand-border p-10 text-center">
+                                <div className="w-12 h-12 rounded-2xl bg-brand-light text-gray-400 flex items-center justify-center mx-auto mb-3">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                                    </svg>
+                                </div>
+                                <p className="text-sm font-bold text-brand-dark">No dispatches in this view</p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Keep your status switch <strong>Online</strong> so customers can book you at checkout.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3.5">
+                                {filteredOrders.map((o) => {
+                                    const meta = orderStatusMeta[o.status] || orderStatusMeta.pending;
+                                    const mapsUrl = buildMapsUrl(o.delivery);
+
+                                    return (
+                                        <div
+                                            key={o.id}
+                                            className="bg-white rounded-3xl border border-brand-border p-5 shadow-xs space-y-3.5"
+                                        >
+                                            <div className="flex items-start justify-between gap-2 pb-3 border-b border-brand-border">
+                                                <div>
+                                                    <span className="font-mono font-extrabold text-sm text-brand-dark">
+                                                        {o.order_number}
+                                                    </span>
+                                                    <p className="text-[11px] text-gray-400 mt-0.5">
+                                                        {new Date(o.created_at).toLocaleString('en-KE')}
+                                                    </p>
+                                                </div>
+                                                <span
+                                                    className={`inline-flex items-center text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${meta.badge}`}
+                                                >
+                                                    {meta.label}
+                                                </span>
+                                            </div>
+
+                                            <div className="grid grid-cols-3 gap-2 bg-brand-light rounded-2xl p-3 border border-brand-border text-center">
+                                                <div>
+                                                    <p className="text-[10px] font-bold uppercase text-gray-400">
+                                                        Haul Fare
+                                                    </p>
+                                                    <p className="text-sm font-extrabold text-brand-primary mt-0.5">
+                                                        {formatKES(o.delivery?.estimated_transport_fee || 0)}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-bold uppercase text-gray-400">
+                                                        Distance
+                                                    </p>
+                                                    <p className="text-sm font-extrabold text-brand-dark mt-0.5">
+                                                        {o.delivery?.distance_km || 0} km
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-bold uppercase text-gray-400">
+                                                        Weight
+                                                    </p>
+                                                    <p className="text-sm font-extrabold text-brand-dark mt-0.5">
+                                                        {o.delivery?.total_weight_kg || 0} kg
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2 text-xs">
+                                                <div className="flex items-start gap-2">
+                                                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                                                    </svg>
+                                                    <div>
+                                                        <p className="font-bold text-brand-dark">{o.customer?.name || 'Customer'}</p>
+                                                        <p className="text-gray-500">{o.customer?.phone || '—'}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-start gap-2">
+                                                    <svg className="w-4 h-4 text-brand-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                                                    </svg>
+                                                    <div>
+                                                        <p className="font-semibold text-brand-dark">{o.delivery?.formatted || 'Site Address'}</p>
+                                                        {o.delivery?.notes && <p className="text-gray-500">Note: {o.delivery.notes}</p>}
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-2 border-t border-brand-border/70">
+                                                    <p className="text-[10px] font-bold uppercase text-gray-400 mb-1">Items to load</p>
+                                                    <ul className="space-y-0.5 text-gray-700">
+                                                        {(o.items || []).map((item, idx) => (
+                                                            <li key={idx}>• {item.qty} × {item.productName} ({item.unitLabel})</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-2 flex flex-wrap gap-2">
+                                                {o.customer?.phone && (
+                                                    <a
+                                                        href={`tel:${o.customer.phone}`}
+                                                        className="flex-1 bg-brand-light border border-brand-border text-brand-dark py-2.5 px-3 rounded-xl font-bold text-xs hover:bg-gray-100 transition inline-flex items-center justify-center gap-1.5"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H3.75A2.25 2.25 0 001.5 4.5v2.25z" />
+                                                        </svg>
+                                                        <span>Call Buyer</span>
+                                                    </a>
+                                                )}
+
+                                                {mapsUrl && (
+                                                    <a
+                                                        href={mapsUrl}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="flex-1 bg-brand-light border border-brand-border text-brand-dark py-2.5 px-3 rounded-xl font-bold text-xs hover:bg-gray-100 transition inline-flex items-center justify-center gap-1.5"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5 text-brand-primary" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
+                                                        </svg>
+                                                        <span>Navigate</span>
+                                                    </a>
+                                                )}
+
+                                                {o.status === 'paid' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => markDelivered(o.id, o.order_number)}
+                                                        className="w-full bg-emerald-600 text-white py-2.5 px-3 rounded-xl font-bold text-xs hover:bg-emerald-700 transition cursor-pointer inline-flex items-center justify-center gap-1.5"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                                        </svg>
+                                                        <span>Mark Delivered & Free Truck</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* PAGE 2: Rate Card & Live Simulator */}
+                {activeTab === 'rates' && (
+                    <div className="space-y-4">
+                        <form onSubmit={submitRates} className="bg-white rounded-3xl border border-brand-border p-5 sm:p-6 shadow-xs space-y-4">
+                            <div>
+                                <h2 className="text-base font-extrabold text-brand-dark">Haulage Rate Card</h2>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Rates used to compute quotes for customers booking your vehicle.
                                 </p>
                             </div>
 
-                            <button
-                                type="button"
-                                onClick={() => setEditingTransporter(null)}
-                                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer transition"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        {/* Modal Tabs */}
-                        <div className="px-6 pt-4 border-b border-brand-border bg-brand-light flex flex-wrap gap-2">
-                            {[
-                                { id: 'details', label: 'Details & Rates' },
-                                { id: 'id', label: 'National ID Check' },
-                                { id: 'login', label: editingTransporter.user ? 'Portal Login' : 'Assign Login' },
-                            ].map((t) => (
-                                <button
-                                    key={t.id}
-                                    type="button"
-                                    onClick={() => setModalTab(t.id)}
-                                    className={`px-4 py-2.5 text-xs font-bold rounded-t-xl border-b-2 transition cursor-pointer ${
-                                        modalTab === t.id
-                                            ? 'border-brand-primary text-brand-primary bg-white'
-                                            : 'border-transparent text-gray-500 hover:text-brand-dark'
-                                    }`}
-                                >
-                                    {t.label}
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="p-6 max-h-[70vh] overflow-y-auto">
-                            {modalTab === 'details' && (
-                                <form onSubmit={submitEdit} className="space-y-4">
-                                    <div className="grid sm:grid-cols-2 gap-3.5">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-brand-dark mb-1">Driver / Business Name *</label>
-                                            <input
-                                                type="text"
-                                                value={editForm.data.name}
-                                                onChange={(e) => editForm.setData('name', e.target.value)}
-                                                className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
-                                                required
-                                            />
-                                            {editForm.errors.name && <p className="text-red-500 text-xs mt-1">{editForm.errors.name}</p>}
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-brand-dark mb-1">Phone Number *</label>
-                                            <input
-                                                type="tel"
-                                                value={editForm.data.phone}
-                                                onChange={(e) => editForm.setData('phone', e.target.value)}
-                                                className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
-                                                required
-                                            />
-                                            {editForm.errors.phone && <p className="text-red-500 text-xs mt-1">{editForm.errors.phone}</p>}
-                                        </div>
-                                    </div>
-
-                                    <div className="grid sm:grid-cols-3 gap-3.5">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-brand-dark mb-1">Vehicle Type</label>
-                                            <select
-                                                value={editForm.data.vehicle_type}
-                                                onChange={(e) => editForm.setData('vehicle_type', e.target.value)}
-                                                className="w-full bg-brand-input rounded-xl px-3 py-2.5 text-sm"
-                                            >
-                                                {vehicleOptions.map((v) => <option key={v} value={v}>{v}</option>)}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-brand-dark mb-1">Plate Number</label>
-                                            <input
-                                                type="text"
-                                                value={editForm.data.plate_number}
-                                                onChange={(e) => editForm.setData('plate_number', e.target.value)}
-                                                className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm uppercase font-mono"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-brand-dark mb-1">Base Town</label>
-                                            <input
-                                                type="text"
-                                                value={editForm.data.area}
-                                                onChange={(e) => editForm.setData('area', e.target.value)}
-                                                className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid sm:grid-cols-3 gap-3.5 p-4 rounded-2xl bg-brand-light border border-brand-border">
-                                        <div>
-                                            <label className="block text-[11px] font-semibold text-gray-600 mb-1">Base Fare (KSh)</label>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                value={editForm.data.base_fare}
-                                                onChange={(e) => editForm.setData('base_fare', e.target.value)}
-                                                className="w-full bg-white border border-brand-border rounded-xl px-3 py-2 text-sm font-mono"
-                                                required
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[11px] font-semibold text-gray-600 mb-1">Rate/KG (KSh)</label>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                value={editForm.data.rate_per_kg}
-                                                onChange={(e) => editForm.setData('rate_per_kg', e.target.value)}
-                                                className="w-full bg-white border border-brand-border rounded-xl px-3 py-2 text-sm font-mono"
-                                                required
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[11px] font-semibold text-gray-600 mb-1">Rate/KM (KSh)</label>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                value={editForm.data.rate_per_km}
-                                                onChange={(e) => editForm.setData('rate_per_km', e.target.value)}
-                                                className="w-full bg-white border border-brand-border rounded-xl px-3 py-2 text-sm font-mono"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid sm:grid-cols-3 gap-3.5">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-brand-dark mb-1">National ID #</label>
-                                            <input
-                                                type="text"
-                                                value={editForm.data.id_number}
-                                                onChange={(e) => editForm.setData('id_number', e.target.value)}
-                                                className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm font-mono"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-brand-dark mb-1">Account Status</label>
-                                            <select
-                                                value={editForm.data.status}
-                                                onChange={(e) => editForm.setData('status', e.target.value)}
-                                                className="w-full bg-brand-input rounded-xl px-3 py-2.5 text-sm"
-                                            >
-                                                <option value="pending">Pending Review</option>
-                                                <option value="approved">Approved</option>
-                                                <option value="suspended">Suspended</option>
-                                            </select>
-                                        </div>
-                                        <div className="flex items-end">
-                                            <label className="w-full flex items-center justify-between bg-brand-light border border-brand-border rounded-xl px-3.5 py-2.5 cursor-pointer">
-                                                <span className="text-xs font-bold text-brand-dark">Online</span>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={editForm.data.is_available}
-                                                    onChange={(e) => editForm.setData('is_available', e.target.checked)}
-                                                    className="w-4 h-4 accent-emerald-600"
-                                                />
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <div className="pt-3 border-t border-brand-border flex flex-wrap items-center justify-between gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={deleteFromModal}
-                                            className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 hover:text-red-700 px-3 py-2 rounded-xl hover:bg-red-50 transition cursor-pointer"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                                            </svg>
-                                            <span>Delete Driver</span>
-                                        </button>
-
-                                        <div className="flex items-center gap-2.5">
-                                            {editingTransporter.status === 'pending' && (
-                                                <button
-                                                    type="button"
-                                                    onClick={approveFromModal}
-                                                    className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs hover:bg-emerald-700 transition cursor-pointer"
-                                                >
-                                                    Quick Approve
-                                                </button>
-                                            )}
-                                            <button
-                                                type="submit"
-                                                disabled={editForm.processing}
-                                                className="bg-brand-dark text-white px-5 py-2.5 rounded-xl font-bold text-xs hover:bg-black transition cursor-pointer disabled:opacity-50"
-                                            >
-                                                {editForm.processing ? 'Saving...' : 'Save Changes'}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </form>
-                            )}
-
-                            {modalTab === 'id' && (
-                                <div className="space-y-4">
-                                    <div className="p-4 rounded-2xl bg-brand-light border border-brand-border flex items-center justify-between">
-                                        <div>
-                                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">National ID Number</p>
-                                            <p className="text-base font-extrabold font-mono text-brand-dark mt-0.5">
-                                                {editingTransporter.id_number || 'Not provided'}
-                                            </p>
-                                        </div>
-
-                                        {editingTransporter.status === 'pending' && (
-                                            <button
-                                                type="button"
-                                                onClick={approveFromModal}
-                                                className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition cursor-pointer"
-                                            >
-                                                Approve Driver
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {idDocUrl ? (
-                                        <div className="rounded-2xl border border-brand-border bg-gray-50 p-4 text-center space-y-3">
-                                            {isPdfDoc ? (
-                                                <div className="py-8">
-                                                    <svg className="w-12 h-12 text-brand-primary mx-auto mb-2" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                                                    </svg>
-                                                    <p className="text-xs font-semibold text-gray-600">PDF National ID Document Uploaded</p>
-                                                </div>
-                                            ) : (
-                                                <img
-                                                    src={idDocUrl}
-                                                    alt="Driver National ID"
-                                                    className="max-h-72 mx-auto rounded-xl object-contain border border-brand-border bg-white"
-                                                />
-                                            )}
-
-                                            <a
-                                                href={idDocUrl}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-primary hover:underline"
-                                            >
-                                                <span>Open Full Document in New Tab</span>
-                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                                                </svg>
-                                            </a>
-                                        </div>
-                                    ) : (
-                                        <div className="p-8 rounded-2xl border border-dashed border-gray-300 text-center text-xs text-gray-500">
-                                            No National ID document uploaded for this driver yet.
-                                        </div>
-                                    )}
+                            {rateForm.recentlySuccessful && (
+                                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800">
+                                    Rate card updated.
                                 </div>
                             )}
 
-                            {modalTab === 'login' && (
-                                <form onSubmit={submitLogin} className="space-y-4">
-                                    <div className="p-4 rounded-2xl bg-brand-light border border-brand-border text-xs text-gray-600 leading-relaxed">
-                                        Assign or reset the email and password this driver will use to sign in at <strong>/login</strong> and manage their availability & rate card.
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-semibold text-brand-dark mb-1">Driver Login Email *</label>
-                                        <input
-                                            type="email"
-                                            value={loginForm.data.email}
-                                            onChange={(e) => loginForm.setData('email', e.target.value)}
-                                            placeholder="driver@logistics.co.ke"
-                                            className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm"
-                                            required
-                                        />
-                                        {loginForm.errors.email && <p className="text-red-500 text-xs mt-1">{loginForm.errors.email}</p>}
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-semibold text-brand-dark mb-1">Portal Password (min 8 chars) *</label>
-                                        <input
-                                            type="password"
-                                            minLength={8}
-                                            value={loginForm.data.password}
-                                            onChange={(e) => loginForm.setData('password', e.target.value)}
-                                            placeholder="Enter a strong password"
-                                            className="w-full bg-brand-input rounded-xl px-4 py-3 text-sm"
-                                            required
-                                        />
-                                        {loginForm.errors.password && <p className="text-red-500 text-xs mt-1">{loginForm.errors.password}</p>}
-                                    </div>
-
-                                    <button
-                                        type="submit"
-                                        disabled={loginForm.processing}
-                                        className="w-full bg-brand-dark text-white py-3.5 rounded-xl font-bold text-sm hover:bg-black transition cursor-pointer disabled:opacity-50"
-                                    >
-                                        {loginForm.processing ? 'Saving Credentials...' : 'Save Driver Portal Login'}
-                                    </button>
-                                </form>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Add Transporter Modal */}
-            {isAddOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
-                    <div className="bg-white rounded-3xl border border-brand-border p-6 sm:p-8 max-w-lg w-full shadow-2xl relative my-8">
-                        <div className="flex justify-between items-center pb-4 border-b border-brand-border mb-5">
-                            <h3 className="text-lg font-bold text-brand-dark">Add Transporter & Rate Card</h3>
-                            <button type="button" onClick={() => setIsAddOpen(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 cursor-pointer">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <form onSubmit={submitAdd} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-semibold text-brand-dark mb-1">Driver / Business Name *</label>
-                                <input
-                                    type="text"
-                                    value={addForm.data.name}
-                                    onChange={(e) => addForm.setData('name', e.target.value)}
-                                    placeholder="e.g. Samuel Mutiso Logistics"
-                                    className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm"
-                                    required
-                                />
-                                {addForm.errors.name && <p className="text-red-500 text-xs mt-1">{addForm.errors.name}</p>}
+                                <label className="block text-xs font-semibold text-brand-dark mb-1">Vehicle Type</label>
+                                <select
+                                    value={rateForm.data.vehicle_type}
+                                    onChange={(e) => rateForm.setData('vehicle_type', e.target.value)}
+                                    className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
+                                >
+                                    {vehicleOptions.map((v) => <option key={v} value={v}>{v}</option>)}
+                                </select>
                             </div>
 
-                            <div className="grid sm:grid-cols-2 gap-3">
+                            <div className="grid grid-cols-3 gap-2.5">
                                 <div>
-                                    <label className="block text-xs font-semibold text-brand-dark mb-1">Phone Number *</label>
-                                    <input
-                                        type="tel"
-                                        value={addForm.data.phone}
-                                        onChange={(e) => addForm.setData('phone', e.target.value)}
-                                        placeholder="0712345678"
-                                        className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm"
-                                        required
-                                    />
-                                    {addForm.errors.phone && <p className="text-red-500 text-xs mt-1">{addForm.errors.phone}</p>}
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-brand-dark mb-1">Vehicle Type *</label>
-                                    <select
-                                        value={addForm.data.vehicle_type}
-                                        onChange={(e) => addForm.setData('vehicle_type', e.target.value)}
-                                        className="w-full bg-brand-input rounded-xl px-3 py-2.5 text-sm"
-                                    >
-                                        {vehicleOptions.map((v) => <option key={v} value={v}>{v}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="grid sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-semibold text-brand-dark mb-1">Portal Login Email (Optional)</label>
-                                    <input
-                                        type="email"
-                                        value={addForm.data.email}
-                                        onChange={(e) => addForm.setData('email', e.target.value)}
-                                        placeholder="driver@logistics.co.ke"
-                                        className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm"
-                                    />
-                                    {addForm.errors.email && <p className="text-red-500 text-xs mt-1">{addForm.errors.email}</p>}
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-brand-dark mb-1">Portal Password (Optional)</label>
-                                    <input
-                                        type="password"
-                                        value={addForm.data.password}
-                                        onChange={(e) => addForm.setData('password', e.target.value)}
-                                        placeholder="min 8 chars"
-                                        className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm"
-                                    />
-                                    {addForm.errors.password && <p className="text-red-500 text-xs mt-1">{addForm.errors.password}</p>}
-                                </div>
-                            </div>
-
-                            <div className="grid sm:grid-cols-3 gap-3">
-                                <div>
-                                    <label className="block text-xs font-semibold text-brand-dark mb-1">Base Fare (KSh)</label>
+                                    <label className="block text-[11px] font-semibold text-gray-600 mb-1">Base (KSh)</label>
                                     <input
                                         type="number"
-                                        value={addForm.data.base_fare}
-                                        onChange={(e) => addForm.setData('base_fare', e.target.value)}
-                                        className="w-full bg-brand-input rounded-xl px-3 py-2.5 text-sm"
+                                        step="0.01"
+                                        min="0"
+                                        value={rateForm.data.base_fare}
+                                        onChange={(e) => rateForm.setData('base_fare', e.target.value)}
+                                        className="w-full bg-brand-input rounded-xl px-3 py-2 text-sm font-mono"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-brand-dark mb-1">Rate/KG (KSh)</label>
+                                    <label className="block text-[11px] font-semibold text-gray-600 mb-1">Per KG (KSh)</label>
                                     <input
                                         type="number"
-                                        value={addForm.data.rate_per_kg}
-                                        onChange={(e) => addForm.setData('rate_per_kg', e.target.value)}
-                                        className="w-full bg-brand-input rounded-xl px-3 py-2.5 text-sm"
+                                        step="0.01"
+                                        min="0"
+                                        value={rateForm.data.rate_per_kg}
+                                        onChange={(e) => rateForm.setData('rate_per_kg', e.target.value)}
+                                        className="w-full bg-brand-input rounded-xl px-3 py-2 text-sm font-mono"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-brand-dark mb-1">Rate/KM (KSh)</label>
+                                    <label className="block text-[11px] font-semibold text-gray-600 mb-1">Per KM (KSh)</label>
                                     <input
                                         type="number"
-                                        value={addForm.data.rate_per_km}
-                                        onChange={(e) => addForm.setData('rate_per_km', e.target.value)}
-                                        className="w-full bg-brand-input rounded-xl px-3 py-2.5 text-sm"
+                                        step="0.01"
+                                        min="0"
+                                        value={rateForm.data.rate_per_km}
+                                        onChange={(e) => rateForm.setData('rate_per_km', e.target.value)}
+                                        className="w-full bg-brand-input rounded-xl px-3 py-2 text-sm font-mono"
                                         required
                                     />
                                 </div>
                             </div>
 
-                            <div className="grid sm:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-2 gap-2.5">
                                 <div>
-                                    <label className="block text-xs font-semibold text-brand-dark mb-1">Base Town</label>
+                                    <label className="block text-xs font-semibold text-brand-dark mb-1">Operating Base</label>
                                     <input
                                         type="text"
-                                        value={addForm.data.area}
-                                        onChange={(e) => addForm.setData('area', e.target.value)}
-                                        placeholder="Mombasa Road"
+                                        value={rateForm.data.area}
+                                        onChange={(e) => rateForm.setData('area', e.target.value)}
                                         className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
                                     />
                                 </div>
@@ -837,35 +532,198 @@ export default function AdminTransporters({ transporters = [] }) {
                                     <label className="block text-xs font-semibold text-brand-dark mb-1">Plate Number</label>
                                     <input
                                         type="text"
-                                        value={addForm.data.plate_number}
-                                        onChange={(e) => addForm.setData('plate_number', e.target.value)}
-                                        placeholder="KDF 123A"
+                                        value={rateForm.data.plate_number}
+                                        onChange={(e) => rateForm.setData('plate_number', e.target.value)}
                                         className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm uppercase font-mono"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-brand-dark mb-1">National ID #</label>
-                                    <input
-                                        type="text"
-                                        value={addForm.data.id_number}
-                                        onChange={(e) => addForm.setData('id_number', e.target.value)}
-                                        placeholder="34567890"
-                                        className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm font-mono"
                                     />
                                 </div>
                             </div>
 
                             <button
                                 type="submit"
-                                disabled={addForm.processing}
-                                className="w-full mt-2 bg-brand-dark text-white py-3.5 rounded-xl font-bold text-sm hover:bg-black transition cursor-pointer disabled:opacity-50"
+                                disabled={rateForm.processing}
+                                className="w-full bg-brand-dark text-white py-3 rounded-xl font-bold text-sm hover:bg-black transition cursor-pointer disabled:opacity-50"
                             >
-                                {addForm.processing ? 'Saving...' : 'Save & Approve Transporter'}
+                                {rateForm.processing ? 'Saving...' : 'Update Rate Card'}
                             </button>
                         </form>
+
+                        {/* Simulator */}
+                        <div className="bg-white rounded-3xl border border-brand-border p-5 shadow-xs space-y-3">
+                            <h3 className="text-xs font-extrabold uppercase tracking-wider text-gray-400">
+                                Fare Calculator Preview
+                            </h3>
+
+                            <div className="grid grid-cols-2 gap-2.5">
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Test KG</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={simWeight}
+                                        onChange={(e) => setSimWeight(e.target.value)}
+                                        className="w-full bg-brand-input rounded-xl px-3 py-2 text-sm font-mono"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Test KM</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={simKm}
+                                        onChange={(e) => setSimKm(e.target.value)}
+                                        className="w-full bg-brand-input rounded-xl px-3 py-2 text-sm font-mono"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-between items-center p-3 rounded-xl bg-brand-light border border-brand-border">
+                                <span className="text-xs font-bold text-brand-dark">Customer Fare Quote</span>
+                                <span className="text-base font-black text-brand-primary font-mono">{formatKES(simulatedTotal)}</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+
+                {/* PAGE 3: Editable Driver Profile */}
+                {activeTab === 'profile' && (
+                    <form onSubmit={submitProfile} className="bg-white rounded-3xl border border-brand-border p-5 sm:p-6 shadow-xs space-y-4">
+                        <div className="flex items-center justify-between border-b border-brand-border pb-3">
+                            <div>
+                                <h2 className="text-base font-extrabold text-brand-dark">Driver Profile & KYC</h2>
+                                <p className="text-xs text-gray-500 mt-0.5">Edit your details below to update the system.</p>
+                            </div>
+                            <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full capitalize">
+                                {transporter.status}
+                            </span>
+                        </div>
+
+                        {profileForm.recentlySuccessful && (
+                            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800">
+                                Profile updated in database.
+                            </div>
+                        )}
+
+                        <div className="space-y-3.5">
+                            <div>
+                                <label className="block text-xs font-semibold text-brand-dark mb-1">Driver / Business Name *</label>
+                                <input
+                                    type="text"
+                                    value={profileForm.data.name}
+                                    onChange={(e) => profileForm.setData('name', e.target.value)}
+                                    className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
+                                    required
+                                />
+                                {profileForm.errors.name && <p className="text-red-500 text-xs mt-1">{profileForm.errors.name}</p>}
+                            </div>
+
+                            <div className="grid sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-brand-dark mb-1">Phone Number *</label>
+                                    <input
+                                        type="tel"
+                                        value={profileForm.data.phone}
+                                        onChange={(e) => profileForm.setData('phone', e.target.value)}
+                                        className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm font-mono"
+                                        required
+                                    />
+                                    {profileForm.errors.phone && <p className="text-red-500 text-xs mt-1">{profileForm.errors.phone}</p>}
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-brand-dark mb-1">National ID Number</label>
+                                    <input
+                                        type="text"
+                                        value={profileForm.data.id_number}
+                                        onChange={(e) => profileForm.setData('id_number', e.target.value)}
+                                        className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm font-mono"
+                                    />
+                                    {profileForm.errors.id_number && <p className="text-red-500 text-xs mt-1">{profileForm.errors.id_number}</p>}
+                                </div>
+                            </div>
+
+                            <div className="grid sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-brand-dark mb-1">Plate Number</label>
+                                    <input
+                                        type="text"
+                                        value={profileForm.data.plate_number}
+                                        onChange={(e) => profileForm.setData('plate_number', e.target.value)}
+                                        className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm uppercase font-mono"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-brand-dark mb-1">Operating Base</label>
+                                    <input
+                                        type="text"
+                                        value={profileForm.data.area}
+                                        onChange={(e) => profileForm.setData('area', e.target.value)}
+                                        className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="p-3 rounded-xl bg-brand-light border border-brand-border flex items-center justify-between text-xs">
+                                <span className="text-gray-500">ID Document Verification</span>
+                                <span className="font-bold text-emerald-700">
+                                    {transporter.has_id_document ? 'Document on File' : 'Verified Offline'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={profileForm.processing}
+                            className="w-full bg-brand-dark text-white py-3 rounded-xl font-bold text-sm hover:bg-black transition cursor-pointer disabled:opacity-50"
+                        >
+                            {profileForm.processing ? 'Saving...' : 'Save Profile Changes'}
+                        </button>
+                    </form>
+                )}
+            </div>
+
+            {/* Bottom Mobile Tab Bar */}
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-brand-border px-3 py-2 grid grid-cols-3 gap-1 shadow-lg">
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('jobs')}
+                    className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+                        activeTab === 'jobs' ? 'text-brand-primary bg-brand-primary/10' : 'text-gray-500'
+                    }`}
+                >
+                    <svg className="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" strokeWidth="1.9" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.25V4.5a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 4.5v9.75m12 0H2.25m12 0v5.25" />
+                    </svg>
+                    <span>Jobs</span>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('rates')}
+                    className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+                        activeTab === 'rates' ? 'text-brand-primary bg-brand-primary/10' : 'text-gray-500'
+                    }`}
+                >
+                    <svg className="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" strokeWidth="1.9" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Rates</span>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('profile')}
+                    className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+                        activeTab === 'profile' ? 'text-brand-primary bg-brand-primary/10' : 'text-gray-500'
+                    }`}
+                >
+                    <svg className="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" strokeWidth="1.9" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                    </svg>
+                    <span>Profile</span>
+                </button>
+            </nav>
         </MainLayout>
     );
 }
