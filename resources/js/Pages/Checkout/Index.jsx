@@ -8,151 +8,229 @@ import axios from 'axios';
 const formatKES = (v) =>
     'KSh ' + Number(v || 0).toLocaleString('en-KE', { minimumFractionDigits: 0 });
 
-function VehicleIllustration({ type = '', className = 'w-12 h-12' }) {
-    const t = type.toLowerCase();
+function VehicleIllustration({ type = '', size = 56 }) {
+    const t = (type || '').toLowerCase();
 
-    // 1. Motorbike / Courier
+    // 1. Motorbike / Courier (Isometric Bolt delivery scooter with cargo box)
     if (t.includes('motorbike') || t.includes('courier') || t.includes('bike')) {
         return (
-            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-                <rect width="64" height="64" rx="16" fill="#E8F8F0" />
-                {/* Wheels */}
-                <circle cx="17" cy="43" r="8" fill="#2F313F" />
-                <circle cx="17" cy="43" r="4.5" fill="#E8F8F0" />
-                <circle cx="47" cy="43" r="8" fill="#2F313F" />
-                <circle cx="47" cy="43" r="4.5" fill="#E8F8F0" />
-                {/* Frame & Fork */}
-                <path d="M17 43L28 32H38L47 43" stroke="#2F313F" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M42 27L47 43" stroke="#2F313F" strokeWidth="3" strokeLinecap="round" />
-                {/* Body & Fuel tank */}
-                <path d="M26 31C26 27 29 25 33 25H39L36 32H26Z" fill="#32BB78" />
-                {/* Seat */}
-                <path d="M22 28H28L29 32H20C20 30 21 28 22 28Z" fill="#2F313F" />
-                {/* Courier Cargo Box */}
-                <rect x="13" y="17" width="12" height="11" rx="3" fill="#32BB78" />
-                <path d="M13 21H25" stroke="#24945E" strokeWidth="1.5" />
-                {/* Handlebar & Windshield */}
-                <path d="M41 23L44 20H47" stroke="#2F313F" strokeWidth="2.5" strokeLinecap="round" />
+            <svg
+                width={size}
+                height={size}
+                viewBox="0 0 64 64"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{ width: size, height: size, minWidth: size, minHeight: size }}
+                className="flex-shrink-0"
+            >
+                <rect width="64" height="64" rx="16" fill="#F0FDF4" />
+                {/* Ground Shadow */}
+                <ellipse cx="32" cy="51" rx="22" ry="4" fill="#000000" fillOpacity="0.08" />
+                {/* Rear Wheel */}
+                <ellipse cx="18" cy="44" rx="7" ry="5.5" fill="#1E293B" />
+                <ellipse cx="18" cy="44" rx="4" ry="3" fill="#E2E8F0" />
+                {/* Front Wheel */}
+                <ellipse cx="46" cy="44" rx="7" ry="5.5" fill="#1E293B" />
+                <ellipse cx="46" cy="44" rx="4" ry="3" fill="#E2E8F0" />
+                {/* Scooter Chassis & Floorboard */}
+                <path d="M19 41L28 41L34 43L43 38" stroke="#1E293B" strokeWidth="2.5" strokeLinecap="round" />
+                {/* Green Body Shell */}
+                <path d="M25 39C25 34 29 32 35 32H39L44 41H31L25 39Z" fill="#32BB78" />
+                {/* Front Apron & Steering */}
+                <path d="M38 32L42 21H46L44 38Z" fill="#32BB78" />
+                {/* Windshield */}
+                <path d="M43 20L45 13H48L46 20Z" fill="#7DD3FC" fillOpacity="0.75" />
+                {/* Black Driver Seat */}
+                <path d="M22 34C22 32 25 31 31 31C34 31 35 33 34 35H22V34Z" fill="#0F172A" />
+                {/* Courier Delivery Box */}
+                <rect x="12" y="20" width="13" height="13" rx="3" fill="#32BB78" />
+                <path d="M12 24.5H25" stroke="#16A34A" strokeWidth="1.5" />
+                <rect x="16" y="23" width="5" height="3" rx="0.75" fill="#FFFFFF" />
+                {/* Handlebars */}
+                <path d="M41 21H48" stroke="#0F172A" strokeWidth="2" strokeLinecap="round" />
+                {/* Headlight */}
+                <circle cx="46" cy="24" r="1.5" fill="#FDE047" />
             </svg>
         );
     }
 
-    // 2. Canter (3 - 5 Tonnes)
+    // 2. Canter (3 - 5 Tonnes) — Isometric Box Cargo Truck
     if (t.includes('canter')) {
         return (
-            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-                <rect width="64" height="64" rx="16" fill="#E8F8F0" />
-                {/* Cargo Box */}
-                <rect x="9" y="18" width="28" height="23" rx="3" fill="#32BB78" />
-                <rect x="9" y="34" width="28" height="7" fill="#24945E" />
-                {/* Cab */}
-                <path d="M37 23H48C50.5 23 52 25 52 28V41H37V23Z" fill="#2F313F" />
-                {/* Cab Window */}
-                <path d="M40 26H47C48.5 26 49.5 27 49.5 28.5V33H40V26Z" fill="#E8F8F0" />
-                {/* Bumper */}
-                <rect x="50" y="38" width="4" height="3" rx="1.5" fill="#F48356" />
+            <svg
+                width={size}
+                height={size}
+                viewBox="0 0 64 64"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{ width: size, height: size, minWidth: size, minHeight: size }}
+                className="flex-shrink-0"
+            >
+                <rect width="64" height="64" rx="16" fill="#F0FDF4" />
+                {/* Ground Shadow */}
+                <ellipse cx="32" cy="51" rx="24" ry="4" fill="#000000" fillOpacity="0.08" />
                 {/* Wheels */}
-                <circle cx="18" cy="45" r="5.5" fill="#2F313F" />
-                <circle cx="18" cy="45" r="3" fill="#E8F8F0" />
-                <circle cx="45" cy="45" r="5.5" fill="#2F313F" />
-                <circle cx="45" cy="45" r="3" fill="#E8F8F0" />
+                <circle cx="19" cy="45" r="5.5" fill="#1E293B" />
+                <circle cx="19" cy="45" r="3" fill="#E2E8F0" />
+                <circle cx="45" cy="45" r="5.5" fill="#1E293B" />
+                <circle cx="45" cy="45" r="3" fill="#E2E8F0" />
+                {/* Rear Cargo Box */}
+                <rect x="8" y="17" width="28" height="23" rx="3" fill="#32BB78" />
+                <rect x="8" y="34" width="28" height="6" fill="#16A34A" />
+                <path d="M14 17V40M22 17V40M30 17V40" stroke="#22C55E" strokeWidth="1" strokeOpacity="0.4" />
+                {/* Forward Cabin */}
+                <path d="M36 21H48C51 21 53 23 53 26V40H36V21Z" fill="#1E293B" />
+                {/* Windshield */}
+                <path d="M39 24H48C49.5 24 50.5 25 50.5 26.5V32H39V24Z" fill="#7DD3FC" fillOpacity="0.85" />
+                {/* Front Bumper & Headlight */}
+                <rect x="51" y="36" width="3" height="3" rx="1" fill="#FDE047" />
+                <rect x="36" y="38" width="18" height="3" fill="#0F172A" />
             </svg>
         );
     }
 
-    // 3. Tipper / Lorry (7 - 10 Tonnes)
+    // 3. Tipper / Lorry (7 - 10 Tonnes) — Heavy Tipper with Angled Bed
     if (t.includes('tipper') || t.includes('lorry')) {
         return (
-            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-                <rect width="64" height="64" rx="16" fill="#E8F8F0" />
-                {/* Heavy Tipper Bed */}
-                <path d="M8 21H36L34 40H8V21Z" fill="#32BB78" />
-                <path d="M14 21V40M22 21V40M30 21V40" stroke="#24945E" strokeWidth="1.5" />
-                {/* Hydraulic Cylinder */}
-                <path d="M34 38L37 32" stroke="#F48356" strokeWidth="2.5" strokeLinecap="round" />
-                {/* Cab */}
-                <path d="M38 21H51C53 21 54 22.5 54 25V40H38V21Z" fill="#2F313F" />
-                <path d="M41 24H49C50 24 51 25 51 26V31H41V24Z" fill="#E8F8F0" />
-                {/* Headlight */}
-                <circle cx="53" cy="36" r="1.5" fill="#F8B803" />
-                {/* Wheels (Heavy-duty dual rear) */}
-                <circle cx="14" cy="45" r="5.5" fill="#2F313F" />
-                <circle cx="14" cy="45" r="3" fill="#E8F8F0" />
-                <circle cx="27" cy="45" r="5.5" fill="#2F313F" />
-                <circle cx="27" cy="45" r="3" fill="#E8F8F0" />
-                <circle cx="46" cy="45" r="5.5" fill="#2F313F" />
-                <circle cx="46" cy="45" r="3" fill="#E8F8F0" />
+            <svg
+                width={size}
+                height={size}
+                viewBox="0 0 64 64"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{ width: size, height: size, minWidth: size, minHeight: size }}
+                className="flex-shrink-0"
+            >
+                <rect width="64" height="64" rx="16" fill="#F0FDF4" />
+                {/* Ground Shadow */}
+                <ellipse cx="32" cy="52" rx="25" ry="4" fill="#000000" fillOpacity="0.08" />
+                {/* Dual Rear Wheels + Front Wheel */}
+                <circle cx="15" cy="46" r="5" fill="#1E293B" />
+                <circle cx="15" cy="46" r="2.5" fill="#E2E8F0" />
+                <circle cx="26" cy="46" r="5" fill="#1E293B" />
+                <circle cx="26" cy="46" r="2.5" fill="#E2E8F0" />
+                <circle cx="47" cy="46" r="5" fill="#1E293B" />
+                <circle cx="47" cy="46" r="2.5" fill="#E2E8F0" />
+                {/* Reinforced Tipper Bed */}
+                <path d="M7 21H37L35 41H7V21Z" fill="#32BB78" />
+                <path d="M7 21L11 18H37L37 21" fill="#22C55E" />
+                <path d="M14 21V41M21 21V41M28 21V41" stroke="#16A34A" strokeWidth="1.5" />
+                {/* Hydraulic Lift Piston */}
+                <path d="M35 38L38 31" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round" />
+                {/* Heavy Duty Cabin */}
+                <path d="M39 20H51C53.5 20 55 22 55 24.5V41H39V20Z" fill="#1E293B" />
+                {/* Windshield */}
+                <path d="M42 23H50C51.5 23 52.5 24 52.5 25.5V31H42V23Z" fill="#7DD3FC" fillOpacity="0.85" />
+                {/* Grille & Headlight */}
+                <circle cx="53.5" cy="36.5" r="1.5" fill="#FDE047" />
+                <rect x="39" y="39" width="16" height="3" fill="#0F172A" />
             </svg>
         );
     }
 
-    // 4. Trailer / Prime Mover (20+ Tonnes)
+    // 4. Trailer / Prime Mover (20+ Tonnes) — Long Freight Hauler
     if (t.includes('trailer') || t.includes('prime') || t.includes('mover')) {
         return (
-            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-                <rect width="64" height="64" rx="16" fill="#E8F8F0" />
-                {/* Trailer Flatbed & Shipping Container */}
-                <rect x="6" y="20" width="31" height="20" rx="2" fill="#32BB78" />
-                <path d="M12 20V40M18 20V40M24 20V40M30 20V40" stroke="#24945E" strokeWidth="1.2" />
-                {/* Coupling Hook */}
-                <rect x="36" y="37" width="4" height="3" fill="#2F313F" />
-                {/* High-Cab Prime Mover */}
-                <path d="M39 17H49C51 17 53 19 53 22V40H39V17Z" fill="#2F313F" />
-                <path d="M42 21H49C50 21 51 22 51 23V29H42V21Z" fill="#E8F8F0" />
-                {/* Exhaust Stack */}
-                <rect x="40" y="13" width="2" height="5" rx="1" fill="#F48356" />
-                {/* Wheels */}
-                <circle cx="11" cy="45" r="4.5" fill="#2F313F" />
-                <circle cx="11" cy="45" r="2.5" fill="#E8F8F0" />
-                <circle cx="21" cy="45" r="4.5" fill="#2F313F" />
-                <circle cx="21" cy="45" r="2.5" fill="#E8F8F0" />
-                <circle cx="47" cy="45" r="5" fill="#2F313F" />
-                <circle cx="47" cy="45" r="2.5" fill="#E8F8F0" />
+            <svg
+                width={size}
+                height={size}
+                viewBox="0 0 64 64"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{ width: size, height: size, minWidth: size, minHeight: size }}
+                className="flex-shrink-0"
+            >
+                <rect width="64" height="64" rx="16" fill="#F0FDF4" />
+                {/* Ground Shadow */}
+                <ellipse cx="32" cy="52" rx="26" ry="4" fill="#000000" fillOpacity="0.08" />
+                {/* Wheels across wheelbase */}
+                <circle cx="11" cy="46" r="4.5" fill="#1E293B" />
+                <circle cx="11" cy="46" r="2.2" fill="#E2E8F0" />
+                <circle cx="21" cy="46" r="4.5" fill="#1E293B" />
+                <circle cx="21" cy="46" r="2.2" fill="#E2E8F0" />
+                <circle cx="33" cy="46" r="4.5" fill="#1E293B" />
+                <circle cx="33" cy="46" r="2.2" fill="#E2E8F0" />
+                <circle cx="48" cy="46" r="5" fill="#1E293B" />
+                <circle cx="48" cy="46" r="2.5" fill="#E2E8F0" />
+                {/* Shipping Cargo Container */}
+                <rect x="6" y="19" width="31" height="22" rx="2" fill="#32BB78" />
+                <path d="M12 19V41M18 19V41M24 19V41M30 19V41" stroke="#16A34A" strokeWidth="1.2" />
+                {/* Big Rig Cab */}
+                <path d="M39 16H49C52 16 54 18 54 21V41H39V16Z" fill="#1E293B" />
+                {/* Windshield */}
+                <path d="M42 20H49.5C51 20 52 21 52 22.5V28H42V20Z" fill="#7DD3FC" fillOpacity="0.85" />
+                {/* Chrome Exhaust Stack */}
+                <rect x="40" y="12" width="2" height="6" rx="1" fill="#F97316" />
+                <circle cx="53" cy="36" r="1.5" fill="#FDE047" />
             </svg>
         );
     }
 
-    // 5. Tuk-Tuk / Delivery Van
+    // 5. Tuk-Tuk / Delivery Van — Streamlined Metro Van
     if (t.includes('tuk') || t.includes('van')) {
         return (
-            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-                <rect width="64" height="64" rx="16" fill="#E8F8F0" />
-                {/* Aerodynamic Van Body */}
-                <path d="M10 24C10 21.8 11.8 20 14 20H37L48 26C51 28 52 30 52 33V42H10V24Z" fill="#32BB78" />
-                <rect x="10" y="36" width="42" height="6" fill="#24945E" />
-                {/* Windshield & Cabin Window */}
-                <path d="M37 23H44L48 28H37V23Z" fill="#2F313F" />
-                <rect x="26" y="23" width="9" height="8" rx="1.5" fill="#E8F8F0" />
+            <svg
+                width={size}
+                height={size}
+                viewBox="0 0 64 64"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{ width: size, height: size, minWidth: size, minHeight: size }}
+                className="flex-shrink-0"
+            >
+                <rect width="64" height="64" rx="16" fill="#F0FDF4" />
+                {/* Ground Shadow */}
+                <ellipse cx="32" cy="51" rx="23" ry="4" fill="#000000" fillOpacity="0.08" />
                 {/* Wheels */}
-                <circle cx="18" cy="45" r="5" fill="#2F313F" />
-                <circle cx="18" cy="45" r="2.5" fill="#E8F8F0" />
-                <circle cx="43" cy="45" r="5" fill="#2F313F" />
-                <circle cx="43" cy="45" r="2.5" fill="#E8F8F0" />
+                <circle cx="17" cy="45" r="5.5" fill="#1E293B" />
+                <circle cx="17" cy="45" r="3" fill="#E2E8F0" />
+                <circle cx="45" cy="45" r="5.5" fill="#1E293B" />
+                <circle cx="45" cy="45" r="3" fill="#E2E8F0" />
+                {/* Aerodynamic Body */}
+                <path d="M9 24C9 21.5 11 19.5 13.5 19.5H38L49 26C52 28 53 30.5 53 33.5V42H9V24Z" fill="#32BB78" />
+                <path d="M9 36H53V42H9V36Z" fill="#16A34A" />
+                {/* Windows */}
+                <path d="M37 22H44.5L49 27.5H37V22Z" fill="#1E293B" />
+                <rect x="25" y="22" width="10" height="7.5" rx="1.5" fill="#7DD3FC" fillOpacity="0.85" />
+                {/* Headlight */}
+                <circle cx="51.5" cy="33.5" r="1.5" fill="#FDE047" />
             </svg>
         );
     }
 
-    // Default: Pickup (1 - 2 Tonnes)
+    // Default: Pickup (1 - 2 Tonnes) — Bold Flatbed Pickup
     return (
-        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-            <rect width="64" height="64" rx="16" fill="#E8F8F0" />
-            {/* Open Cargo Bed */}
-            <path d="M9 31H28V41H9V31Z" fill="#32BB78" />
-            {/* Cargo Bags inside */}
-            <rect x="11" y="27" width="7" height="5" rx="1" fill="#F8B803" />
-            <rect x="18" y="27" width="7" height="5" rx="1" fill="#F48356" />
-            {/* Cab */}
-            <path d="M28 24C28 22 30 20 32 20H40L48 28V41H28V24Z" fill="#32BB78" />
-            {/* Cab Windows */}
-            <path d="M31 23H39V29H31V23Z" fill="#2F313F" />
-            <path d="M41 23H43L47 28H41V23Z" fill="#2F313F" />
-            {/* Side Protective Strip */}
-            <rect x="9" y="37" width="44" height="4" fill="#24945E" />
+        <svg
+            width={size}
+            height={size}
+            viewBox="0 0 64 64"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            style={{ width: size, height: size, minWidth: size, minHeight: size }}
+            className="flex-shrink-0"
+        >
+            <rect width="64" height="64" rx="16" fill="#F0FDF4" />
+            {/* Ground Shadow */}
+            <ellipse cx="32" cy="51" rx="23" ry="4" fill="#000000" fillOpacity="0.08" />
             {/* Wheels */}
-            <circle cx="18" cy="44" r="5.5" fill="#2F313F" />
-            <circle cx="18" cy="44" r="3" fill="#E8F8F0" />
-            <circle cx="43" cy="44" r="5.5" fill="#2F313F" />
-            <circle cx="43" cy="44" r="3" fill="#E8F8F0" />
+            <circle cx="17" cy="44" r="5.5" fill="#1E293B" />
+            <circle cx="17" cy="44" r="3" fill="#E2E8F0" />
+            <circle cx="44" cy="44" r="5.5" fill="#1E293B" />
+            <circle cx="44" cy="44" r="3" fill="#E2E8F0" />
+            {/* Flat Cargo Bed */}
+            <path d="M8 30H27V41H8V30Z" fill="#32BB78" />
+            {/* Cargo Payload (Bags) */}
+            <rect x="10" y="25" width="7" height="6" rx="1.5" fill="#FDE047" />
+            <rect x="18" y="25" width="7" height="6" rx="1.5" fill="#F97316" />
+            {/* Cabin */}
+            <path d="M27 23C27 21 29 19.5 31 19.5H41L49 27.5V41H27V23Z" fill="#32BB78" />
+            {/* Windows */}
+            <path d="M30 22.5H38.5V28H30V22.5Z" fill="#1E293B" />
+            <path d="M40.5 22.5H42.5L46.5 27.5H40.5V22.5Z" fill="#7DD3FC" fillOpacity="0.85" />
+            {/* Side Protection Line */}
+            <rect x="8" y="36.5" width="43" height="3.5" fill="#16A34A" />
+            {/* Headlight */}
+            <circle cx="48" cy="33" r="1.5" fill="#FDE047" />
         </svg>
     );
 }
@@ -566,7 +644,7 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                                         <div className="flex items-center gap-3.5 min-w-0">
                                             <VehicleIllustration
                                                 type={selectedTransporter.vehicle_type}
-                                                className="w-14 h-14 flex-shrink-0"
+                                                size={56}
                                             />
                                             <div className="min-w-0">
                                                 <p className="font-bold text-sm text-brand-dark truncate">
@@ -764,7 +842,7 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                                             <div className="flex items-center gap-3.5 min-w-0">
                                                 <VehicleIllustration
                                                     type={t.vehicle_type}
-                                                    className="w-14 h-14 flex-shrink-0"
+                                                    size={56}
                                                 />
                                                 <div className="min-w-0">
                                                     <p className="font-bold text-sm text-brand-dark truncate">
