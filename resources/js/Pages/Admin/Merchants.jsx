@@ -144,339 +144,355 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
         <MainLayout minimal homeHref="/admin">
             <Head title="Evopay Platform Admin — Merchants" />
 
-            {/* Top Header & Navigation */}
-            <div className="mb-8 flex flex-wrap justify-between items-end gap-4">
-                <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-brand-primary">
-                        Evopay Platform Admin
-                    </p>
-                    <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-dark mt-1 tracking-tight">
-                        Merchants & Gateway Overview
-                    </h1>
-                    <p className="text-gray-500 mt-1 text-sm">
-                        Onboard businesses, manage portal credentials, and monitor live gateway revenue.
-                    </p>
-                </div>
+            <div className="flex flex-col lg:flex-row gap-6 items-start">
+                {/* Desktop Platform Admin Sidebar */}
+                <aside className="w-full lg:w-64 bg-white rounded-3xl border border-brand-border p-4 shadow-xs space-y-1.5 flex-shrink-0">
+                    <div className="p-3 mb-2 border-b border-brand-border">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-brand-primary">Platform Admin</p>
+                        <h2 className="text-sm font-extrabold text-brand-dark mt-0.5">Gateway Control</h2>
+                    </div>
 
-                <div className="flex flex-wrap items-center gap-2.5">
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setError(null);
-                            setOnboardOpen(true);
-                        }}
-                        className="bg-brand-primary text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-brand-secondary transition shadow-xs cursor-pointer"
+                    <Link
+                        href="/admin"
+                        className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-bold text-xs bg-brand-dark text-white shadow-xs"
                     >
-                        + Onboard Merchant
-                    </button>
+                        <span>Merchants Directory</span>
+                    </Link>
+
                     <Link
                         href="/admin/transactions"
-                        className="bg-brand-dark text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-black transition"
+                        className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-bold text-xs text-gray-600 hover:text-brand-dark hover:bg-gray-50 transition"
                     >
-                        Transactions
+                        <span>Global Transactions</span>
                     </Link>
-                    <Link
-                        href="/admin/demo-shop"
-                        className="bg-white border border-brand-border text-brand-dark px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-50 transition"
-                    >
-                        Demo Shop
-                    </Link>
+
+                    <div className="pt-3 border-t border-brand-border my-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-3.5 mb-1.5">
+                            Demo Store Admin
+                        </p>
+                        <Link
+                            href="/admin/demo-shop"
+                            className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:text-brand-dark hover:bg-gray-50 transition"
+                        >
+                            <span>Products / Inventory</span>
+                        </Link>
+                        <Link
+                            href="/admin/orders"
+                            className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:text-brand-dark hover:bg-gray-50 transition"
+                        >
+                            <span>Shop Orders</span>
+                        </Link>
+                        <Link
+                            href="/admin/transporters"
+                            className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:text-brand-dark hover:bg-gray-50 transition"
+                        >
+                            <span>Transporter Fleet</span>
+                        </Link>
+                        <Link
+                            href="/admin/settings"
+                            className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:text-brand-dark hover:bg-gray-50 transition"
+                        >
+                            <span>Shop HQ & Rates</span>
+                        </Link>
+                    </div>
+
                     <button
                         type="button"
                         onClick={() => router.post('/logout')}
-                        className="bg-white border border-brand-border text-gray-600 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-50 transition cursor-pointer"
+                        className="w-full text-left px-3.5 py-2.5 rounded-xl font-bold text-xs text-red-600 hover:bg-red-50 transition cursor-pointer mt-4"
                     >
-                        Logout
+                        Sign Out
                     </button>
-                </div>
-            </div>
+                </aside>
 
-            {/* Platform KPI Strip */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white rounded-2xl border border-brand-border p-5 shadow-xs">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Active Merchants</p>
-                    <p className="text-2xl sm:text-3xl font-extrabold text-brand-dark mt-1.5">
-                        {activeCount}
-                        <span className="text-xs font-semibold text-gray-400 ml-1.5">/ {stats.merchants_count ?? merchants.length} total</span>
-                    </p>
-                </div>
-
-                <div className="bg-white rounded-2xl border border-brand-border p-5 shadow-xs">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Gateway Volume</p>
-                    <p className="text-2xl sm:text-3xl font-extrabold text-brand-primary mt-1.5">
-                        {formatKES(stats.paid_volume)}
-                    </p>
-                </div>
-
-                <div className="bg-white rounded-2xl border border-brand-border p-5 shadow-xs">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Est. Platform Fees</p>
-                    <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600 mt-1.5">
-                        {formatKES(estimatedCommission)}
-                    </p>
-                </div>
-
-                <div className="bg-white rounded-2xl border border-brand-border p-5 shadow-xs">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Session Conversion</p>
-                    <p className="text-2xl sm:text-3xl font-extrabold text-brand-dark mt-1.5">
-                        {conversionRate}%
-                        <span className="text-xs font-semibold text-gray-400 ml-1.5">
-                            ({stats.paid_count ?? 0}/{stats.total_sessions ?? 0})
-                        </span>
-                    </p>
-                </div>
-            </div>
-
-            {/* Flash Banner */}
-            {bannerMessage && (
-                <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-center justify-between gap-3 text-sm font-semibold text-emerald-800">
-                    <span>{bannerMessage}</span>
-                    <button
-                        type="button"
-                        onClick={() => setBannerMessage(null)}
-                        className="text-xs font-bold text-emerald-700 hover:underline cursor-pointer"
-                    >
-                        Dismiss
-                    </button>
-                </div>
-            )}
-
-            {/* Newly Created Credentials Banner (Shown once with Copy Buttons) */}
-            {createdCreds && (
-                <div className="mb-6 rounded-2xl border-2 border-emerald-500 bg-emerald-50/90 p-5 sm:p-6 shadow-sm">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                {/* Main Content Area */}
+                <div className="flex-1 w-full min-w-0 space-y-6">
+                    {/* Top Action Header */}
+                    <div className="flex flex-wrap justify-between items-center gap-3">
                         <div>
-                            <span className="text-[10px] font-extrabold uppercase tracking-wider bg-emerald-600 text-white px-2.5 py-0.5 rounded-full">
-                                Copy Now · Shown Once
-                            </span>
-                            <h2 className="text-lg font-extrabold text-emerald-950 mt-2">
-                                {createdCreds.merchant.name} is ready for integration
-                            </h2>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setCreatedCreds(null)}
-                            className="text-xs font-bold text-emerald-800 hover:underline cursor-pointer"
-                        >
-                            Close
-                        </button>
-                    </div>
-
-                    <div className="mt-4 grid sm:grid-cols-3 gap-3 text-xs">
-                        <div className="bg-white rounded-xl border border-emerald-200 p-3">
-                            <p className="text-[10px] font-bold uppercase text-gray-400">Portal Login Email</p>
-                            <p className="font-semibold text-brand-dark mt-1 truncate">{createdCreds.login_email}</p>
-                            <button
-                                type="button"
-                                onClick={() => copyValue('email', createdCreds.login_email)}
-                                className="mt-2 text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
-                            >
-                                {copiedField === 'email' ? 'Copied!' : 'Copy Email'}
-                            </button>
+                            <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-dark tracking-tight">
+                                Merchants & Gateway Overview
+                            </h1>
+                            <p className="text-gray-500 text-xs sm:text-sm mt-0.5">
+                                Onboard clients, issue API keys, and track live platform revenue.
+                            </p>
                         </div>
 
-                        <div className="bg-white rounded-xl border border-emerald-200 p-3">
-                            <p className="text-[10px] font-bold uppercase text-gray-400">Public Key</p>
-                            <p className="font-mono text-brand-dark mt-1 truncate">{createdCreds.public_key}</p>
-                            <button
-                                type="button"
-                                onClick={() => copyValue('pk', createdCreds.public_key)}
-                                className="mt-2 text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
-                            >
-                                {copiedField === 'pk' ? 'Copied!' : 'Copy Public Key'}
-                            </button>
-                        </div>
-
-                        <div className="bg-white rounded-xl border border-emerald-200 p-3">
-                            <p className="text-[10px] font-bold uppercase text-gray-400">Secret Key</p>
-                            <p className="font-mono font-bold text-brand-dark mt-1 truncate">{createdCreds.secret_key}</p>
-                            <button
-                                type="button"
-                                onClick={() => copyValue('sk', createdCreds.secret_key)}
-                                className="mt-2 text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
-                            >
-                                {copiedField === 'sk' ? 'Copied!' : 'Copy Secret Key'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Search & Filter Toolbar */}
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap gap-2">
-                    {[
-                        { key: 'all', label: `All (${merchants.length})` },
-                        { key: 'active', label: `Active (${activeCount})` },
-                        { key: 'suspended', label: `Suspended (${suspendedCount})` },
-                    ].map((tab) => (
-                        <button
-                            key={tab.key}
-                            type="button"
-                            onClick={() => setStatusFilter(tab.key)}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                                statusFilter === tab.key
-                                    ? 'bg-brand-dark text-white'
-                                    : 'bg-white border border-brand-border text-gray-600 hover:bg-gray-50'
-                            }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-
-                <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search business name, slug, or email..."
-                    className="w-full sm:w-80 bg-white border border-brand-border rounded-xl px-4 py-2.5 text-sm"
-                />
-            </div>
-
-            {/* Full-Width Merchants Directory Table */}
-            <div className="bg-white rounded-2xl border border-brand-border shadow-xs overflow-hidden">
-                {filteredMerchants.length === 0 ? (
-                    <div className="p-12 text-center">
-                        <p className="text-sm font-semibold text-gray-500">No merchants match your filter.</p>
                         <button
                             type="button"
                             onClick={() => {
-                                setSearch('');
-                                setStatusFilter('all');
+                                setError(null);
+                                setOnboardOpen(true);
                             }}
-                            className="mt-3 text-xs font-bold text-brand-primary hover:underline cursor-pointer"
+                            className="bg-brand-primary text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-brand-secondary transition shadow-xs cursor-pointer"
                         >
-                            Clear filters
+                            + Onboard Merchant
                         </button>
                     </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-brand-light border-b border-brand-border text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                                <tr>
-                                    <th className="py-3.5 px-5">Merchant</th>
-                                    <th className="py-3.5 px-4">Portal Access</th>
-                                    <th className="py-3.5 px-4">Volume & Sessions</th>
-                                    <th className="py-3.5 px-4">Fee / Est. Earned</th>
-                                    <th className="py-3.5 px-4">Status</th>
-                                    <th className="py-3.5 px-5 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-brand-border">
-                                {filteredMerchants.map((m) => {
-                                    const merchantFeeEarned = (Number(m.paid_volume || 0) * Number(m.fee_percent || 0)) / 100;
-                                    const mRate = m.checkout_sessions_count > 0
-                                        ? Math.round((m.paid_count / m.checkout_sessions_count) * 100)
-                                        : 0;
 
-                                    return (
-                                        <tr key={m.id} className="hover:bg-gray-50/70 transition">
-                                            <td className="py-4 px-5">
-                                                <div className="flex items-center gap-3">
-                                                    {m.logo_url ? (
-                                                        <img
-                                                            src={m.logo_url}
-                                                            alt={m.name}
-                                                            className="w-10 h-10 rounded-xl object-contain bg-white border border-brand-border p-1 flex-shrink-0"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-10 h-10 rounded-xl bg-brand-primary/10 text-brand-primary font-extrabold text-xs flex items-center justify-center flex-shrink-0">
-                                                            {m.name.slice(0, 2).toUpperCase()}
-                                                        </div>
-                                                    )}
-                                                    <div>
-                                                        <p className="font-bold text-brand-dark">{m.name}</p>
-                                                        <p className="text-xs text-gray-400 font-mono">{m.slug}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
+                    {/* Platform KPI Strip */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-white rounded-2xl border border-brand-border p-4 sm:p-5 shadow-xs">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Active Merchants</p>
+                            <p className="text-2xl font-extrabold text-brand-dark mt-1">
+                                {activeCount}
+                                <span className="text-xs font-semibold text-gray-400 ml-1.5">/ {merchants.length} total</span>
+                            </p>
+                        </div>
 
-                                            <td className="py-4 px-4">
-                                                {m.has_login ? (
-                                                    <div>
-                                                        <span className="inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                                                            Portal Active
-                                                        </span>
-                                                        <p className="text-xs text-gray-600 mt-1">{m.login_email}</p>
-                                                    </div>
-                                                ) : (
-                                                    <div>
-                                                        <span className="inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                                                            No Login Yet
-                                                        </span>
-                                                        <p className="text-xs text-gray-400 mt-1">{m.email || 'CLI created'}</p>
-                                                    </div>
-                                                )}
-                                            </td>
+                        <div className="bg-white rounded-2xl border border-brand-border p-4 sm:p-5 shadow-xs">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Gateway Volume</p>
+                            <p className="text-2xl font-extrabold text-brand-primary mt-1">
+                                {formatKES(stats.paid_volume)}
+                            </p>
+                        </div>
 
-                                            <td className="py-4 px-4">
-                                                <p className="font-extrabold text-brand-dark">{formatKES(m.paid_volume)}</p>
-                                                <p className="text-xs text-gray-500 mt-0.5">
-                                                    {m.paid_count}/{m.checkout_sessions_count} paid ({mRate}%)
-                                                </p>
-                                            </td>
+                        <div className="bg-white rounded-2xl border border-brand-border p-4 sm:p-5 shadow-xs">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Est. Platform Revenue</p>
+                            <p className="text-2xl font-extrabold text-emerald-600 mt-1">
+                                {formatKES(estimatedCommission)}
+                            </p>
+                        </div>
 
-                                            <td className="py-4 px-4">
-                                                <p className="font-semibold text-brand-dark">{m.fee_percent}%</p>
-                                                <p className="text-xs text-emerald-700 font-medium mt-0.5">
-                                                    {formatKES(merchantFeeEarned)} earned
-                                                </p>
-                                            </td>
-
-                                            <td className="py-4 px-4">
-                                                <span
-                                                    className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border ${
-                                                        m.status === 'active'
-                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                                            : 'bg-red-50 text-red-700 border-red-200'
-                                                    }`}
-                                                >
-                                                    {m.status}
-                                                </span>
-                                            </td>
-
-                                            <td className="py-4 px-5 text-right">
-                                                <div className="inline-flex items-center gap-3 text-xs font-bold">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setInspectTarget(m)}
-                                                        className="text-gray-600 hover:text-brand-dark cursor-pointer"
-                                                    >
-                                                        Details
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setLoginTarget(m);
-                                                            setLoginEmail(m.login_email || m.email || '');
-                                                            setLoginPassword('');
-                                                            setLoginError(null);
-                                                        }}
-                                                        className="text-brand-dark hover:underline cursor-pointer"
-                                                    >
-                                                        {m.has_login ? 'Reset Login' : '+ Add Login'}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleToggleStatus(m)}
-                                                        className={`hover:underline cursor-pointer ${
-                                                            m.status === 'active' ? 'text-red-600' : 'text-emerald-600'
-                                                        }`}
-                                                    >
-                                                        {m.status === 'active' ? 'Suspend' : 'Activate'}
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                        <div className="bg-white rounded-2xl border border-brand-border p-4 sm:p-5 shadow-xs">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Session Conversion</p>
+                            <p className="text-2xl font-extrabold text-brand-dark mt-1">
+                                {conversionRate}%
+                                <span className="text-xs font-semibold text-gray-400 ml-1.5">
+                                    ({stats.paid_count ?? 0}/{stats.total_sessions ?? 0})
+                                </span>
+                            </p>
+                        </div>
                     </div>
-                )}
+
+                    {/* Banner messages */}
+                    {bannerMessage && (
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-center justify-between gap-3 text-sm font-semibold text-emerald-800">
+                            <span>{bannerMessage}</span>
+                            <button
+                                type="button"
+                                onClick={() => setBannerMessage(null)}
+                                className="text-xs font-bold text-emerald-700 hover:underline cursor-pointer"
+                            >
+                                Dismiss
+                            </button>
+                        </div>
+                    )}
+
+                    {createdCreds && (
+                        <div className="rounded-2xl border-2 border-emerald-500 bg-emerald-50/90 p-5 shadow-sm space-y-3">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                                        Shown Once
+                                    </span>
+                                    <h3 className="text-sm font-extrabold text-emerald-950 mt-1">
+                                        {createdCreds.merchant.name} is ready for integration
+                                    </h3>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setCreatedCreds(null)}
+                                    className="text-xs font-bold text-emerald-800 hover:underline cursor-pointer"
+                                >
+                                    Dismiss
+                                </button>
+                            </div>
+
+                            <div className="grid sm:grid-cols-3 gap-3 text-xs">
+                                <div className="bg-white rounded-xl border border-emerald-200 p-3">
+                                    <p className="text-[10px] font-bold uppercase text-gray-400">Login Email</p>
+                                    <p className="font-semibold text-brand-dark mt-0.5 truncate">{createdCreds.login_email}</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => copyValue('email', createdCreds.login_email)}
+                                        className="mt-1 text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                                    >
+                                        {copiedField === 'email' ? 'Copied!' : 'Copy Email'}
+                                    </button>
+                                </div>
+                                <div className="bg-white rounded-xl border border-emerald-200 p-3">
+                                    <p className="text-[10px] font-bold uppercase text-gray-400">Public Key</p>
+                                    <p className="font-mono text-brand-dark mt-0.5 truncate">{createdCreds.public_key}</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => copyValue('pk', createdCreds.public_key)}
+                                        className="mt-1 text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                                    >
+                                        {copiedField === 'pk' ? 'Copied!' : 'Copy Public Key'}
+                                    </button>
+                                </div>
+                                <div className="bg-white rounded-xl border border-emerald-200 p-3">
+                                    <p className="text-[10px] font-bold uppercase text-gray-400">Secret Key</p>
+                                    <p className="font-mono font-bold text-brand-dark mt-0.5 truncate">{createdCreds.secret_key}</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => copyValue('sk', createdCreds.secret_key)}
+                                        className="mt-1 text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                                    >
+                                        {copiedField === 'sk' ? 'Copied!' : 'Copy Secret Key'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Toolbar */}
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex gap-1.5 bg-white p-1 rounded-xl border border-brand-border">
+                            {[
+                                { key: 'all', label: `All (${merchants.length})` },
+                                { key: 'active', label: `Active (${activeCount})` },
+                                { key: 'suspended', label: `Suspended (${suspendedCount})` },
+                            ].map((tab) => (
+                                <button
+                                    key={tab.key}
+                                    type="button"
+                                    onClick={() => setStatusFilter(tab.key)}
+                                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                        statusFilter === tab.key
+                                            ? 'bg-brand-dark text-white'
+                                            : 'text-gray-600 hover:text-brand-dark hover:bg-gray-50'
+                                    }`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search name, slug, or email..."
+                            className="w-full sm:w-72 bg-white border border-brand-border rounded-xl px-4 py-2 text-sm"
+                        />
+                    </div>
+
+                    {/* Table */}
+                    <div className="bg-white rounded-2xl border border-brand-border shadow-xs overflow-hidden">
+                        {filteredMerchants.length === 0 ? (
+                            <div className="p-12 text-center text-sm text-gray-500">
+                                No merchants match your search filter.
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-brand-light border-b border-brand-border text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                                        <tr>
+                                            <th className="py-3.5 px-5">Merchant</th>
+                                            <th className="py-3.5 px-4">Portal Account</th>
+                                            <th className="py-3.5 px-4">Paid Volume</th>
+                                            <th className="py-3.5 px-4">Fee Rate</th>
+                                            <th className="py-3.5 px-4">Status</th>
+                                            <th className="py-3.5 px-5 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-brand-border">
+                                        {filteredMerchants.map((m) => {
+                                            const mRate = m.checkout_sessions_count > 0
+                                                ? Math.round((m.paid_count / m.checkout_sessions_count) * 100)
+                                                : 0;
+
+                                            return (
+                                                <tr key={m.id} className="hover:bg-gray-50/70 transition">
+                                                    <td className="py-4 px-5">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-9 h-9 rounded-xl bg-brand-primary/10 text-brand-primary font-extrabold text-xs flex items-center justify-center flex-shrink-0">
+                                                                {m.name.slice(0, 2).toUpperCase()}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-bold text-brand-dark leading-tight">{m.name}</p>
+                                                                <p className="text-xs text-gray-400 font-mono mt-0.5">{m.slug}</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+
+                                                    <td className="py-4 px-4">
+                                                        {m.has_login ? (
+                                                            <div>
+                                                                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                                                    Portal Active
+                                                                </span>
+                                                                <p className="text-xs text-gray-600 mt-1">{m.login_email}</p>
+                                                            </div>
+                                                        ) : (
+                                                            <div>
+                                                                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                                                    No Login Yet
+                                                                </span>
+                                                                <p className="text-xs text-gray-400 mt-1">{m.email || '—'}</p>
+                                                            </div>
+                                                        )}
+                                                    </td>
+
+                                                    <td className="py-4 px-4">
+                                                        <p className="font-extrabold text-brand-dark">{formatKES(m.paid_volume)}</p>
+                                                        <p className="text-xs text-gray-500 mt-0.5">
+                                                            {m.paid_count}/{m.checkout_sessions_count} paid ({mRate}%)
+                                                        </p>
+                                                    </td>
+
+                                                    <td className="py-4 px-4">
+                                                        <p className="font-semibold text-brand-dark">{m.fee_percent}%</p>
+                                                    </td>
+
+                                                    <td className="py-4 px-4">
+                                                        <span
+                                                            className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full border ${
+                                                                m.status === 'active'
+                                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                                    : 'bg-red-50 text-red-700 border-red-200'
+                                                            }`}
+                                                        >
+                                                            {m.status}
+                                                        </span>
+                                                    </td>
+
+                                                    <td className="py-4 px-5 text-right">
+                                                        <div className="inline-flex items-center gap-3 text-xs font-bold">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setInspectTarget(m)}
+                                                                className="text-gray-600 hover:text-brand-dark cursor-pointer"
+                                                            >
+                                                                Details
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setLoginTarget(m);
+                                                                    setLoginEmail(m.login_email || m.email || '');
+                                                                    setLoginPassword('');
+                                                                    setLoginError(null);
+                                                                }}
+                                                                className="text-brand-dark hover:underline cursor-pointer"
+                                                            >
+                                                                {m.has_login ? 'Reset Login' : '+ Add Login'}
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleToggleStatus(m)}
+                                                                className={`hover:underline cursor-pointer ${
+                                                                    m.status === 'active' ? 'text-red-600' : 'text-emerald-600'
+                                                                }`}
+                                                            >
+                                                                {m.status === 'active' ? 'Suspend' : 'Activate'}
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
 
-            {/* MODAL 1: Onboard New Merchant */}
+            {/* MODAL: Onboard New Merchant */}
             {onboardOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
                     <div className="bg-white rounded-3xl border border-brand-border p-6 sm:p-8 max-w-lg w-full shadow-2xl">
@@ -599,7 +615,7 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                 </div>
             )}
 
-            {/* MODAL 2: Attach / Reset Merchant Login */}
+            {/* MODAL: Attach / Reset Login */}
             {loginTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
                     <div className="bg-white rounded-3xl border border-brand-border p-6 sm:p-7 max-w-md w-full shadow-2xl">
@@ -624,7 +640,7 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                             )}
 
                             <div>
-                                <label className="block text-xs font-semibold mb-1">Merchant Login Email</label>
+                                <label className="block text-xs font-semibold mb-1">Login Email</label>
                                 <input
                                     type="email"
                                     value={loginEmail}
@@ -658,23 +674,14 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                 </div>
             )}
 
-            {/* MODAL 3: Merchant Details Inspector */}
+            {/* MODAL: Details Inspector */}
             {inspectTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
                     <div className="bg-white rounded-3xl border border-brand-border p-6 sm:p-7 max-w-md w-full shadow-2xl">
                         <div className="flex items-center justify-between pb-4 border-b border-brand-border mb-4">
-                            <div className="flex items-center gap-3">
-                                {inspectTarget.logo_url ? (
-                                    <img src={inspectTarget.logo_url} alt={inspectTarget.name} className="w-9 h-9 rounded-lg object-contain border border-brand-border p-1" />
-                                ) : (
-                                    <div className="w-9 h-9 rounded-lg bg-brand-primary/10 text-brand-primary font-bold text-xs flex items-center justify-center">
-                                        {inspectTarget.name.slice(0, 2).toUpperCase()}
-                                    </div>
-                                )}
-                                <div>
-                                    <h3 className="font-extrabold text-base text-brand-dark">{inspectTarget.name}</h3>
-                                    <p className="text-xs font-mono text-gray-400">{inspectTarget.slug}</p>
-                                </div>
+                            <div>
+                                <h3 className="font-extrabold text-base text-brand-dark">{inspectTarget.name}</h3>
+                                <p className="text-xs font-mono text-gray-400">{inspectTarget.slug}</p>
                             </div>
                             <button
                                 type="button"
@@ -691,46 +698,24 @@ export default function AdminMerchants({ merchants = [], stats = {} }) {
                                 <span className="font-bold uppercase text-brand-dark">{inspectTarget.status}</span>
                             </div>
                             <div className="flex justify-between py-2 border-b border-brand-border/60">
-                                <span className="text-gray-500">Contact Email</span>
-                                <span className="font-semibold text-brand-dark">{inspectTarget.email || '—'}</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-brand-border/60">
-                                <span className="text-gray-500">Portal Login</span>
+                                <span className="text-gray-500">Portal Login Email</span>
                                 <span className="font-semibold text-brand-dark">{inspectTarget.login_email || 'Not configured'}</span>
                             </div>
                             <div className="flex justify-between py-2 border-b border-brand-border/60">
-                                <span className="text-gray-500">Gross Paid Volume</span>
+                                <span className="text-gray-500">Paid Volume</span>
                                 <span className="font-bold text-brand-primary">{formatKES(inspectTarget.paid_volume)}</span>
                             </div>
                             <div className="flex justify-between py-2 border-b border-brand-border/60">
-                                <span className="text-gray-500">Sessions (Paid / Total)</span>
-                                <span className="font-semibold text-brand-dark">
-                                    {inspectTarget.paid_count} / {inspectTarget.checkout_sessions_count}
-                                </span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-brand-border/60">
-                                <span className="text-gray-500">Platform Fee Rate</span>
+                                <span className="text-gray-500">Platform Fee</span>
                                 <span className="font-semibold text-brand-dark">{inspectTarget.fee_percent}%</span>
-                            </div>
-                            <div className="flex justify-between py-2">
-                                <span className="text-gray-500">Joined</span>
-                                <span className="font-medium text-brand-dark">
-                                    {inspectTarget.created_at ? new Date(inspectTarget.created_at).toLocaleDateString('en-KE') : '—'}
-                                </span>
                             </div>
                         </div>
 
-                        <div className="mt-6 flex gap-2.5">
-                            <Link
-                                href="/admin/transactions"
-                                className="flex-1 text-center bg-brand-dark text-white py-3 rounded-xl font-bold text-xs hover:bg-black transition"
-                            >
-                                View Transactions
-                            </Link>
+                        <div className="mt-6">
                             <button
                                 type="button"
                                 onClick={() => setInspectTarget(null)}
-                                className="flex-1 bg-brand-light border border-brand-border text-brand-dark py-3 rounded-xl font-bold text-xs hover:bg-gray-100 transition cursor-pointer"
+                                className="w-full bg-brand-light border border-brand-border text-brand-dark py-3 rounded-xl font-bold text-xs hover:bg-gray-100 transition cursor-pointer"
                             >
                                 Close
                             </button>

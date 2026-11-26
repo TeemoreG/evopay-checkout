@@ -19,6 +19,8 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
     const [refundTarget, setRefundTarget] = useState(null);
     const [refundReason, setRefundReason] = useState('');
 
+    const availableBalance = Number(wallet.available_balance || 0);
+
     const withdrawForm = useForm({
         amount: '',
         channel: 'mpesa',
@@ -27,8 +29,14 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
         account_number: '',
     });
 
+    const requestedAmount = Number(withdrawForm.data.amount || 0);
+    const isExceedingBalance = requestedAmount > availableBalance;
+    const canWithdraw = availableBalance >= 100 && requestedAmount >= 100 && !isExceedingBalance;
+
     const submitWithdrawal = (e) => {
         e.preventDefault();
+        if (isExceedingBalance || requestedAmount <= 0) return;
+
         withdrawForm.post('/merchant/withdraw', {
             preserveScroll: true,
             onSuccess: () => {
@@ -113,18 +121,18 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                         <div>
                             <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Available Wallet Balance</span>
                             <h1 className="text-3xl sm:text-4xl font-black text-brand-dark mt-0.5">
-                                {formatMoney(wallet.available_balance || 0)}
+                                {formatMoney(availableBalance)}
                             </h1>
                             <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mt-2">
                                 <span>Gross Paid: <strong className="text-brand-dark">{formatMoney(wallet.gross_volume || 0)}</strong></span>
                                 <span>•</span>
-                                <span>Fees: {formatMoney(wallet.total_fees || 0)}</span>
+                                <span>Platform Fees ({merchant.fee_percent}%): {formatMoney(wallet.total_fees || 0)}</span>
                                 <span>•</span>
-                                <span>Withdrawn: {formatMoney(wallet.total_withdrawn || 0)}</span>
-                                {wallet.total_refunded > 0 && (
+                                <span>Settled Out: {formatMoney(wallet.total_withdrawn || 0)}</span>
+                                {Number(wallet.total_refunded || 0) > 0 && (
                                     <>
                                         <span>•</span>
-                                        <span className="text-purple-600 font-semibold">Refunded: {formatMoney(wallet.total_refunded)}</span>
+                                        <span className="text-purple-600 font-semibold">Refunds: {formatMoney(wallet.total_refunded)}</span>
                                     </>
                                 )}
                             </div>
@@ -133,9 +141,10 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                         <button
                             type="button"
                             onClick={() => setIsWithdrawOpen(true)}
-                            className="bg-brand-primary text-white px-6 py-3.5 rounded-2xl font-extrabold text-sm hover:bg-brand-secondary transition shadow-xs cursor-pointer flex-shrink-0"
+                            disabled={availableBalance < 100}
+                            className="bg-brand-primary text-white px-6 py-3.5 rounded-2xl font-extrabold text-sm hover:bg-brand-secondary transition shadow-xs cursor-pointer flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                            Request Withdrawal →
+                            {availableBalance < 100 ? 'Min KES 100 to Withdraw' : 'Request Withdrawal →'}
                         </button>
                     </div>
 
@@ -249,117 +258,157 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                 </div>
             </div>
 
-            {/* WITHDRAWAL MODAL */}
+            {/* WITHDRAWAL MODAL — Strict Balance Check */}
             {isWithdrawOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
                     <div className="bg-white rounded-3xl border border-brand-border p-6 max-w-md w-full shadow-2xl space-y-4">
                         <div className="flex items-center justify-between pb-3 border-b border-brand-border">
                             <div>
                                 <h3 className="text-base font-extrabold text-brand-dark">Withdraw Funds</h3>
-                                <p className="text-xs text-gray-500">Max available: {formatMoney(wallet.available_balance || 0)}</p>
+                                <p className="text-xs text-gray-500">
+                                    Max available:{' '}
+                                    <strong className={availableBalance > 0 ? 'text-emerald-700' : 'text-gray-500'}>
+                                        {formatMoney(availableBalance)}
+                                    </strong>
+                                </p>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setIsWithdrawOpen(false)}
-                                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500"
+                                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 cursor-pointer"
                             >
                                 ✕
                             </button>
                         </div>
 
-                        <form onSubmit={submitWithdrawal} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-brand-dark mb-1">Amount to Withdraw (KES) *</label>
-                                <input
-                                    type="number"
-                                    min="100"
-                                    max={wallet.available_balance || 0}
-                                    step="0.01"
-                                    value={withdrawForm.data.amount}
-                                    onChange={(e) => withdrawForm.setData('amount', e.target.value)}
-                                    placeholder="e.g. 5000"
-                                    className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm font-mono"
-                                    required
-                                />
-                                {withdrawForm.errors.amount && <p className="text-xs text-red-600 mt-1">{withdrawForm.errors.amount}</p>}
+                        {availableBalance <= 0 ? (
+                            <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-2">
+                                <p className="font-bold">No funds currently available to withdraw</p>
+                                <p className="leading-relaxed">
+                                    Your available wallet balance is currently KES 0.00. Funds become available once customers complete paid checkouts through your merchant keys.
+                                </p>
                             </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-brand-dark mb-1">Payout Channel *</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => withdrawForm.setData('channel', 'mpesa')}
-                                        className={`py-2 rounded-xl text-xs font-bold border transition ${
-                                            withdrawForm.data.channel === 'mpesa'
-                                                ? 'border-brand-primary bg-brand-primary/5 text-brand-primary'
-                                                : 'border-brand-border bg-white text-gray-600'
-                                        }`}
-                                    >
-                                        M-Pesa B2C
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => withdrawForm.setData('channel', 'bank')}
-                                        className={`py-2 rounded-xl text-xs font-bold border transition ${
-                                            withdrawForm.data.channel === 'bank'
-                                                ? 'border-brand-primary bg-brand-primary/5 text-brand-primary'
-                                                : 'border-brand-border bg-white text-gray-600'
-                                        }`}
-                                    >
-                                        Bank Transfer
-                                    </button>
-                                </div>
-                            </div>
-
-                            {withdrawForm.data.channel === 'mpesa' ? (
+                        ) : (
+                            <form onSubmit={submitWithdrawal} className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-brand-dark mb-1">M-Pesa Recipient Phone *</label>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="block text-xs font-semibold text-brand-dark">Amount to Withdraw (KES) *</label>
+                                        <button
+                                            type="button"
+                                            onClick={() => withdrawForm.setData('amount', String(availableBalance))}
+                                            className="text-[11px] font-bold text-brand-primary hover:underline cursor-pointer"
+                                        >
+                                            Use Max ({formatMoney(availableBalance)})
+                                        </button>
+                                    </div>
                                     <input
-                                        type="tel"
-                                        value={withdrawForm.data.phone}
-                                        onChange={(e) => withdrawForm.setData('phone', e.target.value)}
-                                        placeholder="0712345678"
-                                        className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm font-mono"
+                                        type="number"
+                                        min="100"
+                                        max={availableBalance}
+                                        step="0.01"
+                                        value={withdrawForm.data.amount}
+                                        onChange={(e) => withdrawForm.setData('amount', e.target.value)}
+                                        placeholder={`100 - ${availableBalance}`}
+                                        className={`w-full rounded-xl px-4 py-2.5 text-sm font-mono border ${
+                                            isExceedingBalance
+                                                ? 'border-red-500 bg-red-50 text-red-900'
+                                                : 'bg-brand-input border-transparent'
+                                        }`}
                                         required
                                     />
-                                    {withdrawForm.errors.phone && <p className="text-xs text-red-600 mt-1">{withdrawForm.errors.phone}</p>}
+                                    {isExceedingBalance && (
+                                        <p className="text-xs text-red-600 mt-1 font-semibold">
+                                            Amount exceeds your available balance of {formatMoney(availableBalance)}.
+                                        </p>
+                                    )}
+                                    {withdrawForm.errors.amount && (
+                                        <p className="text-xs text-red-600 mt-1">{withdrawForm.errors.amount}</p>
+                                    )}
                                 </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    <div>
-                                        <label className="block text-xs font-semibold text-brand-dark mb-1">Bank Name *</label>
-                                        <input
-                                            type="text"
-                                            value={withdrawForm.data.bank_name}
-                                            onChange={(e) => withdrawForm.setData('bank_name', e.target.value)}
-                                            placeholder="e.g. Equity Bank"
-                                            className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm"
-                                            required
-                                        />
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-brand-dark mb-1">Payout Channel *</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => withdrawForm.setData('channel', 'mpesa')}
+                                            className={`py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                                                withdrawForm.data.channel === 'mpesa'
+                                                    ? 'border-brand-primary bg-brand-primary/5 text-brand-primary'
+                                                    : 'border-brand-border bg-white text-gray-600'
+                                            }`}
+                                        >
+                                            M-Pesa B2C
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => withdrawForm.setData('channel', 'bank')}
+                                            className={`py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                                                withdrawForm.data.channel === 'bank'
+                                                    ? 'border-brand-primary bg-brand-primary/5 text-brand-primary'
+                                                    : 'border-brand-border bg-white text-gray-600'
+                                            }`}
+                                        >
+                                            Bank Transfer
+                                        </button>
                                     </div>
+                                </div>
+
+                                {withdrawForm.data.channel === 'mpesa' ? (
                                     <div>
-                                        <label className="block text-xs font-semibold text-brand-dark mb-1">Account Number *</label>
+                                        <label className="block text-xs font-semibold text-brand-dark mb-1">M-Pesa Recipient Phone *</label>
                                         <input
-                                            type="text"
-                                            value={withdrawForm.data.account_number}
-                                            onChange={(e) => withdrawForm.setData('account_number', e.target.value)}
-                                            placeholder="0123456789"
+                                            type="tel"
+                                            value={withdrawForm.data.phone}
+                                            onChange={(e) => withdrawForm.setData('phone', e.target.value)}
+                                            placeholder="0712345678"
                                             className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm font-mono"
                                             required
                                         />
+                                        {withdrawForm.errors.phone && <p className="text-xs text-red-600 mt-1">{withdrawForm.errors.phone}</p>}
                                     </div>
-                                </div>
-                            )}
+                                ) : (
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-brand-dark mb-1">Bank Name *</label>
+                                            <input
+                                                type="text"
+                                                value={withdrawForm.data.bank_name}
+                                                onChange={(e) => withdrawForm.setData('bank_name', e.target.value)}
+                                                placeholder="e.g. Equity Bank"
+                                                className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-brand-dark mb-1">Account Number *</label>
+                                            <input
+                                                type="text"
+                                                value={withdrawForm.data.account_number}
+                                                onChange={(e) => withdrawForm.setData('account_number', e.target.value)}
+                                                placeholder="0123456789"
+                                                className="w-full bg-brand-input rounded-xl px-4 py-2.5 text-sm font-mono"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                )}
 
-                            <button
-                                type="submit"
-                                disabled={withdrawForm.processing}
-                                className="w-full bg-brand-dark text-white py-3.5 rounded-xl font-bold text-sm hover:bg-black transition cursor-pointer disabled:opacity-50"
-                            >
-                                {withdrawForm.processing ? 'Submitting...' : 'Confirm Withdrawal Request'}
-                            </button>
-                        </form>
+                                <button
+                                    type="submit"
+                                    disabled={!canWithdraw || withdrawForm.processing}
+                                    className="w-full bg-brand-dark text-white py-3.5 rounded-xl font-bold text-sm hover:bg-black transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                    {withdrawForm.processing
+                                        ? 'Submitting Request...'
+                                        : isExceedingBalance
+                                            ? 'Exceeds Available Balance'
+                                            : requestedAmount < 100
+                                                ? 'Min KES 100'
+                                                : `Withdraw ${formatMoney(requestedAmount)}`}
+                                </button>
+                            </form>
+                        )}
                     </div>
                 </div>
             )}
@@ -376,7 +425,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                             <button
                                 type="button"
                                 onClick={() => setRefundTarget(null)}
-                                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500"
+                                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 cursor-pointer"
                             >
                                 ✕
                             </button>
@@ -403,7 +452,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                 <button
                                     type="button"
                                     onClick={() => setRefundTarget(null)}
-                                    className="w-1/3 bg-brand-light border border-brand-border text-brand-dark py-3 rounded-xl font-bold text-xs"
+                                    className="w-1/3 bg-brand-light border border-brand-border text-brand-dark py-3 rounded-xl font-bold text-xs cursor-pointer"
                                 >
                                     Cancel
                                 </button>
