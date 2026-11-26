@@ -41,8 +41,8 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Shop Checkout: Verifies item pricing/weights from DB, verifies transporter availability,
-     * locks the driver to prevent double-booking, creates local Order, and requests a session from Evopay.
+     * Shop Checkout: Verifies item pricing/weights from DB, checks transporter availability,
+     * creates local pending Order (without locking the rider until paid), and requests an Evopay session.
      */
     public function process(Request $request, PricingService $pricing)
     {
@@ -162,7 +162,7 @@ class CheckoutController extends Controller
         $estimatedTransportFee = 0.0;
         $chosenTransporter = null;
 
-        // If customer chooses transporter, verify and lock the driver
+        // If customer chooses transporter, verify availability (locked only after payment succeeds)
         if ($data['delivery_method'] === 'transporter') {
             if (!empty($data['delivery']['lat']) && !empty($data['delivery']['lng'])) {
                 $hqLat = (float) Setting::get('hq_lat', -1.2674);
@@ -176,74 +176,45 @@ class CheckoutController extends Controller
                 );
             }
 
-            // Atomic check & reserve transporter so two users can't book the same driver
             $transporterId = (int) $data['delivery']['transporter_id'];
-            $chosenTransporter = DB::transaction(function () use ($transporterId) {
-                $driver = Transporter::where('id', $transporterId)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (!$driver || $driver->status !== 'approved' || !$driver->is_available) {
-                    return null;
-                }
-
-                // Mark driver as unavailable immediately upon selection
-                $driver->update(['is_available' => false]);
-                return $driver;
-            });
+            $chosenTransporter = Transporter::where('id', $transporterId)
+                ->where('status', 'approved')
+                ->where('is_available', true)
+                ->first();
 
             if (!$chosenTransporter) {
                 return response()->json([
-                    'error' => 'The selected transporter was just booked by another customer or is currently unavailable. Please pick another driver.',
+                    'error' => 'The selected transporter is currently unavailable. Please pick another driver.',
                 ], 422);
             }
+
+            $estimatedTransportFee = $this->computeTransportFee($chosenTransporter, $totalWeight, $distanceKm);
         }
 
         // Customer pays for materials online; transport fee is paid to the driver on site
         $total = round($verifiedSubtotal, 2);
 
-        try {
-            if ($chosenTransporter) {
-                $freeRadiusKm = (float) Setting::get('free_radius_km', 3);
-                $billableKm = $distanceKm > $freeRadiusKm ? ceil($distanceKm - $freeRadiusKm) : 0;
-
-                $base = (float) $chosenTransporter->base_fare;
-                $wFee = $totalWeight * (float) $chosenTransporter->rate_per_kg;
-                $dFee = $billableKm * (float) $chosenTransporter->rate_per_km;
-                $estimatedTransportFee = round($base + $wFee + $dFee, 2);
-            }
-
-            // 1. Create Shop Order locally
-            $order = Order::create([
-                'order_number' => 'ORD-' . strtoupper(Str::random(8)),
-                'total_amount' => $total,
-                'status' => 'pending',
-                'payment_method' => 'evopay_gateway',
-                'items' => $verifiedItems,
-                'customer' => $data['customer'],
-                'delivery' => array_merge($data['delivery'] ?? [], [
-                    'method' => $data['delivery_method'],
-                    'fee' => 0.00, // Transport fee paid on arrival
-                    'distance_km' => round($distanceKm, 2),
-                    'total_weight_kg' => round($totalWeight, 2),
-                    'estimated_transport_fee' => $estimatedTransportFee,
-                    'transporter_id' => $chosenTransporter?->id,
-                    'transporter_name' => $chosenTransporter?->name,
-                    'transporter_phone' => $chosenTransporter?->phone,
-                    'transporter_vehicle' => $chosenTransporter?->vehicle_type,
-                    'transporter_plate' => $chosenTransporter?->plate_number,
-                ]),
-            ]);
-        } catch (\Throwable $e) {
-            if ($chosenTransporter) {
-                $chosenTransporter->update(['is_available' => true]);
-            }
-            \Log::error('Checkout order creation error: ' . $e->getMessage());
-
-            return response()->json([
-                'error' => 'Something went wrong while setting up payment. Please try again.',
-            ], 500);
-        }
+        // 1. Create Shop Order locally
+        $order = Order::create([
+            'order_number' => 'ORD-' . strtoupper(Str::random(8)),
+            'total_amount' => $total,
+            'status' => 'pending',
+            'payment_method' => 'evopay_gateway',
+            'items' => $verifiedItems,
+            'customer' => $data['customer'],
+            'delivery' => array_merge($data['delivery'] ?? [], [
+                'method' => $data['delivery_method'],
+                'fee' => 0.00, // Transport fee paid on arrival
+                'distance_km' => round($distanceKm, 2),
+                'total_weight_kg' => round($totalWeight, 2),
+                'estimated_transport_fee' => $estimatedTransportFee,
+                'transporter_id' => $chosenTransporter?->id,
+                'transporter_name' => $chosenTransporter?->name,
+                'transporter_phone' => $chosenTransporter?->phone,
+                'transporter_vehicle' => $chosenTransporter?->vehicle_type,
+                'transporter_plate' => $chosenTransporter?->plate_number,
+            ]),
+        ]);
 
         // 2. Call Evopay Payment Provider API (/api/v1/checkout/sessions)
         $gatewayUrl = rtrim((string) (config('services.evopay_shop.gateway_url') ?: url('/')), '/');
@@ -278,11 +249,6 @@ class CheckoutController extends Controller
                     'failure_reason' => $errMsg,
                 ]);
 
-                // Release the driver if session creation fails
-                if ($chosenTransporter) {
-                    $chosenTransporter->update(['is_available' => true]);
-                }
-
                 return response()->json(['error' => $errMsg], 502);
             }
 
@@ -302,11 +268,6 @@ class CheckoutController extends Controller
                 'status' => 'failed',
                 'failure_reason' => 'Gateway connection error. Please try again.',
             ]);
-
-            // Release driver back if network drops
-            if ($chosenTransporter) {
-                $chosenTransporter->update(['is_available' => true]);
-            }
 
             return response()->json([
                 'error' => 'Unable to reach Evopay Payment Gateway. Please try again.',
@@ -347,12 +308,7 @@ class CheckoutController extends Controller
             $data = $res->json('data');
 
             if ($res->successful() && ($data['status'] ?? null) === 'paid') {
-                $order->update([
-                    'status' => 'paid',
-                    'payment_method' => $data['payment_method'] ?? 'evopay',
-                    'mpesa_receipt' => $data['mpesa_receipt'] ?? null,
-                    'failure_reason' => null,
-                ]);
+                $this->finalizePaidOrder($order, $data);
 
                 return redirect()->route('checkout.success', ['order' => $order->order_number]);
             }
@@ -366,7 +322,7 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Shop Cancel URL: Cancel pending order and release reserved transporter.
+     * Shop Cancel URL: Cancel pending order cleanly.
      */
     public function gatewayCancel(Request $request)
     {
@@ -378,11 +334,6 @@ class CheckoutController extends Controller
                     'status' => 'cancelled',
                     'failure_reason' => 'Payment was cancelled by customer.',
                 ]);
-
-                $transporterId = $order->delivery['transporter_id'] ?? null;
-                if ($transporterId) {
-                    Transporter::where('id', $transporterId)->update(['is_available' => true]);
-                }
             }
         }
 
@@ -414,28 +365,101 @@ class CheckoutController extends Controller
         $order = Order::where('order_number', $reference)->first();
         if ($order && $order->status !== 'paid') {
             if ($event === 'payment.succeeded' && ($data['status'] ?? null) === 'paid') {
-                $order->update([
-                    'status' => 'paid',
-                    'payment_method' => $data['payment_method'] ?? 'evopay',
-                    'mpesa_receipt' => $data['mpesa_receipt'] ?? null,
-                    'failure_reason' => null,
-                ]);
+                $this->finalizePaidOrder($order, $data);
                 \Log::info("Shop Order {$order->order_number} marked PAID via Evopay webhook.");
             } elseif ($event === 'payment.failed') {
                 $order->update([
                     'status' => 'failed',
                     'failure_reason' => $data['failure_reason'] ?? 'Payment failed.',
                 ]);
-
-                // Release transporter if payment failed
-                $transporterId = $order->delivery['transporter_id'] ?? null;
-                if ($transporterId) {
-                    Transporter::where('id', $transporterId)->update(['is_available' => true]);
-                }
             }
         }
 
         return response()->json(['status' => 'ok']);
+    }
+
+    /**
+     * Atomically mark an order paid, claim the selected rider (first-to-pay wins),
+     * or auto-reassign to another available relevant rider if the first one was already taken.
+     */
+    private function finalizePaidOrder(Order $order, array $data): void
+    {
+        DB::transaction(function () use ($order, $data) {
+            $lockedOrder = Order::where('id', $order->id)->lockForUpdate()->first();
+            if (!$lockedOrder || $lockedOrder->status === 'paid') {
+                return;
+            }
+
+            $delivery = $lockedOrder->delivery ?? [];
+
+            if (($delivery['method'] ?? null) === 'transporter') {
+                $requestedId = (int) ($delivery['transporter_id'] ?? 0);
+                $assigned = null;
+
+                if ($requestedId > 0) {
+                    $preferred = Transporter::where('id', $requestedId)->lockForUpdate()->first();
+                    if ($preferred && $preferred->status === 'approved' && $preferred->is_available) {
+                        $assigned = $preferred;
+                    }
+                }
+
+                // If chosen rider was already claimed by an earlier payer, find a relevant available rider
+                if (!$assigned) {
+                    $preferredVehicle = (string) ($delivery['transporter_vehicle'] ?? '');
+
+                    $assigned = Transporter::where('status', 'approved')
+                        ->where('is_available', true)
+                        ->when($preferredVehicle !== '', function ($q) use ($preferredVehicle) {
+                            $q->orderByRaw('CASE WHEN vehicle_type = ? THEN 0 ELSE 1 END', [$preferredVehicle]);
+                        })
+                        ->orderBy('id')
+                        ->lockForUpdate()
+                        ->first();
+                }
+
+                if ($assigned) {
+                    $assigned->update(['is_available' => false]);
+
+                    if ((int) $assigned->id !== $requestedId) {
+                        $totalWeight = (float) ($delivery['total_weight_kg'] ?? 0);
+                        $distanceKm = (float) ($delivery['distance_km'] ?? 0);
+
+                        $delivery['transporter_id'] = $assigned->id;
+                        $delivery['transporter_name'] = $assigned->name;
+                        $delivery['transporter_phone'] = $assigned->phone;
+                        $delivery['transporter_vehicle'] = $assigned->vehicle_type;
+                        $delivery['transporter_plate'] = $assigned->plate_number;
+                        $delivery['estimated_transport_fee'] = $this->computeTransportFee($assigned, $totalWeight, $distanceKm);
+                    }
+                } else {
+                    $delivery['transporter_id'] = null;
+                    $delivery['transporter_name'] = null;
+                    $delivery['transporter_phone'] = null;
+                    $delivery['transporter_vehicle'] = null;
+                    $delivery['transporter_plate'] = null;
+                }
+            }
+
+            $lockedOrder->update([
+                'status' => 'paid',
+                'payment_method' => $data['payment_method'] ?? 'evopay',
+                'mpesa_receipt' => $data['mpesa_receipt'] ?? null,
+                'failure_reason' => null,
+                'delivery' => $delivery,
+            ]);
+        });
+    }
+
+    private function computeTransportFee(Transporter $transporter, float $totalWeight, float $distanceKm): float
+    {
+        $freeRadiusKm = (float) Setting::get('free_radius_km', 3);
+        $billableKm = $distanceKm > $freeRadiusKm ? ceil($distanceKm - $freeRadiusKm) : 0;
+
+        $base = (float) $transporter->base_fare;
+        $wFee = $totalWeight * (float) $transporter->rate_per_kg;
+        $dFee = $billableKm * (float) $transporter->rate_per_km;
+
+        return round($base + $wFee + $dFee, 2);
     }
 
     // Order Receipt Success Page

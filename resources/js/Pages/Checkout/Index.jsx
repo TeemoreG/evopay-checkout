@@ -34,16 +34,43 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
             setPaymentError(urlError);
             window.history.replaceState({}, '', window.location.pathname);
         }
+    }, []);
 
-        // Auto-select first driver if available
-        if (transporters.length > 0 && !selectedTransporter) {
-            setSelectedTransporter(transporters[0]);
-            setForm((f) => ({
-                ...f,
-                delivery: { ...f.delivery, transporter_id: transporters[0].id },
-            }));
-        }
+    useEffect(() => {
+        setSelectedTransporter((current) => {
+            if (transporters.length === 0) {
+                setForm((f) => ({
+                    ...f,
+                    delivery: { ...f.delivery, transporter_id: null },
+                }));
+                return null;
+            }
+
+            const match = current ? transporters.find((t) => t.id === current.id) : null;
+            const next = match || transporters[0];
+
+            setForm((f) =>
+                f.delivery.transporter_id === next.id
+                    ? f
+                    : { ...f, delivery: { ...f.delivery, transporter_id: next.id } }
+            );
+            return next;
+        });
     }, [transporters]);
+
+    useEffect(() => {
+        const refresh = () => {
+            if (!isProcessing && !isPickerOpen) {
+                router.reload({ only: ['transporters'], preserveScroll: true });
+            }
+        };
+        window.addEventListener('focus', refresh);
+        const timer = setInterval(refresh, 10000);
+        return () => {
+            window.removeEventListener('focus', refresh);
+            clearInterval(timer);
+        };
+    }, [isProcessing, isPickerOpen]);
 
     const showError = (message) => {
         setPaymentError(message);

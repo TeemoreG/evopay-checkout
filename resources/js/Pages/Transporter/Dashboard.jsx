@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
 import MainLayout from '../../Layouts/MainLayout';
 
@@ -57,9 +57,34 @@ export default function TransporterDashboard({ transporter, stats = {}, orders =
         plate_number: transporter.plate_number || '',
     });
 
+    const profileForm = useForm({
+        name: transporter.name || '',
+        phone: transporter.phone || '',
+        area: transporter.area || '',
+        plate_number: transporter.plate_number || '',
+        id_number: transporter.id_number || '',
+    });
+
+    useEffect(() => {
+        const refresh = () => {
+            router.reload({ only: ['transporter', 'stats', 'orders'], preserveScroll: true });
+        };
+        window.addEventListener('focus', refresh);
+        const timer = setInterval(refresh, 10000);
+        return () => {
+            window.removeEventListener('focus', refresh);
+            clearInterval(timer);
+        };
+    }, []);
+
     const submitRates = (e) => {
         e.preventDefault();
         rateForm.post('/transporter/rates', { preserveScroll: true });
+    };
+
+    const submitProfile = (e) => {
+        e.preventDefault();
+        profileForm.post('/transporter/profile', { preserveScroll: true });
     };
 
     const toggleAvailability = () => {
@@ -73,7 +98,7 @@ export default function TransporterDashboard({ transporter, stats = {}, orders =
     };
 
     const filteredOrders = orders.filter((o) => {
-        if (jobFilter === 'active') return o.status === 'paid' || o.status === 'pending';
+        if (jobFilter === 'active') return o.status === 'paid';
         if (jobFilter === 'completed') return o.status === 'delivered';
         return true;
     });
@@ -95,81 +120,104 @@ export default function TransporterDashboard({ transporter, stats = {}, orders =
 
     return (
         <MainLayout minimal homeHref="/transporter">
-            <Head title={`${transporter.name} — Driver App`} />
+            <Head title={`${transporter.name} — Driver Portal`} />
 
             <div className="max-w-5xl mx-auto pb-20 md:pb-8">
-                {/* Mobile-App Style Driver Hero Card */}
-                <div className="rounded-3xl bg-brand-dark text-white p-5 sm:p-7 shadow-md mb-6 relative overflow-hidden">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+                {/* Clean Light Header & Status Card */}
+                <div className="bg-white rounded-2xl border border-brand-border p-5 sm:p-6 shadow-xs mb-6">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-start gap-3.5">
-                            <div className="w-12 h-12 rounded-2xl bg-brand-primary flex items-center justify-center flex-shrink-0">
-                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                            <div className="w-11 h-11 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center flex-shrink-0">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.25V4.5a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 4.5v9.75m12 0H2.25m12 0v5.25" />
                                 </svg>
                             </div>
-                            <div>
+
+                            <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-brand-secondary">
-                                        Nyumba Driver App
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-brand-primary">
+                                        Driver Portal
                                     </span>
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full">
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                        </svg>
-                                        <span>Verified</span>
+                                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        {transporter.status}
                                     </span>
                                 </div>
-                                <h1 className="text-xl sm:text-2xl font-extrabold mt-0.5">{transporter.name}</h1>
-                                <p className="text-xs text-gray-300 mt-0.5">
-                                    {transporter.vehicle_type} {transporter.plate_number ? `· ${transporter.plate_number}` : ''} · {transporter.area || 'Nairobi'}
+                                <h1 className="text-xl sm:text-2xl font-extrabold text-brand-dark mt-0.5 truncate">
+                                    {transporter.name}
+                                </h1>
+                                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                                    {transporter.vehicle_type}
+                                    {transporter.plate_number ? ` · ${transporter.plate_number}` : ''}
+                                    {transporter.area ? ` · ${transporter.area}` : ''}
                                 </p>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2.5 self-start sm:self-center">
+                        {/* Availability Switch + Labeled Logout */}
+                        <div className="flex flex-wrap items-center justify-between md:justify-end gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-brand-border">
                             <button
                                 type="button"
+                                role="switch"
+                                aria-checked={transporter.is_available}
                                 onClick={toggleAvailability}
-                                className={`px-4 py-2.5 rounded-xl font-extrabold text-xs transition cursor-pointer flex items-center gap-2 ${
+                                className={`flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl border transition cursor-pointer ${
                                     transporter.is_available
-                                        ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                                        : 'bg-white/15 text-gray-200 hover:bg-white/25'
+                                        ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100/70'
+                                        : 'bg-brand-light border-brand-border hover:bg-gray-100'
                                 }`}
                             >
-                                <span className={`w-2 h-2 rounded-full ${transporter.is_available ? 'bg-white animate-pulse' : 'bg-gray-400'}`} />
-                                <span>{transporter.is_available ? 'Online · Accepting' : 'Offline · Busy'}</span>
+                                <div className="text-left">
+                                    <p className={`text-xs font-extrabold leading-tight ${transporter.is_available ? 'text-emerald-800' : 'text-brand-dark'}`}>
+                                        {transporter.is_available ? 'Online' : 'Offline'}
+                                    </p>
+                                    <p className="text-[10px] text-gray-500">
+                                        {transporter.is_available ? 'Accepting jobs' : 'Paused'}
+                                    </p>
+                                </div>
+
+                                <span
+                                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+                                        transporter.is_available ? 'bg-emerald-600' : 'bg-gray-300'
+                                    }`}
+                                >
+                                    <span
+                                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-xs transition-transform ${
+                                            transporter.is_available ? 'translate-x-6' : 'translate-x-1'
+                                        }`}
+                                    />
+                                </span>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => router.post('/logout')}
-                                className="bg-white/10 hover:bg-white/20 text-white p-2.5 rounded-xl transition cursor-pointer"
-                                title="Logout"
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-brand-border bg-white text-xs font-bold text-gray-700 hover:bg-gray-50 hover:text-brand-dark transition cursor-pointer"
                             >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
                                 </svg>
+                                <span>Logout</span>
                             </button>
                         </div>
                     </div>
 
                     {/* KPI Metrics Strip */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-white/10">
-                        <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-5 border-t border-brand-border">
+                        <div className="bg-brand-light rounded-xl p-3.5 border border-brand-border">
                             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Active Jobs</p>
-                            <p className="text-xl font-extrabold text-white mt-0.5">{stats.active_jobs ?? 0}</p>
+                            <p className="text-xl font-extrabold text-brand-dark mt-0.5">{stats.active_jobs ?? 0}</p>
                         </div>
-                        <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
+                        <div className="bg-brand-light rounded-xl p-3.5 border border-brand-border">
                             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Completed</p>
-                            <p className="text-xl font-extrabold text-emerald-400 mt-0.5">{stats.completed_jobs ?? 0}</p>
+                            <p className="text-xl font-extrabold text-emerald-600 mt-0.5">{stats.completed_jobs ?? 0}</p>
                         </div>
-                        <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
+                        <div className="bg-brand-light rounded-xl p-3.5 border border-brand-border">
                             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Est. Earnings</p>
-                            <p className="text-xl font-extrabold text-brand-secondary mt-0.5">{formatKES(stats.estimated_earnings ?? 0)}</p>
+                            <p className="text-xl font-extrabold text-brand-primary mt-0.5">{formatKES(stats.estimated_earnings ?? 0)}</p>
                         </div>
-                        <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
+                        <div className="bg-brand-light rounded-xl p-3.5 border border-brand-border">
                             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Weight Hauled</p>
-                            <p className="text-xl font-extrabold text-white mt-0.5">{stats.total_weight_kg ?? 0} KG</p>
+                            <p className="text-xl font-extrabold text-brand-dark mt-0.5">{stats.total_weight_kg ?? 0} KG</p>
                         </div>
                     </div>
                 </div>
@@ -232,7 +280,7 @@ export default function TransporterDashboard({ transporter, stats = {}, orders =
                                 </div>
                                 <p className="text-sm font-bold text-brand-dark">No jobs in this view yet</p>
                                 <p className="text-xs text-gray-500 mt-1">
-                                    Make sure your status is set to <strong>Online</strong> so shoppers can book your vehicle at checkout.
+                                    Make sure your status switch is set to <strong>Online</strong> so shoppers can book your vehicle at checkout.
                                 </p>
                             </div>
                         ) : (
@@ -516,47 +564,105 @@ export default function TransporterDashboard({ transporter, stats = {}, orders =
 
                 {/* PAGE 3: Profile & Verification */}
                 {activeTab === 'profile' && (
-                    <div className="bg-white rounded-3xl border border-brand-border p-6 sm:p-8 shadow-xs max-w-2xl space-y-5">
+                    <form onSubmit={submitProfile} className="bg-white rounded-3xl border border-brand-border p-6 sm:p-8 shadow-xs max-w-2xl space-y-5">
                         <div className="flex items-center justify-between border-b border-brand-border pb-4">
                             <div>
                                 <h2 className="text-lg font-extrabold text-brand-dark">Driver Verification & Profile</h2>
-                                <p className="text-xs text-gray-500 mt-0.5">Your KYC and fleet credentials on file with Nyumba Cement.</p>
+                                <p className="text-xs text-gray-500 mt-0.5">Update your KYC and fleet credentials on file with Nyumba Cement.</p>
                             </div>
-                            <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                                <span className="capitalize">{transporter.status}</span>
+                            <span className="inline-flex items-center text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full capitalize">
+                                {transporter.status}
                             </span>
                         </div>
 
+                        {profileForm.recentlySuccessful && (
+                            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800">
+                                Profile updated successfully.
+                            </div>
+                        )}
+
                         <div className="grid sm:grid-cols-2 gap-4 text-sm">
-                            <div className="p-4 rounded-2xl bg-brand-light border border-brand-border">
-                                <p className="text-[11px] font-bold uppercase text-gray-400">Driver / Fleet Name</p>
-                                <p className="font-bold text-brand-dark mt-1">{transporter.name}</p>
+                            <div>
+                                <label className="block text-xs font-semibold text-brand-dark mb-1">Driver / Fleet Name *</label>
+                                <input
+                                    type="text"
+                                    value={profileForm.data.name}
+                                    onChange={(e) => profileForm.setData('name', e.target.value)}
+                                    className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
+                                    required
+                                />
+                                {profileForm.errors.name && <p className="text-red-500 text-xs mt-1">{profileForm.errors.name}</p>}
                             </div>
-                            <div className="p-4 rounded-2xl bg-brand-light border border-brand-border">
-                                <p className="text-[11px] font-bold uppercase text-gray-400">Registered Phone</p>
-                                <p className="font-bold text-brand-dark mt-1 font-mono">{transporter.phone}</p>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-brand-dark mb-1">Registered Phone *</label>
+                                <input
+                                    type="tel"
+                                    value={profileForm.data.phone}
+                                    onChange={(e) => profileForm.setData('phone', e.target.value)}
+                                    className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm font-mono"
+                                    required
+                                />
+                                {profileForm.errors.phone && <p className="text-red-500 text-xs mt-1">{profileForm.errors.phone}</p>}
                             </div>
-                            <div className="p-4 rounded-2xl bg-brand-light border border-brand-border">
-                                <p className="text-[11px] font-bold uppercase text-gray-400">National ID Number</p>
-                                <p className="font-bold text-brand-dark mt-1 font-mono">{transporter.id_number || 'Verified by Admin'}</p>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-brand-dark mb-1">National ID Number</label>
+                                <input
+                                    type="text"
+                                    value={profileForm.data.id_number}
+                                    onChange={(e) => profileForm.setData('id_number', e.target.value)}
+                                    className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm font-mono"
+                                />
+                                {profileForm.errors.id_number && <p className="text-red-500 text-xs mt-1">{profileForm.errors.id_number}</p>}
                             </div>
-                            <div className="p-4 rounded-2xl bg-brand-light border border-brand-border">
+
+                            <div>
+                                <label className="block text-xs font-semibold text-brand-dark mb-1">Plate Number</label>
+                                <input
+                                    type="text"
+                                    value={profileForm.data.plate_number}
+                                    onChange={(e) => profileForm.setData('plate_number', e.target.value)}
+                                    className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm uppercase font-mono"
+                                />
+                                {profileForm.errors.plate_number && <p className="text-red-500 text-xs mt-1">{profileForm.errors.plate_number}</p>}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-brand-dark mb-1">Operating Base</label>
+                                <input
+                                    type="text"
+                                    value={profileForm.data.area}
+                                    onChange={(e) => profileForm.setData('area', e.target.value)}
+                                    className="w-full bg-brand-input rounded-xl px-3.5 py-2.5 text-sm"
+                                />
+                                {profileForm.errors.area && <p className="text-red-500 text-xs mt-1">{profileForm.errors.area}</p>}
+                            </div>
+
+                            <div className="p-3.5 rounded-xl bg-brand-light border border-brand-border flex flex-col justify-center">
                                 <p className="text-[11px] font-bold uppercase text-gray-400">ID Document Status</p>
-                                <p className="font-bold text-emerald-700 mt-1">
+                                <p className="font-bold text-emerald-700 text-xs mt-1">
                                     {transporter.has_id_document ? 'Document on File' : 'Verified Offline'}
                                 </p>
                             </div>
                         </div>
 
+                        <button
+                            type="submit"
+                            disabled={profileForm.processing}
+                            className="w-full bg-brand-dark text-white py-3.5 rounded-xl font-bold text-sm hover:bg-black transition cursor-pointer disabled:opacity-50"
+                        >
+                            {profileForm.processing ? 'Saving...' : 'Save Profile'}
+                        </button>
+
                         <div className="rounded-2xl bg-brand-light border border-brand-border p-4 text-xs text-gray-600 leading-relaxed">
-                            Need to update your registered phone number, National ID, or reset credentials? Email{' '}
+                            Need to reset credentials or update your ID document? Email{' '}
                             <a href="mailto:support@evopay.africa" className="font-bold text-brand-primary hover:underline">
                                 support@evopay.africa
                             </a>{' '}
                             or visit any major Nyumba Cement stockist depot on Enterprise Road, Kombo Munyiri Road, or Kangundo Road.
                         </div>
-                    </div>
+                    </form>
                 )}
             </div>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import MainLayout from '../../Layouts/MainLayout';
 
@@ -39,6 +39,20 @@ export default function AdminTransporters({ transporters = [] }) {
 
     const [editingTransporter, setEditingTransporter] = useState(null);
     const [modalTab, setModalTab] = useState('details');
+
+    useEffect(() => {
+        const refresh = () => {
+            if (!editingTransporter && !isAddOpen) {
+                router.reload({ only: ['transporters'], preserveScroll: true });
+            }
+        };
+        window.addEventListener('focus', refresh);
+        const timer = setInterval(refresh, 10000);
+        return () => {
+            window.removeEventListener('focus', refresh);
+            clearInterval(timer);
+        };
+    }, [editingTransporter, isAddOpen]);
 
     const editForm = useForm({
         name: '',

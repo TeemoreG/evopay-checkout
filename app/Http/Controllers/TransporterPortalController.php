@@ -18,6 +18,7 @@ class TransporterPortalController extends Controller
         }
 
         $orders = Order::where('delivery->transporter_id', $transporter->id)
+            ->whereIn('status', ['paid', 'delivered'])
             ->latest()
             ->limit(50)
             ->get()
@@ -41,7 +42,7 @@ class TransporterPortalController extends Controller
                 ];
             });
 
-        $activeJobs = $orders->whereIn('status', ['paid', 'pending'])->count();
+        $activeJobs = $orders->where('status', 'paid')->count();
         $completedJobs = $orders->where('status', 'delivered')->count();
         $estimatedEarnings = (float) $orders
             ->whereIn('status', ['paid', 'delivered'])
@@ -123,6 +124,34 @@ class TransporterPortalController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Rate card updated successfully.');
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $transporter = $request->user()->transporter;
+        if (!$transporter) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'name' => 'required|string|max:120',
+            'phone' => 'required|string|max:25',
+            'area' => 'nullable|string|max:120',
+            'plate_number' => 'nullable|string|max:30',
+            'id_number' => 'nullable|string|max:30',
+        ]);
+
+        $transporter->update([
+            'name' => trim($data['name']),
+            'phone' => preg_replace('/[\s\-]+/', '', trim($data['phone'])),
+            'area' => isset($data['area']) && trim($data['area']) !== '' ? trim($data['area']) : null,
+            'plate_number' => !empty($data['plate_number']) ? strtoupper(trim($data['plate_number'])) : null,
+            'id_number' => isset($data['id_number']) && trim($data['id_number']) !== '' ? trim($data['id_number']) : null,
+        ]);
+
+        $request->user()->update(['name' => $transporter->name]);
+
+        return redirect()->back()->with('success', 'Profile updated successfully.');
     }
 
     public function markOrderDelivered(Request $request, Order $order)
