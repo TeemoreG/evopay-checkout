@@ -85,15 +85,15 @@ export default function AdminLayout({ children, title = 'Platform Admin' }) {
     ];
 
     const SidebarContent = () => (
-        <div className="flex flex-col h-full justify-between">
+        <div className="flex flex-col h-full justify-between bg-white">
             <div>
-                {/* Brand / Logo */}
-                <div className="h-16 flex items-center gap-2.5 px-6 border-b border-gray-100">
-                    <div className="w-8 h-8 rounded-xl bg-brand-primary flex items-center justify-center text-white font-black text-sm">
+                {/* Brand / Logo (Edge-to-edge flush header) */}
+                <div className="h-16 flex items-center gap-3 px-6 border-b border-gray-200">
+                    <div className="w-8 h-8 rounded-xl bg-brand-primary flex items-center justify-center text-white font-black text-sm shadow-xs">
                         E
                     </div>
                     <div>
-                        <span className="font-extrabold text-sm text-brand-dark tracking-tight">Evopay Console</span>
+                        <span className="font-extrabold text-sm text-brand-dark tracking-tight block">Evopay Platform</span>
                         <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Master Admin</p>
                     </div>
                 </div>
@@ -112,7 +112,7 @@ export default function AdminLayout({ children, title = 'Platform Admin' }) {
                                         <Link
                                             key={item.href}
                                             href={item.href}
-                                            className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                                            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
                                                 active
                                                     ? 'bg-brand-primary text-white shadow-xs'
                                                     : 'text-gray-600 hover:text-brand-dark hover:bg-gray-100'
@@ -129,21 +129,21 @@ export default function AdminLayout({ children, title = 'Platform Admin' }) {
                 </div>
             </div>
 
-            {/* User & Logout Strip */}
-            <div className="p-4 border-t border-gray-100 space-y-2">
+            {/* User & Logout Strip (Bottom docked) */}
+            <div className="p-4 border-t border-gray-200 space-y-2">
                 <Link
                     href="/shop"
                     target="_blank"
-                    className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:text-brand-primary hover:bg-gray-50 transition"
+                    className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-gray-600 hover:text-brand-primary hover:bg-gray-50 transition"
                 >
-                    <span>View Demo Store</span>
-                    <span className="text-[10px] text-gray-400">↗</span>
+                    <span>View Demo Storefront</span>
+                    <span className="text-[11px] text-gray-400">↗</span>
                 </Link>
 
                 <button
                     type="button"
                     onClick={() => router.post('/logout')}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 transition cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 transition cursor-pointer"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
@@ -155,15 +155,15 @@ export default function AdminLayout({ children, title = 'Platform Admin' }) {
     );
 
     return (
-        <div className="min-h-screen bg-gray-50/50 flex">
+        <div className="min-h-screen bg-gray-50 flex">
             <Head title={title} />
 
-            {/* Desktop Fixed Left Sidebar */}
+            {/* Desktop True Full-Height Left Sidebar (Flush top-to-bottom, no card border) */}
             <aside className="hidden lg:block w-64 bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-30">
                 <SidebarContent />
             </aside>
 
-            {/* Mobile Header + Drawer */}
+            {/* Mobile Top Header (Hidden on Desktop) */}
             <div className="lg:hidden fixed top-0 inset-x-0 h-14 bg-white border-b border-gray-200 px-4 flex items-center justify-between z-30">
                 <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg bg-brand-primary flex items-center justify-center text-white font-black text-xs">
@@ -174,7 +174,7 @@ export default function AdminLayout({ children, title = 'Platform Admin' }) {
                 <button
                     type="button"
                     onClick={() => setMobileOpen(!mobileOpen)}
-                    className="p-2 text-gray-600 hover:text-brand-dark"
+                    className="p-2 text-gray-600 hover:text-brand-dark cursor-pointer"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
@@ -182,9 +182,9 @@ export default function AdminLayout({ children, title = 'Platform Admin' }) {
                 </button>
             </div>
 
-            {/* Mobile Backdrop */}
+            {/* Mobile Drawer Overlay */}
             {mobileOpen && (
-                <div className="lg:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setMobileOpen(false)}>
+                <div className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-xs" onClick={() => setMobileOpen(false)}>
                     <div className="w-64 bg-white h-full" onClick={(e) => e.stopPropagation()}>
                         <SidebarContent />
                     </div>

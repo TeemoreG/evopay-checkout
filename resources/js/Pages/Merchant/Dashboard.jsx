@@ -13,6 +13,7 @@ const statusStyles = {
 };
 
 export default function MerchantDashboard({ merchant, stats, wallet = {}, sessions = [], settlements = [] }) {
+    const [activeSection, setActiveSection] = useState('transactions'); // 'transactions' or 'settlements'
     const [filter, setFilter] = useState('all');
     const [search, setSearch] = useState('');
     const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
@@ -63,7 +64,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
         );
     };
 
-    const filtered = sessions.filter((s) => {
+    const filteredSessions = sessions.filter((s) => {
         if (filter !== 'all' && s.status !== filter) return false;
 
         const q = search.trim().toLowerCase();
@@ -83,9 +84,9 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
             <Head title={`${merchant.name} — Merchant Console`} />
 
             <div className="flex flex-col lg:flex-row gap-6 items-start max-w-7xl mx-auto">
-                {/* Desktop Left Navigation Sidebar */}
-                <aside className="w-full lg:w-60 bg-white rounded-3xl border border-gray-200 p-4 shadow-xs space-y-1.5 flex-shrink-0">
-                    <div className="p-3 mb-2 border-b border-gray-100">
+                {/* Desktop Left Navigation Sidebar (Hidden on Mobile) */}
+                <aside className="hidden lg:block w-60 bg-white rounded-2xl border border-gray-200 p-4 shadow-xs space-y-2 flex-shrink-0">
+                    <div className="p-3 mb-1 border-b border-gray-100">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-brand-primary">Merchant Console</p>
                         <h2 className="text-sm font-extrabold text-brand-dark truncate mt-0.5">{merchant.name}</h2>
                         <p className="text-[11px] text-gray-400">Fee: {merchant.fee_percent}% / transaction</p>
@@ -116,181 +117,230 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
 
                 {/* Main Content Area */}
                 <div className="flex-1 w-full min-w-0 space-y-6">
-                    {/* Modern Fintech Digital Wallet Card (Apple Wallet / Stripe style) */}
-                    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1E293B] via-[#0F172A] to-[#020617] text-white p-6 sm:p-8 shadow-xl">
-                        {/* Background Sheen & Chip Accents */}
-                        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 rounded-full bg-brand-primary/10 blur-3xl pointer-events-none" />
-
-                        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-3">
-                                    {/* Virtual Card Chip */}
-                                    <div className="w-9 h-7 rounded-md bg-amber-400/80 flex items-center justify-center p-1 border border-amber-300">
-                                        <div className="w-full h-full border border-amber-600/40 rounded-xs grid grid-cols-2" />
-                                    </div>
-                                    <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                                        Evopay Settlement Wallet
+                    {/* Modern Clean Flat Mobile Wallet Card (No Gradients) */}
+                    <div className="bg-white rounded-3xl border-2 border-gray-200 p-6 sm:p-7 shadow-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-100">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                        Settlement Wallet
                                     </span>
+                                    <span className="text-xs text-gray-400">· {merchant.name}</span>
                                 </div>
-
-                                <div>
-                                    <span className="text-xs text-gray-400 font-medium">Available for Payout</span>
-                                    <p className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white mt-1">
-                                        {formatMoney(availableBalance)}
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400 pt-1">
-                                    <div>
-                                        <span className="block text-[10px] uppercase font-bold text-gray-400">Gross Processed</span>
-                                        <span className="text-white font-semibold">{formatMoney(wallet.gross_volume || 0)}</span>
-                                    </div>
-                                    <div className="h-6 w-px bg-white/10" />
-                                    <div>
-                                        <span className="block text-[10px] uppercase font-bold text-gray-400">Total Fees</span>
-                                        <span className="text-white font-semibold">{formatMoney(wallet.total_fees || 0)}</span>
-                                    </div>
-                                    <div className="h-6 w-px bg-white/10" />
-                                    <div>
-                                        <span className="block text-[10px] uppercase font-bold text-gray-400">Withdrawn</span>
-                                        <span className="text-white font-semibold">{formatMoney(wallet.total_withdrawn || 0)}</span>
-                                    </div>
-                                    {Number(wallet.total_refunded || 0) > 0 && (
-                                        <>
-                                            <div className="h-6 w-px bg-white/10" />
-                                            <div>
-                                                <span className="block text-[10px] uppercase font-bold text-purple-400">Refunded</span>
-                                                <span className="text-purple-300 font-semibold">{formatMoney(wallet.total_refunded)}</span>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
+                                <p className="text-xs text-gray-500 font-medium mt-1">Available for Payout</p>
+                                <h1 className="text-3xl sm:text-4xl font-black text-brand-dark mt-0.5 tracking-tight">
+                                    {formatMoney(availableBalance)}
+                                </h1>
                             </div>
 
-                            {/* Action Buttons inside Card */}
-                            <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 flex-shrink-0">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsWithdrawOpen(true)}
-                                    disabled={availableBalance < 100}
-                                    className="bg-brand-primary text-white py-3.5 px-6 rounded-2xl font-bold text-xs sm:text-sm hover:bg-brand-secondary transition shadow-md disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-center"
-                                >
-                                    {availableBalance < 100 ? 'Min KES 100 to Payout' : 'Request Payout →'}
-                                </button>
-                                <span className="text-[10px] text-gray-400 text-center">
-                                    Instant M-Pesa B2C or Bank EFT
-                                </span>
+                            <button
+                                type="button"
+                                onClick={() => setIsWithdrawOpen(true)}
+                                disabled={availableBalance < 100}
+                                className="bg-brand-primary text-white py-3 px-6 rounded-2xl font-extrabold text-xs sm:text-sm hover:bg-brand-secondary transition shadow-xs disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer self-start sm:self-center"
+                            >
+                                {availableBalance < 100 ? 'Min KES 100 to Payout' : 'Request Payout →'}
+                            </button>
+                        </div>
+
+                        {/* Wallet Ledger Breakdown */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-5 text-xs">
+                            <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
+                                <span className="block text-[10px] font-bold uppercase text-gray-400">Gross Paid</span>
+                                <span className="text-sm font-extrabold text-brand-dark mt-0.5 block">{formatMoney(wallet.gross_volume || 0)}</span>
+                            </div>
+                            <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
+                                <span className="block text-[10px] font-bold uppercase text-gray-400">Platform Fees</span>
+                                <span className="text-sm font-extrabold text-gray-700 mt-0.5 block">{formatMoney(wallet.total_fees || 0)}</span>
+                            </div>
+                            <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
+                                <span className="block text-[10px] font-bold uppercase text-gray-400">Total Settled</span>
+                                <span className="text-sm font-extrabold text-gray-700 mt-0.5 block">{formatMoney(wallet.total_withdrawn || 0)}</span>
+                            </div>
+                            <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
+                                <span className="block text-[10px] font-bold uppercase text-purple-600">Refunds Issued</span>
+                                <span className="text-sm font-extrabold text-purple-700 mt-0.5 block">{formatMoney(wallet.total_refunded || 0)}</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Stats Strip */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-xs">
-                            <p className="text-[11px] font-bold uppercase text-gray-400">Gross Volume</p>
-                            <p className="text-xl font-black text-brand-dark mt-1">{formatMoney(stats.total_volume)}</p>
-                        </div>
-                        <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-xs">
-                            <p className="text-[11px] font-bold uppercase text-gray-400">Successful Checkouts</p>
-                            <p className="text-xl font-black text-emerald-600 mt-1">{stats.paid_count}</p>
-                        </div>
-                        <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-xs">
-                            <p className="text-[11px] font-bold uppercase text-gray-400">Total Sessions</p>
-                            <p className="text-xl font-black text-brand-dark mt-1">{stats.total_count}</p>
+                    {/* Section Switcher Tabs: Inbound Transactions vs Withdrawal Payouts */}
+                    <div className="flex items-center justify-between gap-3 border-b border-gray-200 pb-3">
+                        <div className="inline-flex gap-1.5 bg-gray-100 p-1 rounded-2xl">
+                            <button
+                                type="button"
+                                onClick={() => setActiveSection('transactions')}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                                    activeSection === 'transactions'
+                                        ? 'bg-white text-brand-dark shadow-xs'
+                                        : 'text-gray-600 hover:text-brand-dark'
+                                }`}
+                            >
+                                Checkout Sessions ({sessions.length})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveSection('settlements')}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                                    activeSection === 'settlements'
+                                        ? 'bg-white text-brand-dark shadow-xs'
+                                        : 'text-gray-600 hover:text-brand-dark'
+                                }`}
+                            >
+                                Payout History ({settlements.length})
+                            </button>
                         </div>
                     </div>
 
-                    {/* Filters & Search */}
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex gap-1.5 bg-white p-1 rounded-xl border border-gray-200">
-                            {['all', 'paid', 'pending', 'refunded', 'failed'].map((tab) => (
-                                <button
-                                    key={tab}
-                                    type="button"
-                                    onClick={() => setFilter(tab)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition cursor-pointer ${
-                                        filter === tab
-                                            ? 'bg-brand-dark text-white'
-                                            : 'text-gray-600 hover:text-brand-dark hover:bg-gray-50'
-                                    }`}
-                                >
-                                    {tab}
-                                </button>
-                            ))}
-                        </div>
+                    {/* SECTION 1: Inbound Checkout Transactions Table */}
+                    {activeSection === 'transactions' && (
+                        <div className="space-y-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div className="flex gap-1 bg-white p-1 rounded-xl border border-gray-200">
+                                    {['all', 'paid', 'pending', 'refunded', 'failed'].map((tab) => (
+                                        <button
+                                            key={tab}
+                                            type="button"
+                                            onClick={() => setFilter(tab)}
+                                            className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase transition cursor-pointer ${
+                                                filter === tab
+                                                    ? 'bg-brand-dark text-white'
+                                                    : 'text-gray-600 hover:text-brand-dark hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            {tab}
+                                        </button>
+                                    ))}
+                                </div>
 
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search reference, receipt, customer..."
-                            className="w-full sm:w-72 bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm"
-                        />
-                    </div>
-
-                    {/* Transactions & Refund Table */}
-                    <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-                        {filtered.length === 0 ? (
-                            <div className="p-10 text-center text-sm text-gray-500">
-                                No checkout sessions found.
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Search reference, receipt, customer..."
+                                    className="w-full sm:w-64 bg-white border border-gray-200 rounded-xl px-4 py-2 text-xs"
+                                />
                             </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-gray-50 border-b border-gray-200 text-[11px] font-bold uppercase text-gray-500">
-                                        <tr>
-                                            <th className="py-3.5 px-4">Reference</th>
-                                            <th className="py-3.5 px-4">Customer</th>
-                                            <th className="py-3.5 px-4">Amount</th>
-                                            <th className="py-3.5 px-4">Method</th>
-                                            <th className="py-3.5 px-4">Receipt</th>
-                                            <th className="py-3.5 px-4">Status</th>
-                                            <th className="py-3.5 px-4 text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {filtered.map((s) => (
-                                            <tr key={s.id} className="hover:bg-gray-50/60">
-                                                <td className="py-3.5 px-4">
-                                                    <p className="font-bold text-brand-dark">{s.merchant_reference}</p>
-                                                    <p className="text-[11px] font-mono text-gray-400">{s.token}</p>
-                                                </td>
-                                                <td className="py-3.5 px-4">
-                                                    <p className="font-medium text-brand-dark">{s.customer?.name || '—'}</p>
-                                                    <p className="text-xs text-gray-500">{s.customer?.phone || s.customer?.email || '—'}</p>
-                                                </td>
-                                                <td className="py-3.5 px-4 font-bold text-brand-dark whitespace-nowrap">
-                                                    {formatMoney(s.amount, s.currency)}
-                                                </td>
-                                                <td className="py-3.5 px-4 uppercase text-xs font-semibold text-gray-600">
-                                                    {s.payment_method || '—'}
-                                                </td>
-                                                <td className="py-3.5 px-4 font-mono text-xs text-emerald-700 font-semibold">
-                                                    {s.mpesa_receipt || '—'}
-                                                </td>
-                                                <td className="py-3.5 px-4">
-                                                    <span className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full border ${statusStyles[s.status] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
-                                                        {s.status}
-                                                    </span>
-                                                </td>
-                                                <td className="py-3.5 px-4 text-right">
-                                                    {s.status === 'paid' && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setRefundTarget(s)}
-                                                            className="text-xs font-bold text-purple-600 hover:text-purple-800 hover:underline cursor-pointer"
-                                                        >
-                                                            Refund
-                                                        </button>
-                                                    )}
-                                                </td>
+
+                            <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+                                {filteredSessions.length === 0 ? (
+                                    <div className="p-10 text-center text-sm text-gray-500">
+                                        No checkout transactions found.
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="bg-gray-50 border-b border-gray-200 text-[11px] font-bold uppercase text-gray-500">
+                                                <tr>
+                                                    <th className="py-3 px-4">Reference</th>
+                                                    <th className="py-3 px-4">Customer</th>
+                                                    <th className="py-3 px-4">Amount</th>
+                                                    <th className="py-3 px-4">Channel</th>
+                                                    <th className="py-3 px-4">Receipt</th>
+                                                    <th className="py-3 px-4">Status</th>
+                                                    <th className="py-3 px-4 text-right">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100 text-xs">
+                                                {filteredSessions.map((s) => (
+                                                    <tr key={s.id} className="hover:bg-gray-50/70 transition">
+                                                        <td className="py-3.5 px-4">
+                                                            <p className="font-bold text-brand-dark">{s.merchant_reference}</p>
+                                                            <p className="text-[10px] font-mono text-gray-400">{s.token}</p>
+                                                        </td>
+                                                        <td className="py-3.5 px-4">
+                                                            <p className="font-medium text-brand-dark">{s.customer?.name || '—'}</p>
+                                                            <p className="text-[11px] text-gray-500">{s.customer?.phone || s.customer?.email || '—'}</p>
+                                                        </td>
+                                                        <td className="py-3.5 px-4 font-bold text-brand-dark whitespace-nowrap">
+                                                            {formatMoney(s.amount, s.currency)}
+                                                        </td>
+                                                        <td className="py-3.5 px-4 uppercase text-[11px] font-semibold text-gray-600">
+                                                            {s.payment_method || '—'}
+                                                        </td>
+                                                        <td className="py-3.5 px-4 font-mono text-emerald-700 font-semibold">
+                                                            {s.mpesa_receipt || '—'}
+                                                        </td>
+                                                        <td className="py-3.5 px-4">
+                                                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${statusStyles[s.status] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+                                                                {s.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3.5 px-4 text-right">
+                                                            {s.status === 'paid' && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setRefundTarget(s)}
+                                                                    className="text-xs font-bold text-purple-600 hover:text-purple-800 hover:underline cursor-pointer"
+                                                                >
+                                                                    Refund
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* SECTION 2: Withdrawal Payout History Table */}
+                    {activeSection === 'settlements' && (
+                        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+                            {settlements.length === 0 ? (
+                                <div className="p-10 text-center text-sm text-gray-500">
+                                    No withdrawal requests placed yet.
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-gray-50 border-b border-gray-200 text-[11px] font-bold uppercase text-gray-500">
+                                            <tr>
+                                                <th className="py-3 px-4">Reference</th>
+                                                <th className="py-3 px-4">Amount</th>
+                                                <th className="py-3 px-4">Channel</th>
+                                                <th className="py-3 px-4">Destination</th>
+                                                <th className="py-3 px-4">Status</th>
+                                                <th className="py-3 px-4">Requested Date</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 text-xs">
+                                            {settlements.map((set) => {
+                                                const dest = typeof set.destination === 'string' ? JSON.parse(set.destination) : (set.destination || {});
+                                                return (
+                                                    <tr key={set.id} className="hover:bg-gray-50/70">
+                                                        <td className="py-3.5 px-4 font-mono font-bold text-brand-dark">
+                                                            {set.reference}
+                                                        </td>
+                                                        <td className="py-3.5 px-4 font-bold text-brand-dark">
+                                                            {formatMoney(set.amount, set.currency)}
+                                                        </td>
+                                                        <td className="py-3.5 px-4 uppercase text-[11px] font-semibold text-gray-600">
+                                                            {set.channel}
+                                                        </td>
+                                                        <td className="py-3.5 px-4 font-mono text-gray-700">
+                                                            {dest.phone || dest.account_number ? `${dest.bank_name ? dest.bank_name + ' · ' : ''}${dest.phone || dest.account_number}` : '—'}
+                                                        </td>
+                                                        <td className="py-3.5 px-4">
+                                                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                                                                {set.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3.5 px-4 text-gray-500">
+                                                            {new Date(set.created_at).toLocaleString('en-KE')}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -317,7 +367,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
 
                         {availableBalance < 100 ? (
                             <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed">
-                                You need at least KES 100 to request a withdrawal. Your current balance is {formatMoney(availableBalance)}.
+                                You need at least KES 100 to request a payout. Your current balance is {formatMoney(availableBalance)}.
                             </div>
                         ) : (
                             <form onSubmit={submitWithdrawal} className="space-y-4">
