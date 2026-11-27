@@ -95,7 +95,7 @@ export default function AdminLayout({ children, title = 'Platform Admin' }) {
                         alt="Evopay"
                         className="h-7 w-auto object-contain mb-2"
                     />
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#FF6600]">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#E45C25]">
                         Platform Admin
                     </p>
                     <p className="text-sm font-bold text-gray-900">Evopay Gateway</p>
@@ -118,7 +118,7 @@ export default function AdminLayout({ children, title = 'Platform Admin' }) {
                                             onClick={() => setMobileOpen(false)}
                                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${
                                                 active
-                                                    ? 'bg-[#FF6600] text-white'
+                                                    ? 'bg-[#E45C25] text-white'
                                                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                                             }`}
                                         >

@@ -101,7 +101,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                             alt="Evopay"
                             className="h-8 w-auto object-contain mb-3"
                         />
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-[#FF6600]">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-[#E45C25]">
                             Merchant Portal
                         </p>
                         <p className="text-sm font-extrabold text-gray-900 truncate mt-0.5">
@@ -113,7 +113,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                     <nav className="p-4 space-y-1">
                         <Link
                             href="/merchant"
-                            className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold bg-[#FF6600] text-white"
+                            className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold bg-[#E45C25] text-white"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
@@ -167,7 +167,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                 alt="Evopay"
                                 className="h-7 w-auto object-contain mb-1.5"
                             />
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-[#FF6600]">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-[#E45C25]">
                                 Merchant Portal
                             </p>
                             <p className="text-sm font-extrabold text-gray-900">{merchant.name}</p>
@@ -182,76 +182,111 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                         </button>
                     </div>
 
-                    {/* WALLET BALANCE PANEL */}
-                    <section className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                        <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-                            <div>
-                                <p className="text-xs font-semibold text-gray-500">Total Balance</p>
-                                <div className="flex items-baseline gap-2 mt-1">
-                                    <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
-                                        {formatMoney(availableBalance)}
-                                    </h1>
-                                    <span className="text-sm font-bold text-[#FF6600]">KES</span>
+                    {/* TOP SUMMARY: VIRTUAL SETTLEMENT CARD + LEDGER */}
+                    <section className="space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+                            {/* Virtual Card */}
+                            <div className="md:col-span-7 bg-[#1B1D24] text-white rounded-2xl p-6 flex flex-col justify-between border border-gray-800 relative overflow-hidden">
+                                <div className="absolute top-0 left-0 right-0 h-1 bg-[#E45C25]" />
+
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                                            Evopay Virtual Card
+                                        </span>
+                                        <div className="flex items-baseline gap-2 mt-1.5">
+                                            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+                                                {formatMoney(availableBalance)}
+                                            </h1>
+                                            <span className="text-sm font-bold text-[#E45C25]">KES</span>
+                                        </div>
+                                        <p className="text-[11px] text-gray-400 mt-0.5">Available Balance</p>
+                                    </div>
+
+                                    {/* Card EMV Chip */}
+                                    <div className="w-10 h-7 rounded-md bg-white/10 border border-white/20 flex items-center justify-center p-1">
+                                        <div className="w-full h-full border border-white/30 rounded-xs grid grid-cols-2" />
+                                    </div>
                                 </div>
 
-                                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                                    <span className="text-gray-500">Virtual Account ID:</span>
-                                    <span className="font-mono font-semibold text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
-                                        {virtualAccountId}
-                                    </span>
+                                <div className="mt-7 pt-4 border-t border-white/10 flex flex-wrap items-end justify-between gap-3">
+                                    <div>
+                                        <span className="text-[10px] uppercase tracking-wider text-gray-400 block">
+                                            Virtual Account ID
+                                        </span>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className="font-mono text-xs sm:text-sm font-semibold tracking-wider text-gray-100">
+                                                {virtualAccountId}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={copyVirtualId}
+                                                className="text-[11px] font-semibold text-[#E45C25] hover:underline cursor-pointer"
+                                            >
+                                                {copiedVirtualId ? 'Copied' : 'Copy'}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="text-right">
+                                        <span className="text-[10px] uppercase tracking-wider text-gray-400 block">
+                                            Account Holder
+                                        </span>
+                                        <span className="text-xs font-bold text-white">
+                                            {merchant.name}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right Settlement Summary + Payout CTA */}
+                            <div className="md:col-span-5 bg-white rounded-2xl border border-gray-200 p-5 flex flex-col justify-between gap-4">
+                                <div className="space-y-2.5 text-xs">
+                                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                                        Settlement Summary
+                                    </p>
+                                    <div className="flex justify-between py-1.5 border-b border-gray-100">
+                                        <span className="text-gray-500">Gross Collected</span>
+                                        <span className="font-bold text-gray-900">{formatMoney(wallet.gross_volume || 0)} KES</span>
+                                    </div>
+                                    <div className="flex justify-between py-1.5 border-b border-gray-100">
+                                        <span className="text-gray-500">Fees ({merchant.fee_percent}%)</span>
+                                        <span className="font-semibold text-gray-700">− {formatMoney(wallet.total_fees || 0)} KES</span>
+                                    </div>
+                                    <div className="flex justify-between py-1.5 border-b border-gray-100">
+                                        <span className="text-gray-500">Withdrawn</span>
+                                        <span className="font-semibold text-gray-700">− {formatMoney(wallet.total_withdrawn || 0)} KES</span>
+                                    </div>
+                                    <div className="flex justify-between py-1">
+                                        <span className="text-gray-500">Refunded</span>
+                                        <span className="font-semibold text-purple-700">− {formatMoney(wallet.total_refunded || 0)} KES</span>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
                                     <button
                                         type="button"
-                                        onClick={copyVirtualId}
-                                        className="text-[11px] font-semibold text-[#FF6600] hover:underline cursor-pointer"
+                                        onClick={() => setIsWithdrawOpen(true)}
+                                        className="w-full bg-[#E45C25] hover:bg-[#CF501D] text-white font-bold text-xs sm:text-sm py-3 px-4 rounded-xl transition cursor-pointer"
                                     >
-                                        {copiedVirtualId ? 'Copied' : 'Copy'}
+                                        Withdraw Funds
                                     </button>
+                                    <p className="text-[11px] text-gray-400 text-center">
+                                        M-Pesa B2C or Bank · Min 100 KES
+                                    </p>
                                 </div>
-                            </div>
-
-                            <div className="flex sm:flex-col items-stretch sm:items-end gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsWithdrawOpen(true)}
-                                    className="bg-[#FF6600] hover:bg-[#e55c00] text-white font-bold text-xs sm:text-sm px-5 py-3 rounded-xl transition cursor-pointer"
-                                >
-                                    Withdraw Funds
-                                </button>
-                                <span className="text-[11px] text-gray-400 self-center sm:self-end">
-                                    M-Pesa B2C or Bank · Min 100 KES
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Ledger Summary Footer */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 border-t border-gray-100 bg-gray-50/70 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 text-xs">
-                            <div className="p-3.5 sm:px-5">
-                                <span className="block text-[11px] text-gray-500">Gross Collected</span>
-                                <span className="font-bold text-gray-900 mt-0.5 block">{formatMoney(wallet.gross_volume || 0)} KES</span>
-                            </div>
-                            <div className="p-3.5 sm:px-5">
-                                <span className="block text-[11px] text-gray-500">Fees ({merchant.fee_percent}%)</span>
-                                <span className="font-bold text-gray-700 mt-0.5 block">− {formatMoney(wallet.total_fees || 0)} KES</span>
-                            </div>
-                            <div className="p-3.5 sm:px-5">
-                                <span className="block text-[11px] text-gray-500">Withdrawn</span>
-                                <span className="font-bold text-gray-700 mt-0.5 block">− {formatMoney(wallet.total_withdrawn || 0)} KES</span>
-                            </div>
-                            <div className="p-3.5 sm:px-5">
-                                <span className="block text-[11px] text-gray-500">Refunded</span>
-                                <span className="font-bold text-purple-700 mt-0.5 block">− {formatMoney(wallet.total_refunded || 0)} KES</span>
                             </div>
                         </div>
                     </section>
 
-                    {/* QUICK WALLET ACTIONS (Light native pill row) */}
+                    {/* QUICK WALLET ACTIONS */}
                     <div className="grid grid-cols-3 gap-2.5">
                         <button
                             type="button"
                             onClick={() => setIsWithdrawOpen(true)}
-                            className="bg-white border border-gray-200 hover:border-[#FF6600] rounded-xl p-3 text-left transition cursor-pointer"
+                            className="bg-white border border-gray-200 hover:border-[#E45C25] rounded-xl p-3 text-left transition cursor-pointer"
                         >
-                            <span className="text-xs font-bold text-[#FF6600] block">Payout</span>
+                            <span className="text-xs font-bold text-[#E45C25] block">Payout</span>
                             <span className="text-[11px] text-gray-500">M-Pesa / Bank</span>
                         </button>
 
@@ -309,7 +344,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                         value={search}
                                         onChange={(e) => setSearch(e.target.value)}
                                         placeholder="Search receipt, ref, phone..."
-                                        className="w-full sm:w-60 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-hidden focus:border-[#FF6600]"
+                                        className="w-full sm:w-60 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-hidden focus:border-[#E45C25]"
                                     />
                                 )}
                             </div>
@@ -361,7 +396,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                                                     ? 'bg-purple-50 text-purple-700'
                                                                     : expired
                                                                         ? 'bg-gray-100 text-gray-500'
-                                                                        : 'bg-orange-50 text-[#FF6600]'
+                                                                        : 'bg-[#E45C25]/10 text-[#E45C25]'
                                                         }`}
                                                     >
                                                         {isPaid ? (
@@ -457,7 +492,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                                 className="p-4 sm:px-5 flex items-center justify-between gap-3 hover:bg-gray-50/70"
                                             >
                                                 <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="w-9 h-9 rounded-full bg-orange-50 text-[#FF6600] flex items-center justify-center flex-shrink-0">
+                                                    <div className="w-9 h-9 rounded-full bg-[#E45C25]/10 text-[#E45C25] flex items-center justify-center flex-shrink-0">
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
                                                         </svg>
@@ -497,7 +532,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                     type="button"
                     onClick={() => setActiveFeed('transactions')}
                     className={`flex flex-col items-center justify-center gap-0.5 ${
-                        activeFeed === 'transactions' ? 'text-[#FF6600]' : 'text-gray-500'
+                        activeFeed === 'transactions' ? 'text-[#E45C25]' : 'text-gray-500'
                     }`}
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.9" viewBox="0 0 24 24">
@@ -510,7 +545,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                     type="button"
                     onClick={() => setActiveFeed('settlements')}
                     className={`flex flex-col items-center justify-center gap-0.5 ${
-                        activeFeed === 'settlements' ? 'text-[#FF6600]' : 'text-gray-500'
+                        activeFeed === 'settlements' ? 'text-[#E45C25]' : 'text-gray-500'
                     }`}
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.9" viewBox="0 0 24 24">
@@ -560,7 +595,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                         <button
                                             type="button"
                                             onClick={() => withdrawForm.setData('amount', String(availableBalance))}
-                                            className="text-[#FF6600] font-bold hover:underline cursor-pointer"
+                                            className="text-[#E45C25] font-bold hover:underline cursor-pointer"
                                         >
                                             Max ({formatMoney(availableBalance)})
                                         </button>
@@ -576,7 +611,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                         className={`w-full rounded-xl px-3.5 py-2.5 text-sm font-mono border focus:outline-hidden ${
                                             isExceedingBalance
                                                 ? 'border-red-500 bg-red-50 text-red-900'
-                                                : 'bg-gray-50 border-gray-200 focus:border-[#FF6600]'
+                                                : 'bg-gray-50 border-gray-200 focus:border-[#E45C25]'
                                         }`}
                                         required
                                     />
@@ -598,7 +633,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                             onClick={() => withdrawForm.setData('channel', 'mpesa')}
                                             className={`py-2 rounded-xl font-bold border transition cursor-pointer ${
                                                 withdrawForm.data.channel === 'mpesa'
-                                                    ? 'border-[#FF6600] bg-orange-50 text-[#FF6600]'
+                                                    ? 'border-[#E45C25] bg-[#E45C25]/10 text-[#E45C25]'
                                                     : 'border-gray-200 bg-white text-gray-600'
                                             }`}
                                         >
@@ -609,7 +644,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                             onClick={() => withdrawForm.setData('channel', 'bank')}
                                             className={`py-2 rounded-xl font-bold border transition cursor-pointer ${
                                                 withdrawForm.data.channel === 'bank'
-                                                    ? 'border-[#FF6600] bg-orange-50 text-[#FF6600]'
+                                                    ? 'border-[#E45C25] bg-[#E45C25]/10 text-[#E45C25]'
                                                     : 'border-gray-200 bg-white text-gray-600'
                                             }`}
                                         >
@@ -626,7 +661,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                             value={withdrawForm.data.phone}
                                             onChange={(e) => withdrawForm.setData('phone', e.target.value)}
                                             placeholder="0712345678"
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-mono focus:outline-hidden focus:border-[#FF6600]"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-mono focus:outline-hidden focus:border-[#E45C25]"
                                             required
                                         />
                                     </div>
@@ -654,7 +689,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                 <button
                                     type="submit"
                                     disabled={!canWithdraw || withdrawForm.processing}
-                                    className="w-full bg-[#FF6600] text-white py-3 rounded-xl font-bold text-sm hover:bg-[#e55c00] transition disabled:opacity-40 cursor-pointer"
+                                    className="w-full bg-[#E45C25] text-white py-3 rounded-xl font-bold text-sm hover:bg-[#CF501D] transition disabled:opacity-40 cursor-pointer"
                                 >
                                     {withdrawForm.processing ? 'Submitting...' : 'Confirm Withdrawal'}
                                 </button>
