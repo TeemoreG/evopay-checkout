@@ -1,20 +1,11 @@
 import { useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import MainLayout from '../../Layouts/MainLayout';
 
-const formatMoney = (amount, currency = 'KES') =>
-    `${currency} ` + Number(amount || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 });
-
-const statusStyles = {
-    paid: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    pending: 'bg-amber-50 text-amber-800 border-amber-200',
-    failed: 'bg-red-50 text-red-700 border-red-200',
-    refunded: 'bg-purple-50 text-purple-700 border-purple-200',
-};
+const formatMoney = (amount) =>
+    Number(amount || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function MerchantDashboard({ merchant, stats, wallet = {}, sessions = [], settlements = [] }) {
-    const [activeSection, setActiveSection] = useState('transactions'); // 'transactions' or 'settlements'
-    const [filter, setFilter] = useState('all');
+    const [activeFeed, setActiveFeed] = useState('transactions'); // 'transactions' or 'settlements'
     const [search, setSearch] = useState('');
     const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
     const [refundTarget, setRefundTarget] = useState(null);
@@ -65,8 +56,6 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
     };
 
     const filteredSessions = sessions.filter((s) => {
-        if (filter !== 'all' && s.status !== filter) return false;
-
         const q = search.trim().toLowerCase();
         if (!q) return true;
 
@@ -80,306 +69,423 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
     });
 
     return (
-        <MainLayout minimal>
-            <Head title={`${merchant.name} — Merchant Console`} />
+        <div className="min-h-screen bg-[#111317] text-white flex">
+            <Head title={`${merchant.name} — Evopay Wallet`} />
 
-            <div className="flex flex-col lg:flex-row gap-6 items-start max-w-7xl mx-auto">
-                {/* Desktop Left Navigation Sidebar (Hidden on Mobile) */}
-                <aside className="hidden lg:block w-60 bg-white rounded-2xl border border-gray-200 p-4 shadow-xs space-y-2 flex-shrink-0">
-                    <div className="p-3 mb-1 border-b border-gray-100">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-brand-primary">Merchant Console</p>
-                        <h2 className="text-sm font-extrabold text-brand-dark truncate mt-0.5">{merchant.name}</h2>
-                        <p className="text-[11px] text-gray-400">Fee: {merchant.fee_percent}% / transaction</p>
+            {/* DESKTOP FULL-HEIGHT SIDEBAR (Completely flush top-to-bottom, hidden on mobile) */}
+            <aside className="hidden lg:flex w-72 fixed inset-y-0 left-0 bg-[#181B20] border-r border-white/5 flex-col justify-between z-30">
+                <div>
+                    {/* Brand Header */}
+                    <div className="h-20 flex items-center gap-3 px-7 border-b border-white/5">
+                        <div className="w-9 h-9 rounded-xl bg-[#FF5F00] flex items-center justify-center font-black text-white text-base shadow-lg shadow-[#FF5F00]/25">
+                            E
+                        </div>
+                        <div>
+                            <span className="font-extrabold text-base tracking-tight text-white block">Evopay Wallet</span>
+                            <span className="text-[10px] uppercase font-bold tracking-widest text-[#FF5F00]">
+                                Merchant Console
+                            </span>
+                        </div>
                     </div>
 
-                    <Link
-                        href="/merchant"
-                        className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-bold text-xs bg-brand-dark text-white shadow-xs"
-                    >
-                        <span>Wallet & Transactions</span>
-                    </Link>
+                    {/* Navigation Links */}
+                    <div className="p-5 space-y-6">
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 px-3 mb-2">
+                                Main
+                            </p>
+                            <div className="space-y-1">
+                                <Link
+                                    href="/merchant"
+                                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold bg-[#FF5F00] text-white shadow-md shadow-[#FF5F00]/20 transition"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
+                                    </svg>
+                                    <span>Wallet & Activity</span>
+                                </Link>
 
-                    <Link
-                        href="/merchant/developers"
-                        className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-bold text-xs text-gray-600 hover:text-brand-dark hover:bg-gray-50 transition"
-                    >
-                        <span>API Keys & Webhooks</span>
-                    </Link>
+                                <Link
+                                    href="/merchant/developers"
+                                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold text-gray-400 hover:text-white hover:bg-white/5 transition"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+                                    </svg>
+                                    <span>API Keys & Webhooks</span>
+                                </Link>
+                            </div>
+                        </div>
 
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 px-3 mb-2">
+                                Merchant Profile
+                            </p>
+                            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
+                                <p className="text-xs font-bold text-white truncate">{merchant.name}</p>
+                                <p className="text-[11px] text-gray-400">Fee rate: {merchant.fee_percent}% / txn</p>
+                                <p className="text-[11px] text-emerald-400 font-semibold pt-1">Status: Active</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Desktop Sign Out */}
+                <div className="p-5 border-t border-white/5">
                     <button
                         type="button"
                         onClick={() => router.post('/logout')}
-                        className="w-full text-left px-3.5 py-2.5 rounded-xl font-bold text-xs text-red-600 hover:bg-red-50 transition cursor-pointer mt-4"
+                        className="w-full flex items-center gap-2.5 px-4 py-3 rounded-xl text-xs font-bold text-red-400 hover:bg-red-500/10 transition cursor-pointer"
                     >
-                        Sign Out
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                        </svg>
+                        <span>Sign Out</span>
                     </button>
-                </aside>
+                </div>
+            </aside>
 
-                {/* Main Content Area */}
-                <div className="flex-1 w-full min-w-0 space-y-6">
-                    {/* Modern Clean Flat Mobile Wallet Card (No Gradients) */}
-                    <div className="bg-white rounded-3xl border-2 border-gray-200 p-6 sm:p-7 shadow-xs">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-100">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                                        Settlement Wallet
-                                    </span>
-                                    <span className="text-xs text-gray-400">· {merchant.name}</span>
-                                </div>
-                                <p className="text-xs text-gray-500 font-medium mt-1">Available for Payout</p>
-                                <h1 className="text-3xl sm:text-4xl font-black text-brand-dark mt-0.5 tracking-tight">
-                                    {formatMoney(availableBalance)}
-                                </h1>
+            {/* MAIN APP CANVAS (Full screen mobile webview / Desktop right content) */}
+            <main className="flex-1 lg:pl-72 min-w-0 pb-24 lg:pb-12">
+                <div className="max-w-md lg:max-w-4xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 space-y-6">
+                    {/* Top Native Mobile Header */}
+                    <div className="flex items-center justify-between pb-2">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-[#FF5F00] flex items-center justify-center font-black text-xs text-white shadow-md">
+                                E
                             </div>
+                            <span className="font-extrabold text-base tracking-tight text-white">EVOPAY</span>
+                        </div>
 
+                        <div className="flex items-center gap-2">
                             <button
                                 type="button"
                                 onClick={() => setIsWithdrawOpen(true)}
-                                disabled={availableBalance < 100}
-                                className="bg-brand-primary text-white py-3 px-6 rounded-2xl font-extrabold text-xs sm:text-sm hover:bg-brand-secondary transition shadow-xs disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer self-start sm:self-center"
+                                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-300 cursor-pointer"
+                                title="Notifications"
                             >
-                                {availableBalance < 100 ? 'Min KES 100 to Payout' : 'Request Payout →'}
-                            </button>
-                        </div>
-
-                        {/* Wallet Ledger Breakdown */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-5 text-xs">
-                            <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
-                                <span className="block text-[10px] font-bold uppercase text-gray-400">Gross Paid</span>
-                                <span className="text-sm font-extrabold text-brand-dark mt-0.5 block">{formatMoney(wallet.gross_volume || 0)}</span>
-                            </div>
-                            <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
-                                <span className="block text-[10px] font-bold uppercase text-gray-400">Platform Fees</span>
-                                <span className="text-sm font-extrabold text-gray-700 mt-0.5 block">{formatMoney(wallet.total_fees || 0)}</span>
-                            </div>
-                            <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
-                                <span className="block text-[10px] font-bold uppercase text-gray-400">Total Settled</span>
-                                <span className="text-sm font-extrabold text-gray-700 mt-0.5 block">{formatMoney(wallet.total_withdrawn || 0)}</span>
-                            </div>
-                            <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
-                                <span className="block text-[10px] font-bold uppercase text-purple-600">Refunds Issued</span>
-                                <span className="text-sm font-extrabold text-purple-700 mt-0.5 block">{formatMoney(wallet.total_refunded || 0)}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Section Switcher Tabs: Inbound Transactions vs Withdrawal Payouts */}
-                    <div className="flex items-center justify-between gap-3 border-b border-gray-200 pb-3">
-                        <div className="inline-flex gap-1.5 bg-gray-100 p-1 rounded-2xl">
-                            <button
-                                type="button"
-                                onClick={() => setActiveSection('transactions')}
-                                className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                                    activeSection === 'transactions'
-                                        ? 'bg-white text-brand-dark shadow-xs'
-                                        : 'text-gray-600 hover:text-brand-dark'
-                                }`}
-                            >
-                                Checkout Sessions ({sessions.length})
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setActiveSection('settlements')}
-                                className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                                    activeSection === 'settlements'
-                                        ? 'bg-white text-brand-dark shadow-xs'
-                                        : 'text-gray-600 hover:text-brand-dark'
-                                }`}
-                            >
-                                Payout History ({settlements.length})
+                                <svg className="w-4 h-4 text-[#FF5F00]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                                </svg>
                             </button>
                         </div>
                     </div>
 
-                    {/* SECTION 1: Inbound Checkout Transactions Table */}
-                    {activeSection === 'transactions' && (
-                        <div className="space-y-4">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div className="flex gap-1 bg-white p-1 rounded-xl border border-gray-200">
-                                    {['all', 'paid', 'pending', 'refunded', 'failed'].map((tab) => (
-                                        <button
-                                            key={tab}
-                                            type="button"
-                                            onClick={() => setFilter(tab)}
-                                            className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase transition cursor-pointer ${
-                                                filter === tab
-                                                    ? 'bg-brand-dark text-white'
-                                                    : 'text-gray-600 hover:text-brand-dark hover:bg-gray-50'
-                                            }`}
-                                        >
-                                            {tab}
-                                        </button>
-                                    ))}
+                    {/* NATIVE WALLET CARD (Matching your image with circular emblem and geometric pattern) */}
+                    <div className="relative overflow-hidden rounded-3xl bg-[#1C1F26] border border-white/10 p-6 sm:p-7 shadow-2xl">
+                        {/* Decorative Native Circular Motif */}
+                        <div className="absolute -top-12 -right-12 w-44 h-44 rounded-full border-8 border-white/[0.04] flex items-center justify-center pointer-events-none">
+                            <div className="w-28 h-28 rounded-full border-4 border-white/[0.03]" />
+                        </div>
+
+                        <div className="relative z-10 space-y-5">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                        Total Balance
+                                    </span>
+                                    <div className="flex items-baseline gap-2 mt-1">
+                                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
+                                            {formatMoney(availableBalance)}
+                                        </h2>
+                                        <span className="text-sm font-extrabold text-[#FF5F00]">KES</span>
+                                    </div>
                                 </div>
 
-                                <input
-                                    type="text"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Search reference, receipt, customer..."
-                                    className="w-full sm:w-64 bg-white border border-gray-200 rounded-xl px-4 py-2 text-xs"
-                                />
+                                {/* Evopay Brand Badge */}
+                                <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 px-3 py-1.5 rounded-full">
+                                    <div className="w-2 h-2 rounded-full bg-[#FF5F00] animate-pulse" />
+                                    <span className="text-[10px] font-mono font-bold text-gray-300 uppercase">Live Wallet</span>
+                                </div>
                             </div>
 
-                            <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-                                {filteredSessions.length === 0 ? (
-                                    <div className="p-10 text-center text-sm text-gray-500">
-                                        No checkout transactions found.
-                                    </div>
-                                ) : (
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left text-sm">
-                                            <thead className="bg-gray-50 border-b border-gray-200 text-[11px] font-bold uppercase text-gray-500">
-                                                <tr>
-                                                    <th className="py-3 px-4">Reference</th>
-                                                    <th className="py-3 px-4">Customer</th>
-                                                    <th className="py-3 px-4">Amount</th>
-                                                    <th className="py-3 px-4">Channel</th>
-                                                    <th className="py-3 px-4">Receipt</th>
-                                                    <th className="py-3 px-4">Status</th>
-                                                    <th className="py-3 px-4 text-right">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-100 text-xs">
-                                                {filteredSessions.map((s) => (
-                                                    <tr key={s.id} className="hover:bg-gray-50/70 transition">
-                                                        <td className="py-3.5 px-4">
-                                                            <p className="font-bold text-brand-dark">{s.merchant_reference}</p>
-                                                            <p className="text-[10px] font-mono text-gray-400">{s.token}</p>
-                                                        </td>
-                                                        <td className="py-3.5 px-4">
-                                                            <p className="font-medium text-brand-dark">{s.customer?.name || '—'}</p>
-                                                            <p className="text-[11px] text-gray-500">{s.customer?.phone || s.customer?.email || '—'}</p>
-                                                        </td>
-                                                        <td className="py-3.5 px-4 font-bold text-brand-dark whitespace-nowrap">
-                                                            {formatMoney(s.amount, s.currency)}
-                                                        </td>
-                                                        <td className="py-3.5 px-4 uppercase text-[11px] font-semibold text-gray-600">
-                                                            {s.payment_method || '—'}
-                                                        </td>
-                                                        <td className="py-3.5 px-4 font-mono text-emerald-700 font-semibold">
-                                                            {s.mpesa_receipt || '—'}
-                                                        </td>
-                                                        <td className="py-3.5 px-4">
-                                                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${statusStyles[s.status] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
-                                                                {s.status}
-                                                            </span>
-                                                        </td>
-                                                        <td className="py-3.5 px-4 text-right">
-                                                            {s.status === 'paid' && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setRefundTarget(s)}
-                                                                    className="text-xs font-bold text-purple-600 hover:text-purple-800 hover:underline cursor-pointer"
-                                                                >
-                                                                    Refund
-                                                                </button>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
+                            <div className="pt-2 flex justify-between items-end border-t border-white/5">
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-gray-500">Merchant Account</p>
+                                    <p className="text-xs font-mono text-gray-300 tracking-wider mt-0.5">
+                                        •••• •••• •••• {merchant.slug ? merchant.slug.slice(-4).toUpperCase() : '0000'}
+                                    </p>
+                                </div>
+
+                                {/* Orange Contactless Icon */}
+                                <div className="w-8 h-8 rounded-full bg-[#FF5F00]/15 flex items-center justify-center text-[#FF5F00]">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0" />
+                                    </svg>
+                                </div>
                             </div>
                         </div>
-                    )}
+                    </div>
 
-                    {/* SECTION 2: Withdrawal Payout History Table */}
-                    {activeSection === 'settlements' && (
-                        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-                            {settlements.length === 0 ? (
-                                <div className="p-10 text-center text-sm text-gray-500">
-                                    No withdrawal requests placed yet.
+                    {/* CIRCULAR ACTION BUTTONS DOCK (Matching your design screenshot) */}
+                    <div className="grid grid-cols-4 gap-3 py-1">
+                        <button
+                            type="button"
+                            onClick={() => setIsWithdrawOpen(true)}
+                            className="flex flex-col items-center gap-2 group cursor-pointer"
+                        >
+                            <div className="w-14 h-14 rounded-full bg-[#1C1F26] border border-white/10 flex items-center justify-center text-[#FF5F00] group-hover:bg-[#FF5F00] group-hover:text-white transition shadow-lg">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                            </div>
+                            <span className="text-[11px] font-bold text-gray-300">Withdraw</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setActiveFeed(activeFeed === 'settlements' ? 'transactions' : 'settlements')}
+                            className="flex flex-col items-center gap-2 group cursor-pointer"
+                        >
+                            <div className="w-14 h-14 rounded-full bg-[#1C1F26] border border-white/10 flex items-center justify-center text-[#32BB78] group-hover:bg-[#32BB78] group-hover:text-white transition shadow-lg">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                                </svg>
+                            </div>
+                            <span className="text-[11px] font-bold text-gray-300">
+                                {activeFeed === 'settlements' ? 'Orders' : 'Settlements'}
+                            </span>
+                        </button>
+
+                        <Link
+                            href="/merchant/developers"
+                            className="flex flex-col items-center gap-2 group"
+                        >
+                            <div className="w-14 h-14 rounded-full bg-[#1C1F26] border border-white/10 flex items-center justify-center text-gray-300 group-hover:bg-white group-hover:text-black transition shadow-lg">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                                </svg>
+                            </div>
+                            <span className="text-[11px] font-bold text-gray-300">API Keys</span>
+                        </Link>
+
+                        <button
+                            type="button"
+                            onClick={() => router.post('/logout')}
+                            className="flex flex-col items-center gap-2 group cursor-pointer"
+                        >
+                            <div className="w-14 h-14 rounded-full bg-[#1C1F26] border border-white/10 flex items-center justify-center text-red-400 group-hover:bg-red-500 group-hover:text-white transition shadow-lg">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                                </svg>
+                            </div>
+                            <span className="text-[11px] font-bold text-gray-300">Sign Out</span>
+                        </button>
+                    </div>
+
+                    {/* TRANSACTIONS FEED HEADER */}
+                    <div className="space-y-3 pt-2">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-base font-extrabold text-white">
+                                {activeFeed === 'transactions' ? 'Transactions' : 'Withdrawal Settlements'}
+                            </h3>
+                            <span className="text-xs text-gray-400">
+                                {activeFeed === 'transactions' ? `${filteredSessions.length} total` : `${settlements.length} total`}
+                            </span>
+                        </div>
+
+                        {/* Search Bar for transactions */}
+                        {activeFeed === 'transactions' && (
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Search customer, M-Pesa receipt, ref..."
+                                className="w-full bg-[#1C1F26] border border-white/10 rounded-2xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-hidden focus:border-[#FF5F00]"
+                            />
+                        )}
+
+                        {/* FEED LIST (Native app style like the image screenshot) */}
+                        {activeFeed === 'transactions' ? (
+                            filteredSessions.length === 0 ? (
+                                <div className="p-8 text-center text-xs text-gray-500 bg-[#1C1F26] rounded-2xl border border-white/5">
+                                    No transaction activity yet.
                                 </div>
                             ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-gray-50 border-b border-gray-200 text-[11px] font-bold uppercase text-gray-500">
-                                            <tr>
-                                                <th className="py-3 px-4">Reference</th>
-                                                <th className="py-3 px-4">Amount</th>
-                                                <th className="py-3 px-4">Channel</th>
-                                                <th className="py-3 px-4">Destination</th>
-                                                <th className="py-3 px-4">Status</th>
-                                                <th className="py-3 px-4">Requested Date</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100 text-xs">
-                                            {settlements.map((set) => {
-                                                const dest = typeof set.destination === 'string' ? JSON.parse(set.destination) : (set.destination || {});
-                                                return (
-                                                    <tr key={set.id} className="hover:bg-gray-50/70">
-                                                        <td className="py-3.5 px-4 font-mono font-bold text-brand-dark">
-                                                            {set.reference}
-                                                        </td>
-                                                        <td className="py-3.5 px-4 font-bold text-brand-dark">
-                                                            {formatMoney(set.amount, set.currency)}
-                                                        </td>
-                                                        <td className="py-3.5 px-4 uppercase text-[11px] font-semibold text-gray-600">
-                                                            {set.channel}
-                                                        </td>
-                                                        <td className="py-3.5 px-4 font-mono text-gray-700">
-                                                            {dest.phone || dest.account_number ? `${dest.bank_name ? dest.bank_name + ' · ' : ''}${dest.phone || dest.account_number}` : '—'}
-                                                        </td>
-                                                        <td className="py-3.5 px-4">
-                                                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                                                                {set.status}
-                                                            </span>
-                                                        </td>
-                                                        <td className="py-3.5 px-4 text-gray-500">
-                                                            {new Date(set.created_at).toLocaleString('en-KE')}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
+                                <div className="space-y-2.5">
+                                    {filteredSessions.map((s) => {
+                                        const isPaid = s.status === 'paid';
+                                        const isRefunded = s.status === 'refunded';
 
-            {/* WITHDRAWAL MODAL */}
+                                        return (
+                                            <div
+                                                key={s.id}
+                                                className="bg-[#1C1F26] border border-white/5 rounded-2xl p-4 flex items-center justify-between gap-3"
+                                            >
+                                                {/* Left Icon */}
+                                                <div className="flex items-center gap-3.5 min-w-0">
+                                                    <div
+                                                        className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
+                                                            isPaid
+                                                                ? 'bg-[#32BB78] text-white shadow-md shadow-[#32BB78]/25'
+                                                                : isRefunded
+                                                                    ? 'bg-purple-600 text-white'
+                                                                    : 'bg-[#FF5F00] text-white'
+                                                        }`}
+                                                    >
+                                                        {isPaid ? '✓' : isRefunded ? 'R' : 'P'}
+                                                    </div>
+
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-sm text-white truncate">
+                                                            {s.customer?.name || s.merchant_reference}
+                                                        </p>
+                                                        <p className="text-[11px] text-gray-400 truncate mt-0.5">
+                                                            {s.mpesa_receipt ? `${s.mpesa_receipt} · ` : ''}
+                                                            {new Date(s.created_at).toLocaleDateString('en-KE', {
+                                                                day: 'numeric',
+                                                                month: 'short',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit',
+                                                            })}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Right Amount & Actions */}
+                                                <div className="text-right flex-shrink-0">
+                                                    <p
+                                                        className={`font-black text-sm ${
+                                                            isPaid
+                                                                ? 'text-[#32BB78]'
+                                                                : isRefunded
+                                                                    ? 'text-purple-400'
+                                                                    : 'text-amber-400'
+                                                        }`}
+                                                    >
+                                                        {isPaid ? `+ ${formatMoney(s.amount)} KES` : `${formatMoney(s.amount)} KES`}
+                                                    </p>
+
+                                                    {isPaid && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setRefundTarget(s)}
+                                                            className="text-[10px] font-bold text-gray-400 hover:text-purple-400 underline mt-0.5 cursor-pointer block ml-auto"
+                                                        >
+                                                            Refund
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )
+                        ) : (
+                            /* Payout Settlements List */
+                            settlements.length === 0 ? (
+                                <div className="p-8 text-center text-xs text-gray-500 bg-[#1C1F26] rounded-2xl border border-white/5">
+                                    No payout settlement requests yet.
+                                </div>
+                            ) : (
+                                <div className="space-y-2.5">
+                                    {settlements.map((set) => {
+                                        const dest = typeof set.destination === 'string' ? JSON.parse(set.destination) : (set.destination || {});
+                                        return (
+                                            <div
+                                                key={set.id}
+                                                className="bg-[#1C1F26] border border-white/5 rounded-2xl p-4 flex items-center justify-between gap-3"
+                                            >
+                                                <div className="flex items-center gap-3.5 min-w-0">
+                                                    <div className="w-11 h-11 rounded-full bg-[#FF5F00] text-white flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-md shadow-[#FF5F00]/25">
+                                                        ↑
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-sm text-white truncate font-mono">
+                                                            {set.reference}
+                                                        </p>
+                                                        <p className="text-[11px] text-gray-400 truncate mt-0.5">
+                                                            {dest.phone || dest.account_number} · {new Date(set.created_at).toLocaleDateString('en-KE')}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="text-right flex-shrink-0">
+                                                    <p className="font-black text-sm text-[#FF5F00]">
+                                                        - {formatMoney(set.amount)} KES
+                                                    </p>
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full mt-1 inline-block">
+                                                        {set.status}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )
+                        )}
+                    </div>
+                </div>
+            </main>
+
+            {/* STICKY BOTTOM APP BAR FOR MOBILE PHONES (Hidden on Desktop) */}
+            <nav className="lg:hidden fixed bottom-0 inset-x-0 h-16 bg-[#181B20] border-t border-white/10 px-6 flex items-center justify-between z-40">
+                <button
+                    type="button"
+                    onClick={() => setActiveFeed('transactions')}
+                    className={`flex flex-col items-center gap-1 ${activeFeed === 'transactions' ? 'text-[#FF5F00]' : 'text-gray-500'}`}
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                    </svg>
+                    <span className="text-[10px] font-bold">Wallet</span>
+                </button>
+
+                {/* Floating Orange Center Action Button */}
+                <button
+                    type="button"
+                    onClick={() => setIsWithdrawOpen(true)}
+                    className="-mt-7 w-13 h-13 rounded-full bg-[#FF5F00] text-white flex items-center justify-center shadow-lg shadow-[#FF5F00]/50 border-4 border-[#111317] cursor-pointer"
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                </button>
+
+                <Link
+                    href="/merchant/developers"
+                    className="flex flex-col items-center gap-1 text-gray-500 hover:text-white"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+                    </svg>
+                    <span className="text-[10px] font-bold">API</span>
+                </Link>
+            </nav>
+
+            {/* WITHDRAW MODAL */}
             {isWithdrawOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-                    <div className="bg-white rounded-3xl border border-gray-200 p-6 max-w-md w-full shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between pb-3 border-b border-gray-200">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+                    <div className="bg-[#1C1F26] border border-white/10 p-6 rounded-3xl max-w-sm w-full space-y-4 text-white">
+                        <div className="flex justify-between items-center pb-3 border-b border-white/10">
                             <div>
-                                <h3 className="text-base font-extrabold text-brand-dark">Withdraw Funds</h3>
-                                <p className="text-xs text-gray-500">
-                                    Available:{' '}
-                                    <strong className="text-emerald-700">{formatMoney(availableBalance)}</strong>
-                                </p>
+                                <h4 className="font-extrabold text-base">Withdraw Funds</h4>
+                                <p className="text-xs text-gray-400">Available: {formatMoney(availableBalance)} KES</p>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setIsWithdrawOpen(false)}
-                                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 cursor-pointer"
+                                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400"
                             >
                                 ✕
                             </button>
                         </div>
 
                         {availableBalance < 100 ? (
-                            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed">
-                                You need at least KES 100 to request a payout. Your current balance is {formatMoney(availableBalance)}.
+                            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                                Minimum withdrawal is 100 KES. Your balance is {formatMoney(availableBalance)} KES.
                             </div>
                         ) : (
-                            <form onSubmit={submitWithdrawal} className="space-y-4">
+                            <form onSubmit={submitWithdrawal} className="space-y-4 text-xs">
                                 <div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <label className="block text-xs font-semibold text-brand-dark">Amount (KES) *</label>
+                                    <div className="flex justify-between mb-1">
+                                        <label className="font-bold text-gray-300">Amount (KES)</label>
                                         <button
                                             type="button"
                                             onClick={() => withdrawForm.setData('amount', String(availableBalance))}
-                                            className="text-[11px] font-bold text-brand-primary hover:underline cursor-pointer"
+                                            className="text-[#FF5F00] font-bold hover:underline"
                                         >
-                                            Max ({formatMoney(availableBalance)})
+                                            Max
                                         </button>
                                     </div>
                                     <input
@@ -390,30 +496,24 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                         value={withdrawForm.data.amount}
                                         onChange={(e) => withdrawForm.setData('amount', e.target.value)}
                                         placeholder={`100 - ${availableBalance}`}
-                                        className={`w-full rounded-xl px-4 py-2.5 text-sm font-mono border ${
-                                            isExceedingBalance
-                                                ? 'border-red-500 bg-red-50 text-red-900'
-                                                : 'bg-gray-50 border-gray-200'
-                                        }`}
+                                        className="w-full bg-[#121418] border border-white/10 rounded-xl px-4 py-2.5 text-sm font-mono text-white focus:outline-hidden focus:border-[#FF5F00]"
                                         required
                                     />
                                     {isExceedingBalance && (
-                                        <p className="text-xs text-red-600 mt-1 font-semibold">
-                                            Exceeds available balance of {formatMoney(availableBalance)}.
-                                        </p>
+                                        <p className="text-red-400 text-[11px] mt-1">Exceeds available balance.</p>
                                     )}
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-semibold text-brand-dark mb-1">Channel *</label>
+                                    <label className="font-bold text-gray-300 mb-1 block">Payout Channel</label>
                                     <div className="grid grid-cols-2 gap-2">
                                         <button
                                             type="button"
                                             onClick={() => withdrawForm.setData('channel', 'mpesa')}
-                                            className={`py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                                            className={`py-2 rounded-xl font-bold border transition ${
                                                 withdrawForm.data.channel === 'mpesa'
-                                                    ? 'border-brand-primary bg-brand-primary/5 text-brand-primary'
-                                                    : 'border-gray-200 bg-white text-gray-600'
+                                                    ? 'border-[#FF5F00] bg-[#FF5F00]/10 text-[#FF5F00]'
+                                                    : 'border-white/10 bg-white/5 text-gray-400'
                                             }`}
                                         >
                                             M-Pesa B2C
@@ -421,10 +521,10 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                         <button
                                             type="button"
                                             onClick={() => withdrawForm.setData('channel', 'bank')}
-                                            className={`py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                                            className={`py-2 rounded-xl font-bold border transition ${
                                                 withdrawForm.data.channel === 'bank'
-                                                    ? 'border-brand-primary bg-brand-primary/5 text-brand-primary'
-                                                    : 'border-gray-200 bg-white text-gray-600'
+                                                    ? 'border-[#FF5F00] bg-[#FF5F00]/10 text-[#FF5F00]'
+                                                    : 'border-white/10 bg-white/5 text-gray-400'
                                             }`}
                                         >
                                             Bank Transfer
@@ -434,49 +534,43 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
 
                                 {withdrawForm.data.channel === 'mpesa' ? (
                                     <div>
-                                        <label className="block text-xs font-semibold text-brand-dark mb-1">M-Pesa Phone Number *</label>
+                                        <label className="font-bold text-gray-300 mb-1 block">M-Pesa Phone</label>
                                         <input
                                             type="tel"
                                             value={withdrawForm.data.phone}
                                             onChange={(e) => withdrawForm.setData('phone', e.target.value)}
                                             placeholder="0712345678"
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-mono"
+                                            className="w-full bg-[#121418] border border-white/10 rounded-xl px-4 py-2.5 text-sm font-mono text-white"
                                             required
                                         />
                                     </div>
                                 ) : (
-                                    <div className="space-y-3">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-brand-dark mb-1">Bank Name *</label>
-                                            <input
-                                                type="text"
-                                                value={withdrawForm.data.bank_name}
-                                                onChange={(e) => withdrawForm.setData('bank_name', e.target.value)}
-                                                placeholder="e.g. Equity Bank"
-                                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm"
-                                                required
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-brand-dark mb-1">Account Number *</label>
-                                            <input
-                                                type="text"
-                                                value={withdrawForm.data.account_number}
-                                                onChange={(e) => withdrawForm.setData('account_number', e.target.value)}
-                                                placeholder="0123456789"
-                                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-mono"
-                                                required
-                                            />
-                                        </div>
+                                    <div className="space-y-2">
+                                        <input
+                                            type="text"
+                                            value={withdrawForm.data.bank_name}
+                                            onChange={(e) => withdrawForm.setData('bank_name', e.target.value)}
+                                            placeholder="Bank Name (e.g. Equity)"
+                                            className="w-full bg-[#121418] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white"
+                                            required
+                                        />
+                                        <input
+                                            type="text"
+                                            value={withdrawForm.data.account_number}
+                                            onChange={(e) => withdrawForm.setData('account_number', e.target.value)}
+                                            placeholder="Account Number"
+                                            className="w-full bg-[#121418] border border-white/10 rounded-xl px-4 py-2.5 text-sm font-mono text-white"
+                                            required
+                                        />
                                     </div>
                                 )}
 
                                 <button
                                     type="submit"
                                     disabled={!canWithdraw || withdrawForm.processing}
-                                    className="w-full bg-brand-dark text-white py-3.5 rounded-xl font-bold text-sm hover:bg-black transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                    className="w-full bg-[#FF5F00] text-white py-3.5 rounded-xl font-bold text-sm hover:bg-[#e05400] transition disabled:opacity-40 cursor-pointer shadow-lg shadow-[#FF5F00]/25"
                                 >
-                                    {withdrawForm.processing ? 'Submitting...' : `Withdraw ${formatMoney(requestedAmount)}`}
+                                    {withdrawForm.processing ? 'Processing...' : 'Confirm Withdrawal'}
                                 </button>
                             </form>
                         )}
@@ -486,50 +580,47 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
 
             {/* REFUND MODAL */}
             {refundTarget && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-                    <div className="bg-white rounded-3xl border border-gray-200 p-6 max-w-md w-full shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between pb-3 border-b border-gray-200">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+                    <div className="bg-[#1C1F26] border border-white/10 p-6 rounded-3xl max-w-sm w-full space-y-4 text-white">
+                        <div className="flex justify-between items-center pb-3 border-b border-white/10">
                             <div>
-                                <h3 className="text-base font-extrabold text-brand-dark">Confirm Refund</h3>
-                                <p className="text-xs text-gray-500">Ref: {refundTarget.merchant_reference}</p>
+                                <h4 className="font-extrabold text-base">Issue Refund</h4>
+                                <p className="text-xs text-gray-400">Ref: {refundTarget.merchant_reference}</p>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setRefundTarget(null)}
-                                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 cursor-pointer"
+                                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400"
                             >
                                 ✕
                             </button>
                         </div>
 
-                        <form onSubmit={confirmRefund} className="space-y-4">
-                            <p className="text-xs text-gray-600 leading-relaxed">
-                                Issue refund of{' '}
-                                <strong className="text-brand-dark">{formatMoney(refundTarget.amount, refundTarget.currency)}</strong> to the customer. This will deduct from your available balance.
+                        <form onSubmit={confirmRefund} className="space-y-4 text-xs">
+                            <p className="text-gray-300 leading-relaxed">
+                                You are about to refund{' '}
+                                <strong className="text-white">{formatMoney(refundTarget.amount)} KES</strong>. This will deduct from your available balance and trigger a signed webhook.
                             </p>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-brand-dark mb-1">Reason for Refund</label>
-                                <input
-                                    type="text"
-                                    value={refundReason}
-                                    onChange={(e) => setRefundReason(e.target.value)}
-                                    placeholder="e.g. Order cancellation"
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm"
-                                />
-                            </div>
+                            <input
+                                type="text"
+                                value={refundReason}
+                                onChange={(e) => setRefundReason(e.target.value)}
+                                placeholder="Reason (e.g. Order cancellation)"
+                                className="w-full bg-[#121418] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white"
+                            />
 
                             <div className="flex gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setRefundTarget(null)}
-                                    className="w-1/3 bg-gray-100 text-brand-dark py-3 rounded-xl font-bold text-xs cursor-pointer"
+                                    className="w-1/3 bg-white/10 text-gray-300 py-3 rounded-xl font-bold"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="w-2/3 bg-purple-600 text-white py-3 rounded-xl font-bold text-xs hover:bg-purple-700 transition cursor-pointer"
+                                    className="w-2/3 bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 transition"
                                 >
                                     Process Refund
                                 </button>
@@ -538,6 +629,6 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                     </div>
                 </div>
             )}
-        </MainLayout>
+        </div>
     );
 }
