@@ -21,6 +21,7 @@ class Transporter extends Model
         'base_fare',
         'rate_per_kg',
         'rate_per_km',
+        'max_weight_kg',
     ];
 
     protected $casts = [
@@ -28,6 +29,7 @@ class Transporter extends Model
         'base_fare' => 'float',
         'rate_per_kg' => 'float',
         'rate_per_km' => 'float',
+        'max_weight_kg' => 'float',
     ];
 
     public function user(): HasOne

@@ -36,12 +36,13 @@ class CheckoutController extends Controller
                     'base_fare',
                     'rate_per_kg',
                     'rate_per_km',
+                    'max_weight_kg',
                 ]),
         ]);
     }
 
     /**
-     * Shop Checkout: Verifies item pricing/weights from DB, checks transporter availability,
+     * Shop Checkout: Verifies item pricing/weights from DB, checks transporter availability & capacity,
      * creates local pending Order (without locking the rider until paid), and requests an Evopay session.
      */
     public function process(Request $request, PricingService $pricing)
@@ -159,10 +160,10 @@ class CheckoutController extends Controller
         }
 
         $distanceKm = 0.0;
-        $estimatedTransportFee = 0.0;
+        $transportFee = 0.0;
         $chosenTransporter = null;
 
-        // If customer chooses transporter, verify availability (locked only after payment succeeds)
+        // If customer chooses transporter, verify availability & weight capacity (locked only after payment succeeds)
         if ($data['delivery_method'] === 'transporter') {
             if (!empty($data['delivery']['lat']) && !empty($data['delivery']['lng'])) {
                 $hqLat = (float) Setting::get('hq_lat', -1.2674);
@@ -188,7 +189,14 @@ class CheckoutController extends Controller
                 ], 422);
             }
 
-            $estimatedTransportFee = $this->computeTransportFee($chosenTransporter, $totalWeight, $distanceKm);
+            $maxCapacity = (float) ($chosenTransporter->max_weight_kg ?? 0);
+            if ($maxCapacity > 0 && $totalWeight > $maxCapacity) {
+                return response()->json([
+                    'error' => "{$chosenTransporter->name} ({$chosenTransporter->vehicle_type}) carries up to " . number_format($maxCapacity) . " kg, but your order weighs " . number_format($totalWeight) . " kg. Please select a larger vehicle.",
+                ], 422);
+            }
+
+            $transportFee = $this->computeTransportFee($chosenTransporter, $totalWeight, $distanceKm);
         }
 
         // Customer pays for materials online; transport fee is paid to the driver on site
@@ -207,7 +215,7 @@ class CheckoutController extends Controller
                 'fee' => 0.00, // Transport fee paid on arrival
                 'distance_km' => round($distanceKm, 2),
                 'total_weight_kg' => round($totalWeight, 2),
-                'estimated_transport_fee' => $estimatedTransportFee,
+                'estimated_transport_fee' => $transportFee,
                 'transporter_id' => $chosenTransporter?->id,
                 'transporter_name' => $chosenTransporter?->name,
                 'transporter_phone' => $chosenTransporter?->phone,
@@ -380,7 +388,7 @@ class CheckoutController extends Controller
 
     /**
      * Atomically mark an order paid, claim the selected rider (first-to-pay wins),
-     * or auto-reassign to another available relevant rider if the first one was already taken.
+     * or auto-reassign to another available relevant rider capable of carrying totalWeight.
      */
     private function finalizePaidOrder(Order $order, array $data): void
     {
@@ -394,21 +402,28 @@ class CheckoutController extends Controller
 
             if (($delivery['method'] ?? null) === 'transporter') {
                 $requestedId = (int) ($delivery['transporter_id'] ?? 0);
+                $totalWeight = (float) ($delivery['total_weight_kg'] ?? 0);
                 $assigned = null;
 
                 if ($requestedId > 0) {
                     $preferred = Transporter::where('id', $requestedId)->lockForUpdate()->first();
-                    if ($preferred && $preferred->status === 'approved' && $preferred->is_available) {
+                    $fitsCapacity = !$preferred?->max_weight_kg || (float) $preferred->max_weight_kg <= 0 || $totalWeight <= (float) $preferred->max_weight_kg;
+                    if ($preferred && $preferred->status === 'approved' && $preferred->is_available && $fitsCapacity) {
                         $assigned = $preferred;
                     }
                 }
 
-                // If chosen rider was already claimed by an earlier payer, find a relevant available rider
+                // If chosen rider was already claimed by an earlier payer, find a relevant available rider who fits cargo weight
                 if (!$assigned) {
                     $preferredVehicle = (string) ($delivery['transporter_vehicle'] ?? '');
 
                     $assigned = Transporter::where('status', 'approved')
                         ->where('is_available', true)
+                        ->where(function ($q) use ($totalWeight) {
+                            $q->whereNull('max_weight_kg')
+                                ->orWhere('max_weight_kg', '<=', 0)
+                                ->orWhere('max_weight_kg', '>=', $totalWeight);
+                        })
                         ->when($preferredVehicle !== '', function ($q) use ($preferredVehicle) {
                             $q->orderByRaw('CASE WHEN vehicle_type = ? THEN 0 ELSE 1 END', [$preferredVehicle]);
                         })
@@ -421,7 +436,6 @@ class CheckoutController extends Controller
                     $assigned->update(['is_available' => false]);
 
                     if ((int) $assigned->id !== $requestedId) {
-                        $totalWeight = (float) ($delivery['total_weight_kg'] ?? 0);
                         $distanceKm = (float) ($delivery['distance_km'] ?? 0);
 
                         $delivery['transporter_id'] = $assigned->id;

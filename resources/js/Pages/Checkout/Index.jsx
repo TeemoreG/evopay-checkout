@@ -38,17 +38,40 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
     const [distanceKm, setDistanceKm] = useState(0);
     const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
 
-    // Keep transporter list hidden behind drawer/modal by default
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [selectedTransporter, setSelectedTransporter] = useState(null);
 
     const [form, setForm] = useState({
         customer: { name: '', phone: '', email: '' },
         delivery: { formatted: '', lat: null, lng: null, placeId: '', landmark: '', notes: '', transporter_id: null },
-        delivery_method: 'transporter', // 'transporter' or 'pickup'
+        delivery_method: 'transporter',
     });
 
     const [errors, setErrors] = useState({});
+
+    const subtotal = items.reduce((n, i) => n + i.lineTotal, 0);
+    const totalWeight = items.reduce((acc, item) => acc + (item.qty * parseFloat(item.weight || 0)), 0);
+
+    const fitsLoad = (t) => {
+        const max = Number(t?.max_weight_kg || 0);
+        return max <= 0 || totalWeight <= max;
+    };
+
+    const freeRadius = Number(free_radius_km || 0);
+    const billableKm = distanceKm > freeRadius ? Math.ceil(distanceKm - freeRadius) : 0;
+    const hasDestination = Boolean(form.delivery.formatted);
+
+    const computeFee = (t) => {
+        if (!t) return 0;
+        const base = Number(t.base_fare || 0);
+        const wFee = totalWeight * Number(t.rate_per_kg || 0);
+        const dFee = billableKm * Number(t.rate_per_km || 0);
+        return Math.round(base + wFee + dFee);
+    };
+
+    const transportFee = form.delivery_method === 'transporter' && selectedTransporter && hasDestination
+        ? computeFee(selectedTransporter)
+        : 0;
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -60,8 +83,10 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
     }, []);
 
     useEffect(() => {
+        const eligible = transporters.filter(fitsLoad);
+
         setSelectedTransporter((current) => {
-            if (transporters.length === 0) {
+            if (eligible.length === 0) {
                 setForm((f) => ({
                     ...f,
                     delivery: { ...f.delivery, transporter_id: null },
@@ -69,8 +94,8 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                 return null;
             }
 
-            const match = current ? transporters.find((t) => t.id === current.id) : null;
-            const next = match || transporters[0];
+            const match = current ? eligible.find((t) => t.id === current.id) : null;
+            const next = match || eligible[0];
 
             setForm((f) =>
                 f.delivery.transporter_id === next.id
@@ -79,7 +104,7 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
             );
             return next;
         });
-    }, [transporters]);
+    }, [transporters, totalWeight]);
 
     useEffect(() => {
         const refresh = () => {
@@ -120,21 +145,6 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
         clearFieldError(`delivery.${key}`);
     };
 
-    const subtotal = items.reduce((n, i) => n + i.lineTotal, 0);
-    const totalWeight = items.reduce((acc, item) => acc + (item.qty * parseFloat(item.weight || 0)), 0);
-
-    // Dynamic transport calculation using chosen driver's rate card
-    const freeRadius = Number(free_radius_km || 0);
-    const billableKm = distanceKm > freeRadius ? Math.ceil(distanceKm - freeRadius) : 0;
-
-    let estimatedTransportFee = 0;
-    if (form.delivery_method === 'transporter' && selectedTransporter) {
-        const base = Number(selectedTransporter.base_fare || 0);
-        const wFee = totalWeight * Number(selectedTransporter.rate_per_kg || 0);
-        const dFee = billableKm * Number(selectedTransporter.rate_per_km || 0);
-        estimatedTransportFee = base + wFee + dFee;
-    }
-
     const total = subtotal; // Materials paid online; driver paid on delivery
 
     const handleAddressSelect = async (address) => {
@@ -144,14 +154,14 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
         if (address.lat && address.lng) {
             setIsCalculatingDistance(true);
             try {
-                const res = await axios.post('/api/distance', {
+                const res = await axios.post('/checkout/distance', {
                     lat: address.lat,
                     lng: address.lng,
                 });
-                setDistanceKm(res.data.distance_km);
+                setDistanceKm(Number(res.data.distance_km || 0));
             } catch (error) {
                 console.error('Failed to get distance', error);
-                setDistanceKm(5); // Fallback
+                setDistanceKm(0);
             } finally {
                 setIsCalculatingDistance(false);
             }
@@ -181,7 +191,9 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                 errs['delivery.formatted'] = 'Please search and select your site destination address.';
             }
             if (!form.delivery.transporter_id) {
-                errs['delivery.transporter_id'] = 'Please click "Browse Transporters" and select an available driver.';
+                errs['delivery.transporter_id'] = 'Please select an available driver who can carry your cargo weight.';
+            } else if (selectedTransporter && !fitsLoad(selectedTransporter)) {
+                errs['delivery.transporter_id'] = `${selectedTransporter.name} max load is ${selectedTransporter.max_weight_kg} kg. Pick a larger vehicle.`;
             }
         }
 
@@ -220,7 +232,7 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                 customer: form.customer,
                 delivery: {
                     ...form.delivery,
-                    estimated_transport_fee: estimatedTransportFee,
+                    estimated_transport_fee: transportFee,
                 },
             });
 
@@ -349,7 +361,7 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                                             <p className="text-xs font-semibold text-emerald-800">Site Destination Confirmed:</p>
                                             <p className="text-sm text-emerald-700">{form.delivery.formatted}</p>
                                             <p className="text-[11px] text-emerald-600 mt-0.5">
-                                                Distance: <strong>{distanceKm} km</strong>
+                                                Distance: <strong>{distanceKm} km</strong> · Cargo Weight: <strong>{totalWeight.toLocaleString()} kg</strong>
                                             </p>
                                         </div>
                                     </div>
@@ -413,7 +425,7 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                     <div>
                                         <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                                            Assigned Transporter
+                                            Assigned Transporter · {totalWeight.toLocaleString()} kg load
                                         </p>
                                         <p className="text-xs text-gray-400 mt-0.5">
                                             Driver phone details will be unlocked on your receipt after payment.
@@ -447,24 +459,33 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                                                     {selectedTransporter.vehicle_type}
                                                     {selectedTransporter.plate_number ? ` · ${selectedTransporter.plate_number}` : ''}
                                                 </p>
-                                                {selectedTransporter.area && (
-                                                    <p className="text-[11px] text-gray-400 truncate">
-                                                        Base: {selectedTransporter.area}
-                                                    </p>
-                                                )}
+                                                <p className="text-[11px] text-gray-400 truncate">
+                                                    {selectedTransporter.area ? `Base: ${selectedTransporter.area}` : ''}
+                                                    {Number(selectedTransporter.max_weight_kg) > 0
+                                                        ? ` · Max ${Number(selectedTransporter.max_weight_kg).toLocaleString()} kg`
+                                                        : ''}
+                                                </p>
                                             </div>
                                         </div>
 
                                         <div className="text-right flex-shrink-0">
-                                            <p className="text-[11px] font-semibold text-gray-400">Est. Haul Fee</p>
-                                            <p className="text-sm font-extrabold text-brand-primary">
-                                                {formatKES(estimatedTransportFee)}
-                                            </p>
+                                            <p className="text-[11px] font-semibold text-gray-400">Delivery Fee</p>
+                                            {hasDestination ? (
+                                                <p className="text-sm font-extrabold text-brand-primary">
+                                                    {formatKES(transportFee)}
+                                                </p>
+                                            ) : (
+                                                <p className="text-xs font-semibold text-gray-500">
+                                                    Enter address
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="p-4 rounded-xl bg-white border border-dashed border-gray-300 text-center text-xs text-gray-500">
-                                        No driver selected yet. Click <strong>Browse Transporters</strong> to choose one.
+                                        {transporters.length === 0
+                                            ? 'No transporters are currently online.'
+                                            : `No available driver can carry ${totalWeight.toLocaleString()} kg. Click Browse Transporters or reduce load.`}
                                     </div>
                                 )}
 
@@ -538,15 +559,22 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                                 <span className="font-medium text-brand-dark">{formatKES(subtotal)}</span>
                             </div>
 
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Total Cargo Weight</span>
+                                <span className="font-medium text-brand-dark">{totalWeight.toLocaleString()} kg</span>
+                            </div>
+
                             <div className="flex justify-between items-start">
                                 <span className="text-gray-500">Transport Fee</span>
                                 <div className="text-right">
                                     {form.delivery_method === 'pickup' ? (
                                         <span className="font-medium text-brand-primary">Free (Pickup)</span>
+                                    ) : !hasDestination ? (
+                                        <span className="text-xs text-gray-400">Select address</span>
                                     ) : (
                                         <>
                                             <span className="font-medium text-brand-primary">
-                                                {selectedTransporter ? formatKES(estimatedTransportFee) : 'Pick Driver'}
+                                                {selectedTransporter ? formatKES(transportFee) : 'Pick Driver'}
                                             </span>
                                             <div className="text-[10px] text-gray-400 mt-0.5">
                                                 Pay driver upon arrival
@@ -590,7 +618,9 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                         <div className="flex justify-between items-center pb-4 border-b border-brand-border mb-4">
                             <div>
                                 <h3 className="text-lg font-bold text-brand-dark">Select Transporter</h3>
-                                <p className="text-xs text-gray-500">Only currently online drivers are listed.</p>
+                                <p className="text-xs text-gray-500">
+                                    Cargo: {totalWeight.toLocaleString()} kg{hasDestination ? ` · Distance: ${distanceKm} km` : ''}
+                                </p>
                             </div>
                             <button
                                 type="button"
@@ -608,16 +638,16 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                         ) : (
                             <div className="space-y-2.5">
                                 {transporters.map((t) => {
+                                    const eligible = fitsLoad(t);
                                     const isSelected = selectedTransporter?.id === t.id;
-                                    const base = Number(t.base_fare || 0);
-                                    const wFee = totalWeight * Number(t.rate_per_kg || 0);
-                                    const dFee = billableKm * Number(t.rate_per_km || 0);
-                                    const est = base + wFee + dFee;
+                                    const fee = computeFee(t);
+                                    const maxCap = Number(t.max_weight_kg || 0);
 
                                     return (
                                         <div
                                             key={t.id}
                                             onClick={() => {
+                                                if (!eligible) return;
                                                 setSelectedTransporter(t);
                                                 setForm((f) => ({
                                                     ...f,
@@ -626,10 +656,12 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                                                 clearFieldError('delivery.transporter_id');
                                                 setIsPickerOpen(false);
                                             }}
-                                            className={`p-3 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
-                                                isSelected
-                                                    ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/20'
-                                                    : 'border-brand-border bg-white hover:border-gray-300'
+                                            className={`p-3 rounded-2xl border transition flex items-center justify-between gap-3 ${
+                                                !eligible
+                                                    ? 'border-gray-200 bg-gray-50 opacity-55 cursor-not-allowed'
+                                                    : isSelected
+                                                        ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/20 cursor-pointer'
+                                                        : 'border-brand-border bg-white hover:border-gray-300 cursor-pointer'
                                             }`}
                                         >
                                             <div className="flex items-center gap-3 min-w-0">
@@ -645,17 +677,32 @@ export default function CheckoutIndex({ transporters = [], free_radius_km = 3 })
                                                         {t.vehicle_type}
                                                         {t.plate_number ? ` · ${t.plate_number}` : ''}
                                                     </p>
-                                                    {t.area && (
-                                                        <p className="text-[11px] text-gray-400 truncate">
-                                                            Base: {t.area}
+                                                    <p className="text-[11px] text-gray-400 truncate">
+                                                        {t.area ? `Base: ${t.area}` : ''}
+                                                        {maxCap > 0 ? ` · Max ${maxCap.toLocaleString()} kg` : ''}
+                                                    </p>
+                                                    {!eligible && (
+                                                        <p className="text-[10px] font-bold text-red-600 mt-0.5">
+                                                            Load exceeds {maxCap.toLocaleString()} kg limit
                                                         </p>
                                                     )}
                                                 </div>
                                             </div>
 
                                             <div className="text-right flex-shrink-0">
-                                                <p className="text-xs font-bold text-brand-primary">Est. Fee</p>
-                                                <p className="text-sm font-extrabold text-brand-dark">{formatKES(est)}</p>
+                                                {!eligible ? (
+                                                    <span className="text-[11px] font-bold text-red-600">Too Heavy</span>
+                                                ) : hasDestination ? (
+                                                    <>
+                                                        <p className="text-[11px] font-bold text-brand-primary">Delivery Fee</p>
+                                                        <p className="text-sm font-extrabold text-brand-dark">{formatKES(fee)}</p>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <p className="text-[11px] font-semibold text-gray-400">Base + Weight</p>
+                                                        <p className="text-xs font-bold text-gray-700">{formatKES(fee)} + km</p>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     );
