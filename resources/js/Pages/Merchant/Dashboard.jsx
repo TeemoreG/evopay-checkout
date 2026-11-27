@@ -1,26 +1,33 @@
 import { useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 
-const BRAND_ORANGE = '#FF6600';
-
 const formatMoney = (amount) =>
     Number(amount || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const isSessionExpired = (session) => {
     if (session.status !== 'pending') return false;
     const createdAt = new Date(session.created_at).getTime();
-    const thirtyMinutesMs = 30 * 60 * 1000;
-    return Date.now() - createdAt > thirtyMinutesMs;
+    return Date.now() - createdAt > 30 * 60 * 1000;
 };
 
 export default function MerchantDashboard({ merchant, stats, wallet = {}, sessions = [], settlements = [] }) {
     const [activeFeed, setActiveFeed] = useState('transactions');
+    const [statusFilter, setStatusFilter] = useState('all');
     const [search, setSearch] = useState('');
     const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
     const [refundTarget, setRefundTarget] = useState(null);
     const [refundReason, setRefundReason] = useState('');
+    const [copiedVirtualId, setCopiedVirtualId] = useState(false);
 
     const availableBalance = Number(wallet.available_balance || 0);
+    const cleanSlug = (merchant.slug || 'account').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const virtualAccountId = `EVP-${cleanSlug}`;
+
+    const copyVirtualId = () => {
+        navigator.clipboard?.writeText(virtualAccountId);
+        setCopiedVirtualId(true);
+        setTimeout(() => setCopiedVirtualId(false), 1800);
+    };
 
     const withdrawForm = useForm({
         amount: '',
@@ -36,7 +43,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
 
     const submitWithdrawal = (e) => {
         e.preventDefault();
-        if (isExceedingBalance || requestedAmount <= 0) return;
+        if (!canWithdraw) return;
 
         withdrawForm.post('/merchant/withdraw', {
             preserveScroll: true,
@@ -65,6 +72,8 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
     };
 
     const filteredSessions = sessions.filter((s) => {
+        if (statusFilter !== 'all' && s.status !== statusFilter) return false;
+
         const q = search.trim().toLowerCase();
         if (!q) return true;
 
@@ -78,69 +87,67 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
     });
 
     return (
-        <div className="min-h-screen bg-[#14161D] text-gray-100 flex">
-            <Head title={`${merchant.name} — Wallet Console`} />
+        <div className="min-h-screen bg-[#F6F7F9] text-gray-900 flex">
+            <Head title={`${merchant.name} — Merchant Wallet`} />
 
-            {/* DESKTOP FULL-HEIGHT SIDEBAR (Hidden on mobile) */}
-            <aside className="hidden lg:flex w-72 fixed inset-y-0 left-0 bg-[#1A1D26] border-r border-white/5 flex-col justify-between z-30">
+            {/* DESKTOP FULL-HEIGHT SIDEBAR (Hidden on mobile, flush top-to-bottom) */}
+            <aside className="hidden lg:flex w-72 fixed inset-y-0 left-0 bg-white border-r border-gray-200 flex-col justify-between z-30">
                 <div>
-                    {/* Brand Logo Header */}
-                    <div className="h-20 flex items-center gap-3 px-6 border-b border-white/5">
+                    {/* Logo with text stacked below */}
+                    <div className="px-6 py-5 border-b border-gray-200">
                         <img
                             src="/images/logo.png"
                             onError={(e) => { e.currentTarget.src = '/assets/logo.png'; }}
-                            alt="Brand Logo"
-                            className="h-9 w-auto object-contain"
+                            alt="Evopay"
+                            className="h-8 w-auto object-contain mb-3"
                         />
-                        <div className="min-w-0">
-                            <span className="text-[10px] uppercase font-bold tracking-widest text-[#FF6600] block">
-                                Merchant Portal
-                            </span>
-                            <p className="text-xs font-extrabold text-white truncate">{merchant.name}</p>
-                        </div>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-[#FF6600]">
+                            Merchant Portal
+                        </p>
+                        <p className="text-sm font-extrabold text-gray-900 truncate mt-0.5">
+                            {merchant.name}
+                        </p>
                     </div>
 
-                    {/* Nav Links */}
-                    <div className="p-4 space-y-5">
-                        <div className="space-y-1">
-                            <Link
-                                href="/merchant"
-                                className="flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold bg-[#FF6600] text-white shadow-md shadow-[#FF6600]/25 transition"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
-                                </svg>
-                                <span>Wallet & Activity</span>
-                            </Link>
+                    {/* Nav */}
+                    <nav className="p-4 space-y-1">
+                        <Link
+                            href="/merchant"
+                            className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold bg-[#FF6600] text-white"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
+                            </svg>
+                            <span>Wallet & Transactions</span>
+                        </Link>
 
-                            <Link
-                                href="/merchant/developers"
-                                className="flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-semibold text-gray-400 hover:text-white hover:bg-white/5 transition"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
-                                </svg>
-                                <span>API Keys & Webhooks</span>
-                            </Link>
-                        </div>
-
-                        {/* Account Card */}
-                        <div className="p-4 rounded-2xl bg-[#222632] border border-white/5 space-y-1">
-                            <p className="text-[10px] uppercase font-bold tracking-wider text-gray-400">Merchant Account</p>
-                            <p className="text-xs font-extrabold text-white truncate">{merchant.name}</p>
-                            <p className="text-[11px] text-gray-400">Platform fee: {merchant.fee_percent}%</p>
-                        </div>
-                    </div>
+                        <Link
+                            href="/merchant/developers"
+                            className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
+                        >
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+                            </svg>
+                            <span>API Keys & Webhooks</span>
+                        </Link>
+                    </nav>
                 </div>
 
-                {/* Sign Out */}
-                <div className="p-4 border-t border-white/5">
+                {/* Bottom Account Summary & Sign Out */}
+                <div className="p-4 border-t border-gray-200 space-y-3">
+                    <div className="px-3 py-2 text-xs text-gray-500">
+                        <span className="block text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                            Gateway Fee Rate
+                        </span>
+                        <span className="font-bold text-gray-900">{merchant.fee_percent}% per checkout</span>
+                    </div>
+
                     <button
                         type="button"
                         onClick={() => router.post('/logout')}
-                        className="w-full flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-bold text-red-400 hover:bg-red-500/10 transition cursor-pointer"
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 transition cursor-pointer"
                     >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
                         </svg>
                         <span>Sign Out</span>
@@ -148,160 +155,193 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                 </div>
             </aside>
 
-            {/* MAIN APP CONTAINER */}
+            {/* MAIN WALLET WORKSPACE */}
             <main className="flex-1 lg:pl-72 min-w-0 pb-24 lg:pb-12">
-                <div className="max-w-md lg:max-w-4xl mx-auto px-4 sm:px-6 pt-5 sm:pt-7 space-y-5">
-                    {/* Top Native Header with Logo */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                <div className="max-w-lg lg:max-w-4xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 space-y-6">
+                    {/* Mobile Top Brand Header (Hidden on Desktop) */}
+                    <div className="lg:hidden flex items-center justify-between pb-1">
+                        <div>
                             <img
                                 src="/images/logo.png"
                                 onError={(e) => { e.currentTarget.src = '/assets/logo.png'; }}
-                                alt="Brand Logo"
-                                className="h-8 w-auto object-contain"
+                                alt="Evopay"
+                                className="h-7 w-auto object-contain mb-1.5"
                             />
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-[#FF6600]">
+                                Merchant Portal
+                            </p>
+                            <p className="text-sm font-extrabold text-gray-900">{merchant.name}</p>
                         </div>
 
                         <button
                             type="button"
-                            onClick={() => setIsWithdrawOpen(true)}
-                            className="w-9 h-9 rounded-full bg-[#222632] border border-white/5 flex items-center justify-center text-[#FF6600] shadow-sm cursor-pointer"
+                            onClick={() => router.post('/logout')}
+                            className="text-xs font-semibold text-gray-600 border border-gray-200 bg-white px-3 py-1.5 rounded-lg"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-                            </svg>
+                            Sign out
                         </button>
                     </div>
 
-                    {/* PHYSICAL DIGITAL WALLET CARD (Fintech/Mobile Card Shell) */}
-                    <div className="relative overflow-hidden rounded-3xl bg-[#222632] border border-white/10 p-6 sm:p-7 shadow-xl">
-                        {/* Radial Contactless Ring */}
-                        <div className="absolute -top-12 -right-12 w-44 h-44 rounded-full border-8 border-white/[0.03] flex items-center justify-center pointer-events-none">
-                            <div className="w-28 h-28 rounded-full border-4 border-white/[0.02]" />
-                        </div>
+                    {/* WALLET BALANCE PANEL */}
+                    <section className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                        <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+                            <div>
+                                <p className="text-xs font-semibold text-gray-500">Total Balance</p>
+                                <div className="flex items-baseline gap-2 mt-1">
+                                    <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+                                        {formatMoney(availableBalance)}
+                                    </h1>
+                                    <span className="text-sm font-bold text-[#FF6600]">KES</span>
+                                </div>
 
-                        <div className="relative z-10 space-y-5">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                                        Total Balance
+                                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                                    <span className="text-gray-500">Virtual Account ID:</span>
+                                    <span className="font-mono font-semibold text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
+                                        {virtualAccountId}
                                     </span>
-                                    <div className="flex items-baseline gap-2 mt-1">
-                                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
-                                            {formatMoney(availableBalance)}
-                                        </h2>
-                                        <span className="text-sm font-extrabold text-[#FF6600]">KES</span>
-                                    </div>
-                                </div>
-
-                                {/* Virtual Card Chip */}
-                                <div className="w-9 h-7 rounded-md bg-[#FF6600]/20 border border-[#FF6600]/40 flex items-center justify-center p-1">
-                                    <div className="w-full h-full border border-[#FF6600]/60 rounded-xs grid grid-cols-2" />
+                                    <button
+                                        type="button"
+                                        onClick={copyVirtualId}
+                                        className="text-[11px] font-semibold text-[#FF6600] hover:underline cursor-pointer"
+                                    >
+                                        {copiedVirtualId ? 'Copied' : 'Copy'}
+                                    </button>
                                 </div>
                             </div>
 
-                            <div className="pt-2 flex justify-between items-end border-t border-white/5">
-                                <div>
-                                    <p className="text-[10px] uppercase font-bold text-gray-400">Account Virtual ID</p>
-                                    <p className="text-xs font-mono text-gray-300 tracking-wider mt-0.5">
-                                        •••• •••• •••• {merchant.slug ? merchant.slug.slice(-4).toUpperCase() : '0000'}
-                                    </p>
-                                </div>
-
-                                {/* Orange Contactless Waves */}
-                                <div className="w-8 h-8 rounded-full bg-[#FF6600]/15 flex items-center justify-center text-[#FF6600]">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0" />
-                                    </svg>
-                                </div>
+                            <div className="flex sm:flex-col items-stretch sm:items-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsWithdrawOpen(true)}
+                                    className="bg-[#FF6600] hover:bg-[#e55c00] text-white font-bold text-xs sm:text-sm px-5 py-3 rounded-xl transition cursor-pointer"
+                                >
+                                    Withdraw Funds
+                                </button>
+                                <span className="text-[11px] text-gray-400 self-center sm:self-end">
+                                    M-Pesa B2C or Bank · Min 100 KES
+                                </span>
                             </div>
                         </div>
-                    </div>
 
-                    {/* CIRCULAR ACTION BUTTONS DOCK (Matching reference screenshot) */}
-                    <div className="grid grid-cols-4 gap-3 py-1">
+                        {/* Ledger Summary Footer */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 border-t border-gray-100 bg-gray-50/70 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 text-xs">
+                            <div className="p-3.5 sm:px-5">
+                                <span className="block text-[11px] text-gray-500">Gross Collected</span>
+                                <span className="font-bold text-gray-900 mt-0.5 block">{formatMoney(wallet.gross_volume || 0)} KES</span>
+                            </div>
+                            <div className="p-3.5 sm:px-5">
+                                <span className="block text-[11px] text-gray-500">Fees ({merchant.fee_percent}%)</span>
+                                <span className="font-bold text-gray-700 mt-0.5 block">− {formatMoney(wallet.total_fees || 0)} KES</span>
+                            </div>
+                            <div className="p-3.5 sm:px-5">
+                                <span className="block text-[11px] text-gray-500">Withdrawn</span>
+                                <span className="font-bold text-gray-700 mt-0.5 block">− {formatMoney(wallet.total_withdrawn || 0)} KES</span>
+                            </div>
+                            <div className="p-3.5 sm:px-5">
+                                <span className="block text-[11px] text-gray-500">Refunded</span>
+                                <span className="font-bold text-purple-700 mt-0.5 block">− {formatMoney(wallet.total_refunded || 0)} KES</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* QUICK WALLET ACTIONS (Light native pill row) */}
+                    <div className="grid grid-cols-3 gap-2.5">
                         <button
                             type="button"
                             onClick={() => setIsWithdrawOpen(true)}
-                            className="flex flex-col items-center gap-1.5 group cursor-pointer"
+                            className="bg-white border border-gray-200 hover:border-[#FF6600] rounded-xl p-3 text-left transition cursor-pointer"
                         >
-                            <div className="w-13 h-13 rounded-full bg-[#222632] border border-white/10 flex items-center justify-center text-[#FF6600] group-hover:bg-[#FF6600] group-hover:text-white transition shadow-md">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                                </svg>
-                            </div>
-                            <span className="text-[11px] font-bold text-gray-300">Payout</span>
+                            <span className="text-xs font-bold text-[#FF6600] block">Payout</span>
+                            <span className="text-[11px] text-gray-500">M-Pesa / Bank</span>
                         </button>
 
                         <button
                             type="button"
                             onClick={() => setActiveFeed(activeFeed === 'settlements' ? 'transactions' : 'settlements')}
-                            className="flex flex-col items-center gap-1.5 group cursor-pointer"
+                            className={`bg-white border rounded-xl p-3 text-left transition cursor-pointer ${
+                                activeFeed === 'settlements' ? 'border-gray-900' : 'border-gray-200 hover:border-gray-400'
+                            }`}
                         >
-                            <div className="w-13 h-13 rounded-full bg-[#222632] border border-white/10 flex items-center justify-center text-[#32BB78] group-hover:bg-[#32BB78] group-hover:text-white transition shadow-md">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-                                </svg>
-                            </div>
-                            <span className="text-[11px] font-bold text-gray-300">
-                                {activeFeed === 'settlements' ? 'Orders' : 'History'}
+                            <span className="text-xs font-bold text-gray-900 block">
+                                {activeFeed === 'settlements' ? 'View Orders' : 'Payout History'}
                             </span>
+                            <span className="text-[11px] text-gray-500">{settlements.length} requests</span>
                         </button>
 
                         <Link
                             href="/merchant/developers"
-                            className="flex flex-col items-center gap-1.5 group"
+                            className="bg-white border border-gray-200 hover:border-gray-400 rounded-xl p-3 text-left transition"
                         >
-                            <div className="w-13 h-13 rounded-full bg-[#222632] border border-white/10 flex items-center justify-center text-gray-300 group-hover:bg-white group-hover:text-black transition shadow-md">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                                </svg>
-                            </div>
-                            <span className="text-[11px] font-bold text-gray-300">API Keys</span>
+                            <span className="text-xs font-bold text-gray-900 block">API & Webhooks</span>
+                            <span className="text-[11px] text-gray-500">{stats.paid_count || 0} paid</span>
                         </Link>
-
-                        <button
-                            type="button"
-                            onClick={() => router.post('/logout')}
-                            className="flex flex-col items-center gap-1.5 group cursor-pointer"
-                        >
-                            <div className="w-13 h-13 rounded-full bg-[#222632] border border-white/10 flex items-center justify-center text-red-400 group-hover:bg-red-500 group-hover:text-white transition shadow-md">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-                                </svg>
-                            </div>
-                            <span className="text-[11px] font-bold text-gray-300">Exit</span>
-                        </button>
                     </div>
 
-                    {/* ACTIVITY FEED */}
-                    <div className="space-y-3 pt-2">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">
-                                {activeFeed === 'transactions' ? 'Transactions' : 'Payout Ledger'}
-                            </h3>
-                            <span className="text-xs text-gray-400">
-                                {activeFeed === 'transactions' ? `${filteredSessions.length} total` : `${settlements.length} total`}
-                            </span>
+                    {/* FEED SECTION: TRANSACTIONS vs PAYOUT HISTORY */}
+                    <section className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                        {/* Header & Search */}
+                        <div className="p-4 sm:px-5 border-b border-gray-100 space-y-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="inline-flex rounded-lg bg-gray-100 p-0.5 text-xs font-semibold">
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveFeed('transactions')}
+                                        className={`px-3 py-1.5 rounded-md transition cursor-pointer ${
+                                            activeFeed === 'transactions' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500'
+                                        }`}
+                                    >
+                                        Transactions ({sessions.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveFeed('settlements')}
+                                        className={`px-3 py-1.5 rounded-md transition cursor-pointer ${
+                                            activeFeed === 'settlements' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500'
+                                        }`}
+                                    >
+                                        Payouts ({settlements.length})
+                                    </button>
+                                </div>
+
+                                {activeFeed === 'transactions' && (
+                                    <input
+                                        type="text"
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        placeholder="Search receipt, ref, phone..."
+                                        className="w-full sm:w-60 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-hidden focus:border-[#FF6600]"
+                                    />
+                                )}
+                            </div>
+
+                            {activeFeed === 'transactions' && (
+                                <div className="flex flex-wrap gap-1.5">
+                                    {['all', 'paid', 'pending', 'refunded', 'failed'].map((tab) => (
+                                        <button
+                                            key={tab}
+                                            type="button"
+                                            onClick={() => setStatusFilter(tab)}
+                                            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold capitalize transition cursor-pointer ${
+                                                statusFilter === tab
+                                                    ? 'bg-gray-900 text-white'
+                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            {tab}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
-                        {activeFeed === 'transactions' && (
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Search customer, M-Pesa receipt, ref..."
-                                className="w-full bg-[#222632] border border-white/10 rounded-2xl px-4 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-hidden focus:border-[#FF6600]"
-                            />
-                        )}
-
+                        {/* List Body */}
                         {activeFeed === 'transactions' ? (
                             filteredSessions.length === 0 ? (
-                                <div className="p-8 text-center text-xs text-gray-400 bg-[#222632] rounded-2xl border border-white/5">
-                                    No transaction activity yet.
+                                <div className="p-10 text-center text-xs text-gray-500">
+                                    No transactions match your filter.
                                 </div>
                             ) : (
-                                <div className="space-y-2.5">
+                                <div className="divide-y divide-gray-100">
                                     {filteredSessions.map((s) => {
                                         const isPaid = s.status === 'paid';
                                         const isRefunded = s.status === 'refunded';
@@ -310,72 +350,89 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                         return (
                                             <div
                                                 key={s.id}
-                                                className="bg-[#222632] border border-white/5 rounded-2xl p-4 flex items-center justify-between gap-3"
+                                                className="p-4 sm:px-5 flex items-center justify-between gap-3 hover:bg-gray-50/70 transition"
                                             >
-                                                {/* Left Icon */}
-                                                <div className="flex items-center gap-3.5 min-w-0">
+                                                <div className="flex items-center gap-3 min-w-0">
                                                     <div
-                                                        className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
+                                                        className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
                                                             isPaid
-                                                                ? 'bg-[#32BB78] text-white shadow-md shadow-[#32BB78]/25'
+                                                                ? 'bg-emerald-50 text-emerald-700'
                                                                 : isRefunded
-                                                                    ? 'bg-purple-600 text-white'
+                                                                    ? 'bg-purple-50 text-purple-700'
                                                                     : expired
-                                                                        ? 'bg-gray-700 text-gray-300'
-                                                                        : 'bg-[#FF6600] text-white shadow-md shadow-[#FF6600]/25'
+                                                                        ? 'bg-gray-100 text-gray-500'
+                                                                        : 'bg-orange-50 text-[#FF6600]'
                                                         }`}
                                                     >
-                                                        {isPaid ? '✓' : isRefunded ? 'R' : expired ? '✕' : '•'}
+                                                        {isPaid ? (
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 4.5l-15 15m0 0h11.25m-11.25 0V8.25" />
+                                                            </svg>
+                                                        ) : isRefunded ? (
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                                                            </svg>
+                                                        ) : (
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                        )}
                                                     </div>
 
                                                     <div className="min-w-0">
-                                                        <p className="font-bold text-sm text-white truncate">
-                                                            {s.customer?.name || s.merchant_reference}
-                                                        </p>
-                                                        <div className="flex items-center gap-1.5 text-[11px] text-gray-400 truncate mt-0.5">
-                                                            <span>{s.mpesa_receipt ? `${s.mpesa_receipt} · ` : ''}</span>
-                                                            <span>
-                                                                {new Date(s.created_at).toLocaleDateString('en-KE', {
-                                                                    day: 'numeric',
-                                                                    month: 'short',
-                                                                    hour: '2-digit',
-                                                                    minute: '2-digit',
-                                                                })}
-                                                            </span>
-                                                            {expired && (
-                                                                <span className="text-[10px] font-bold text-gray-400 bg-white/5 px-1.5 py-0.2 rounded-md">
-                                                                    Expired
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-bold text-xs sm:text-sm text-gray-900 truncate">
+                                                                {s.customer?.name || s.merchant_reference}
+                                                            </p>
+                                                            {s.payment_method && (
+                                                                <span className="text-[10px] font-semibold uppercase text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                                                                    {s.payment_method}
                                                                 </span>
                                                             )}
                                                         </div>
+                                                        <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                                                            <span className="font-mono">{s.merchant_reference}</span>
+                                                            {s.mpesa_receipt ? ` · ${s.mpesa_receipt}` : ''}
+                                                            {' · '}
+                                                            {new Date(s.created_at).toLocaleDateString('en-KE', {
+                                                                day: 'numeric',
+                                                                month: 'short',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit',
+                                                            })}
+                                                        </p>
                                                     </div>
                                                 </div>
 
-                                                {/* Right Amount & Status */}
                                                 <div className="text-right flex-shrink-0">
                                                     <p
-                                                        className={`font-black text-sm ${
+                                                        className={`font-bold text-xs sm:text-sm ${
                                                             isPaid
-                                                                ? 'text-[#32BB78]'
+                                                                ? 'text-emerald-700'
                                                                 : isRefunded
-                                                                    ? 'text-purple-400'
+                                                                    ? 'text-purple-700'
                                                                     : expired
-                                                                        ? 'text-gray-500'
-                                                                        : 'text-amber-400'
+                                                                        ? 'text-gray-400'
+                                                                        : 'text-gray-900'
                                                         }`}
                                                     >
-                                                        {isPaid ? `+ ${formatMoney(s.amount)} KES` : `${formatMoney(s.amount)} KES`}
+                                                        {isPaid ? `+ ${formatMoney(s.amount)}` : formatMoney(s.amount)} {s.currency || 'KES'}
                                                     </p>
 
-                                                    {isPaid && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setRefundTarget(s)}
-                                                            className="text-[10px] font-bold text-gray-400 hover:text-purple-400 underline mt-0.5 cursor-pointer block ml-auto"
-                                                        >
-                                                            Refund
-                                                        </button>
-                                                    )}
+                                                    <div className="flex items-center justify-end gap-2 mt-0.5">
+                                                        <span className="text-[10px] font-medium text-gray-500 capitalize">
+                                                            {expired ? 'Expired' : s.status}
+                                                        </span>
+                                                        {isPaid && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setRefundTarget(s)}
+                                                                className="text-[11px] font-semibold text-purple-600 hover:underline cursor-pointer"
+                                                            >
+                                                                Refund
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
@@ -383,39 +440,44 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                 </div>
                             )
                         ) : (
-                            /* Payout Settlements List */
                             settlements.length === 0 ? (
-                                <div className="p-8 text-center text-xs text-gray-400 bg-[#222632] rounded-2xl border border-white/5">
-                                    No payout settlement requests yet.
+                                <div className="p-10 text-center text-xs text-gray-500">
+                                    No withdrawal requests yet.
                                 </div>
                             ) : (
-                                <div className="space-y-2.5">
+                                <div className="divide-y divide-gray-100">
                                     {settlements.map((set) => {
-                                        const dest = typeof set.destination === 'string' ? JSON.parse(set.destination) : (set.destination || {});
+                                        const dest = typeof set.destination === 'string'
+                                            ? JSON.parse(set.destination)
+                                            : (set.destination || {});
+
                                         return (
                                             <div
                                                 key={set.id}
-                                                className="bg-[#222632] border border-white/5 rounded-2xl p-4 flex items-center justify-between gap-3"
+                                                className="p-4 sm:px-5 flex items-center justify-between gap-3 hover:bg-gray-50/70"
                                             >
-                                                <div className="flex items-center gap-3.5 min-w-0">
-                                                    <div className="w-11 h-11 rounded-full bg-[#FF6600] text-white flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-md shadow-[#FF6600]/25">
-                                                        ↑
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="w-9 h-9 rounded-full bg-orange-50 text-[#FF6600] flex items-center justify-center flex-shrink-0">
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
+                                                        </svg>
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="font-bold text-sm text-white truncate font-mono">
+                                                        <p className="font-mono font-bold text-xs sm:text-sm text-gray-900 truncate">
                                                             {set.reference}
                                                         </p>
-                                                        <p className="text-[11px] text-gray-400 truncate mt-0.5">
-                                                            {dest.phone || dest.account_number} · {new Date(set.created_at).toLocaleDateString('en-KE')}
+                                                        <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                                                            <span className="uppercase">{set.channel}</span> · {dest.phone || dest.account_number} ·{' '}
+                                                            {new Date(set.created_at).toLocaleDateString('en-KE')}
                                                         </p>
                                                     </div>
                                                 </div>
 
                                                 <div className="text-right flex-shrink-0">
-                                                    <p className="font-black text-sm text-[#FF6600]">
-                                                        - {formatMoney(set.amount)} KES
+                                                    <p className="font-bold text-xs sm:text-sm text-gray-900">
+                                                        − {formatMoney(set.amount)} {set.currency || 'KES'}
                                                     </p>
-                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full mt-1 inline-block">
+                                                    <span className="text-[10px] font-semibold uppercase text-amber-700 bg-amber-50 px-2 py-0.5 rounded inline-block mt-0.5">
                                                         {set.status}
                                                     </span>
                                                 </div>
@@ -425,40 +487,44 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                 </div>
                             )
                         )}
-                    </div>
+                    </section>
                 </div>
             </main>
 
-            {/* STICKY BOTTOM APP BAR FOR MOBILE PHONES (Hidden on Desktop) */}
-            <nav className="lg:hidden fixed bottom-0 inset-x-0 h-16 bg-[#1A1D26] border-t border-white/10 px-6 flex items-center justify-between z-40">
+            {/* MOBILE BOTTOM NAVIGATION (Hidden on Desktop) */}
+            <nav className="lg:hidden fixed bottom-0 inset-x-0 h-15 bg-white border-t border-gray-200 px-4 grid grid-cols-3 items-center z-40">
                 <button
                     type="button"
                     onClick={() => setActiveFeed('transactions')}
-                    className={`flex flex-col items-center gap-1 ${activeFeed === 'transactions' ? 'text-[#FF6600]' : 'text-gray-400'}`}
+                    className={`flex flex-col items-center justify-center gap-0.5 ${
+                        activeFeed === 'transactions' ? 'text-[#FF6600]' : 'text-gray-500'
+                    }`}
                 >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.9" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
                     </svg>
                     <span className="text-[10px] font-bold">Wallet</span>
                 </button>
 
-                {/* Floating Brand Orange Action Button */}
                 <button
                     type="button"
-                    onClick={() => setIsWithdrawOpen(true)}
-                    className="-mt-7 w-13 h-13 rounded-full bg-[#FF6600] text-white flex items-center justify-center shadow-lg shadow-[#FF6600]/50 border-4 border-[#14161D] cursor-pointer"
+                    onClick={() => setActiveFeed('settlements')}
+                    className={`flex flex-col items-center justify-center gap-0.5 ${
+                        activeFeed === 'settlements' ? 'text-[#FF6600]' : 'text-gray-500'
+                    }`}
                 >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.9" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
                     </svg>
+                    <span className="text-[10px] font-bold">Payouts</span>
                 </button>
 
                 <Link
                     href="/merchant/developers"
-                    className="flex flex-col items-center gap-1 text-gray-400 hover:text-white"
+                    className="flex flex-col items-center justify-center gap-0.5 text-gray-500 hover:text-gray-900"
                 >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.9" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
                     </svg>
                     <span className="text-[10px] font-bold">API</span>
                 </Link>
@@ -466,37 +532,37 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
 
             {/* WITHDRAW MODAL */}
             {isWithdrawOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-                    <div className="bg-[#222632] border border-white/10 p-6 rounded-3xl max-w-sm w-full space-y-4 text-white">
-                        <div className="flex justify-between items-center pb-3 border-b border-white/10">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+                    <div className="bg-white border border-gray-200 p-6 rounded-2xl max-w-sm w-full space-y-4">
+                        <div className="flex justify-between items-center pb-3 border-b border-gray-100">
                             <div>
-                                <h4 className="font-extrabold text-base">Withdraw Funds</h4>
-                                <p className="text-xs text-gray-400">Available: {formatMoney(availableBalance)} KES</p>
+                                <h4 className="font-bold text-base text-gray-900">Withdraw Funds</h4>
+                                <p className="text-xs text-gray-500">Available: {formatMoney(availableBalance)} KES</p>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setIsWithdrawOpen(false)}
-                                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400 cursor-pointer"
+                                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 cursor-pointer"
                             >
                                 ✕
                             </button>
                         </div>
 
                         {availableBalance < 100 ? (
-                            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
-                                Minimum withdrawal is 100 KES. Your balance is {formatMoney(availableBalance)} KES.
+                            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                                Minimum withdrawal is 100.00 KES. Your available balance is {formatMoney(availableBalance)} KES.
                             </div>
                         ) : (
                             <form onSubmit={submitWithdrawal} className="space-y-4 text-xs">
                                 <div>
                                     <div className="flex justify-between mb-1">
-                                        <label className="font-bold text-gray-300">Amount (KES)</label>
+                                        <label className="font-semibold text-gray-700">Amount (KES)</label>
                                         <button
                                             type="button"
                                             onClick={() => withdrawForm.setData('amount', String(availableBalance))}
                                             className="text-[#FF6600] font-bold hover:underline cursor-pointer"
                                         >
-                                            Max
+                                            Max ({formatMoney(availableBalance)})
                                         </button>
                                     </div>
                                     <input
@@ -507,24 +573,33 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                         value={withdrawForm.data.amount}
                                         onChange={(e) => withdrawForm.setData('amount', e.target.value)}
                                         placeholder={`100 - ${availableBalance}`}
-                                        className="w-full bg-[#1A1D26] border border-white/10 rounded-xl px-4 py-2.5 text-sm font-mono text-white focus:outline-hidden focus:border-[#FF6600]"
+                                        className={`w-full rounded-xl px-3.5 py-2.5 text-sm font-mono border focus:outline-hidden ${
+                                            isExceedingBalance
+                                                ? 'border-red-500 bg-red-50 text-red-900'
+                                                : 'bg-gray-50 border-gray-200 focus:border-[#FF6600]'
+                                        }`}
                                         required
                                     />
                                     {isExceedingBalance && (
-                                        <p className="text-red-400 text-[11px] mt-1">Exceeds available balance.</p>
+                                        <p className="text-red-600 text-[11px] mt-1 font-medium">
+                                            Amount exceeds available balance of {formatMoney(availableBalance)} KES.
+                                        </p>
+                                    )}
+                                    {withdrawForm.errors.amount && (
+                                        <p className="text-red-600 text-[11px] mt-1">{withdrawForm.errors.amount}</p>
                                     )}
                                 </div>
 
                                 <div>
-                                    <label className="font-bold text-gray-300 mb-1 block">Payout Channel</label>
+                                    <label className="font-semibold text-gray-700 mb-1 block">Payout Channel</label>
                                     <div className="grid grid-cols-2 gap-2">
                                         <button
                                             type="button"
                                             onClick={() => withdrawForm.setData('channel', 'mpesa')}
                                             className={`py-2 rounded-xl font-bold border transition cursor-pointer ${
                                                 withdrawForm.data.channel === 'mpesa'
-                                                    ? 'border-[#FF6600] bg-[#FF6600]/10 text-[#FF6600]'
-                                                    : 'border-white/10 bg-white/5 text-gray-400'
+                                                    ? 'border-[#FF6600] bg-orange-50 text-[#FF6600]'
+                                                    : 'border-gray-200 bg-white text-gray-600'
                                             }`}
                                         >
                                             M-Pesa B2C
@@ -534,8 +609,8 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                             onClick={() => withdrawForm.setData('channel', 'bank')}
                                             className={`py-2 rounded-xl font-bold border transition cursor-pointer ${
                                                 withdrawForm.data.channel === 'bank'
-                                                    ? 'border-[#FF6600] bg-[#FF6600]/10 text-[#FF6600]'
-                                                    : 'border-white/10 bg-white/5 text-gray-400'
+                                                    ? 'border-[#FF6600] bg-orange-50 text-[#FF6600]'
+                                                    : 'border-gray-200 bg-white text-gray-600'
                                             }`}
                                         >
                                             Bank Transfer
@@ -545,13 +620,13 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
 
                                 {withdrawForm.data.channel === 'mpesa' ? (
                                     <div>
-                                        <label className="font-bold text-gray-300 mb-1 block">M-Pesa Phone</label>
+                                        <label className="font-semibold text-gray-700 mb-1 block">M-Pesa Phone</label>
                                         <input
                                             type="tel"
                                             value={withdrawForm.data.phone}
                                             onChange={(e) => withdrawForm.setData('phone', e.target.value)}
                                             placeholder="0712345678"
-                                            className="w-full bg-[#1A1D26] border border-white/10 rounded-xl px-4 py-2.5 text-sm font-mono text-white"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-mono focus:outline-hidden focus:border-[#FF6600]"
                                             required
                                         />
                                     </div>
@@ -561,8 +636,8 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                             type="text"
                                             value={withdrawForm.data.bank_name}
                                             onChange={(e) => withdrawForm.setData('bank_name', e.target.value)}
-                                            placeholder="Bank Name (e.g. Equity)"
-                                            className="w-full bg-[#1A1D26] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white"
+                                            placeholder="Bank Name (e.g. Equity Bank)"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm"
                                             required
                                         />
                                         <input
@@ -570,7 +645,7 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                             value={withdrawForm.data.account_number}
                                             onChange={(e) => withdrawForm.setData('account_number', e.target.value)}
                                             placeholder="Account Number"
-                                            className="w-full bg-[#1A1D26] border border-white/10 rounded-xl px-4 py-2.5 text-sm font-mono text-white"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-mono"
                                             required
                                         />
                                     </div>
@@ -579,9 +654,9 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                 <button
                                     type="submit"
                                     disabled={!canWithdraw || withdrawForm.processing}
-                                    className="w-full bg-[#FF6600] text-white py-3.5 rounded-xl font-bold text-sm hover:bg-[#E65100] transition disabled:opacity-40 cursor-pointer shadow-lg shadow-[#FF6600]/25"
+                                    className="w-full bg-[#FF6600] text-white py-3 rounded-xl font-bold text-sm hover:bg-[#e55c00] transition disabled:opacity-40 cursor-pointer"
                                 >
-                                    {withdrawForm.processing ? 'Processing...' : 'Confirm Withdrawal'}
+                                    {withdrawForm.processing ? 'Submitting...' : 'Confirm Withdrawal'}
                                 </button>
                             </form>
                         )}
@@ -591,26 +666,26 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
 
             {/* REFUND MODAL */}
             {refundTarget && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-                    <div className="bg-[#222632] border border-white/10 p-6 rounded-3xl max-w-sm w-full space-y-4 text-white">
-                        <div className="flex justify-between items-center pb-3 border-b border-white/10">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+                    <div className="bg-white border border-gray-200 p-6 rounded-2xl max-w-sm w-full space-y-4">
+                        <div className="flex justify-between items-center pb-3 border-b border-gray-100">
                             <div>
-                                <h4 className="font-extrabold text-base">Issue Refund</h4>
-                                <p className="text-xs text-gray-400">Ref: {refundTarget.merchant_reference}</p>
+                                <h4 className="font-bold text-base text-gray-900">Issue Refund</h4>
+                                <p className="text-xs text-gray-500">Ref: {refundTarget.merchant_reference}</p>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setRefundTarget(null)}
-                                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400 cursor-pointer"
+                                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 cursor-pointer"
                             >
                                 ✕
                             </button>
                         </div>
 
                         <form onSubmit={confirmRefund} className="space-y-4 text-xs">
-                            <p className="text-gray-300 leading-relaxed">
+                            <p className="text-gray-600 leading-relaxed">
                                 You are about to refund{' '}
-                                <strong className="text-white">{formatMoney(refundTarget.amount)} KES</strong>. This will deduct from your available balance and trigger a signed webhook.
+                                <strong className="text-gray-900">{formatMoney(refundTarget.amount)} KES</strong>. This will deduct from your available balance and dispatch a signed webhook.
                             </p>
 
                             <input
@@ -618,20 +693,20 @@ export default function MerchantDashboard({ merchant, stats, wallet = {}, sessio
                                 value={refundReason}
                                 onChange={(e) => setRefundReason(e.target.value)}
                                 placeholder="Reason (e.g. Order cancellation)"
-                                className="w-full bg-[#1A1D26] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white"
+                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm"
                             />
 
                             <div className="flex gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setRefundTarget(null)}
-                                    className="w-1/3 bg-white/10 text-gray-300 py-3 rounded-xl font-bold cursor-pointer"
+                                    className="w-1/3 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-bold cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="w-2/3 bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 transition cursor-pointer"
+                                    className="w-2/3 bg-purple-600 text-white py-2.5 rounded-xl font-bold hover:bg-purple-700 transition cursor-pointer"
                                 >
                                     Process Refund
                                 </button>
