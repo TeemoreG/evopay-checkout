@@ -2,93 +2,13 @@ import { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import MainLayout from '../../Layouts/MainLayout';
 
-function VehicleIllustration({ type = '', size = 52 }) {
+function getVehicleImage(type = '') {
     const t = (type || '').toLowerCase();
-
-    if (t.includes('motorbike') || t.includes('courier') || t.includes('bike')) {
-        return (
-            <svg width={size} height={size} viewBox="0 0 64 64" fill="none" style={{ width: size, height: size, minWidth: size, minHeight: size }} className="flex-shrink-0">
-                <rect width="64" height="64" rx="16" fill="#F0FDF4" />
-                <ellipse cx="32" cy="51" rx="22" ry="4" fill="#000" fillOpacity="0.08" />
-                <ellipse cx="18" cy="44" rx="7" ry="5.5" fill="#1E293B" />
-                <ellipse cx="18" cy="44" rx="4" ry="3" fill="#E2E8F0" />
-                <ellipse cx="46" cy="44" rx="7" ry="5.5" fill="#1E293B" />
-                <ellipse cx="46" cy="44" rx="4" ry="3" fill="#E2E8F0" />
-                <path d="M17 43L28 32H38L47 43" stroke="#1E293B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M42 27L47 43" stroke="#1E293B" strokeWidth="2.5" strokeLinecap="round" />
-                <path d="M26 31C26 27 29 25 33 25H39L36 32H26Z" fill="#32BB78" />
-                <rect x="12" y="20" width="13" height="13" rx="3" fill="#32BB78" />
-                <path d="M12 24.5H25" stroke="#16A34A" strokeWidth="1.5" />
-            </svg>
-        );
-    }
-
-    if (t.includes('canter')) {
-        return (
-            <svg width={size} height={size} viewBox="0 0 64 64" fill="none" style={{ width: size, height: size, minWidth: size, minHeight: size }} className="flex-shrink-0">
-                <rect width="64" height="64" rx="16" fill="#F0FDF4" />
-                <ellipse cx="32" cy="51" rx="24" ry="4" fill="#000" fillOpacity="0.08" />
-                <circle cx="19" cy="45" r="5.5" fill="#1E293B" /><circle cx="19" cy="45" r="3" fill="#E2E8F0" />
-                <circle cx="45" cy="45" r="5.5" fill="#1E293B" /><circle cx="45" cy="45" r="3" fill="#E2E8F0" />
-                <rect x="8" y="17" width="28" height="23" rx="3" fill="#32BB78" />
-                <rect x="8" y="34" width="28" height="6" fill="#16A34A" />
-                <path d="M36 21H48C51 21 53 23 53 26V40H36V21Z" fill="#1E293B" />
-                <path d="M39 24H48C49.5 24 50.5 25 50.5 26.5V32H39V24Z" fill="#7DD3FC" fillOpacity="0.85" />
-            </svg>
-        );
-    }
-
-    if (t.includes('tipper') || t.includes('lorry')) {
-        return (
-            <svg width={size} height={size} viewBox="0 0 64 64" fill="none" style={{ width: size, height: size, minWidth: size, minHeight: size }} className="flex-shrink-0">
-                <rect width="64" height="64" rx="16" fill="#F0FDF4" />
-                <ellipse cx="32" cy="52" rx="25" ry="4" fill="#000" fillOpacity="0.08" />
-                <circle cx="15" cy="46" r="5" fill="#1E293B" /><circle cx="26" cy="46" r="5" fill="#1E293B" /><circle cx="47" cy="46" r="5" fill="#1E293B" />
-                <path d="M7 21H37L35 41H7V21Z" fill="#32BB78" />
-                <path d="M35 38L38 31" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round" />
-                <path d="M39 20H51C53.5 20 55 22 55 24.5V41H39V20Z" fill="#1E293B" />
-                <path d="M42 23H50C51.5 23 52.5 24 52.5 25.5V31H42V23Z" fill="#7DD3FC" fillOpacity="0.85" />
-            </svg>
-        );
-    }
-
-    if (t.includes('trailer') || t.includes('prime') || t.includes('mover')) {
-        return (
-            <svg width={size} height={size} viewBox="0 0 64 64" fill="none" style={{ width: size, height: size, minWidth: size, minHeight: size }} className="flex-shrink-0">
-                <rect width="64" height="64" rx="16" fill="#F0FDF4" />
-                <ellipse cx="32" cy="52" rx="26" ry="4" fill="#000" fillOpacity="0.08" />
-                <circle cx="11" cy="46" r="4.5" fill="#1E293B" /><circle cx="21" cy="46" r="4.5" fill="#1E293B" /><circle cx="48" cy="46" r="5" fill="#1E293B" />
-                <rect x="6" y="19" width="31" height="22" rx="2" fill="#32BB78" />
-                <path d="M39 16H49C52 16 54 18 54 21V41H39V16Z" fill="#1E293B" />
-                <path d="M42 20H49.5C51 20 52 21 52 22.5V28H42V20Z" fill="#7DD3FC" fillOpacity="0.85" />
-            </svg>
-        );
-    }
-
-    if (t.includes('tuk') || t.includes('van')) {
-        return (
-            <svg width={size} height={size} viewBox="0 0 64 64" fill="none" style={{ width: size, height: size, minWidth: size, minHeight: size }} className="flex-shrink-0">
-                <rect width="64" height="64" rx="16" fill="#F0FDF4" />
-                <ellipse cx="32" cy="51" rx="23" ry="4" fill="#000" fillOpacity="0.08" />
-                <circle cx="17" cy="45" r="5.5" fill="#1E293B" /><circle cx="45" cy="45" r="5.5" fill="#1E293B" />
-                <path d="M9 24C9 21.5 11 19.5 13.5 19.5H38L49 26C52 28 53 30.5 53 33.5V42H9V24Z" fill="#32BB78" />
-                <path d="M37 22H44.5L49 27.5H37V22Z" fill="#1E293B" />
-            </svg>
-        );
-    }
-
-    // Default: Pickup
-    return (
-        <svg width={size} height={size} viewBox="0 0 64 64" fill="none" style={{ width: size, height: size, minWidth: size, minHeight: size }} className="flex-shrink-0">
-            <rect width="64" height="64" rx="16" fill="#F0FDF4" />
-            <ellipse cx="32" cy="51" rx="23" ry="4" fill="#000" fillOpacity="0.08" />
-            <circle cx="17" cy="44" r="5.5" fill="#1E293B" /><circle cx="44" cy="44" r="5.5" fill="#1E293B" />
-            <path d="M8 30H27V41H8V30Z" fill="#32BB78" />
-            <rect x="10" y="25" width="7" height="6" rx="1.5" fill="#FDE047" />
-            <path d="M27 23C27 21 29 19.5 31 19.5H41L49 27.5V41H27V23Z" fill="#32BB78" />
-            <path d="M30 22.5H38.5V28H30V22.5Z" fill="#1E293B" />
-        </svg>
-    );
+    if (t.includes('motorbike') || t.includes('courier') || t.includes('bike')) return '/images/motorbike.png';
+    if (t.includes('canter')) return '/images/canter.png';
+    if (t.includes('tipper') || t.includes('lorry') || t.includes('trailer') || t.includes('prime') || t.includes('mover')) return '/images/tipper.png';
+    if (t.includes('tuk') || t.includes('van')) return '/images/tuktuk.png';
+    return '/images/pickup.png';
 }
 
 const vehicleOptions = [
@@ -235,6 +155,9 @@ export default function TransportersRegister() {
                 <div className="bg-white rounded-3xl border border-brand-border shadow-xs overflow-hidden">
                     {/* Header */}
                     <div className="p-6 sm:p-8 border-b border-brand-border">
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full">
+                            Driver Fleet Network
+                        </span>
                         <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-dark mt-2 tracking-tight">
                             Drive & Earn with Nyumba
                         </h1>
@@ -244,7 +167,6 @@ export default function TransportersRegister() {
                     </div>
 
                     {isSubmitted ? (
-                        /* Permanent Success Confirmation View — Never auto-dismisses */
                         <div className="p-6 sm:p-9 space-y-6">
                             <div className="text-center space-y-3">
                                 <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-2xl font-bold">
@@ -258,7 +180,6 @@ export default function TransportersRegister() {
                                 </p>
                             </div>
 
-                            {/* Direct Fast-Track Actions */}
                             <div className="rounded-2xl border-2 border-emerald-500/40 bg-emerald-50/60 p-5 space-y-3">
                                 <div>
                                     <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-900 bg-emerald-200 px-2.5 py-0.5 rounded-full">
@@ -284,12 +205,11 @@ export default function TransportersRegister() {
                                         href="mailto:support@evopay.africa?subject=Driver%20ID%20Approval%20Request"
                                         className="bg-white border border-emerald-300 text-emerald-900 py-3 px-4 rounded-xl text-xs font-bold text-center hover:bg-emerald-100 transition flex items-center justify-center gap-2"
                                     >
-                                        <span>Email devops2@evopay.africa</span>
+                                        <span>Email support@evopay.africa</span>
                                     </a>
                                 </div>
                             </div>
 
-                            {/* Physical Depots List */}
                             <div className="rounded-2xl bg-brand-light border border-brand-border p-4 text-xs text-gray-600 space-y-2">
                                 <p className="font-bold text-brand-dark uppercase tracking-wider text-[11px]">
                                     Or Visit In-Person (Nairobi Depots)
@@ -434,7 +354,7 @@ export default function TransportersRegister() {
                                             </p>
                                         </div>
 
-                                        {/* Visual Vehicle Card Selector with Bolt-style SVGs */}
+                                        {/* Visual Vehicle Category Selector with Compact Bolt-Sized PNGs */}
                                         <div>
                                             <label className="block text-xs font-semibold text-brand-dark mb-2">
                                                 Select Your Vehicle Category *
@@ -453,7 +373,15 @@ export default function TransportersRegister() {
                                                                     : 'border-brand-border bg-white hover:border-gray-300'
                                                             }`}
                                                         >
-                                                            <VehicleIllustration type={v.label} size={44} />
+                                                            <div className="w-12 h-9 rounded-lg bg-gray-50 border border-gray-100 p-0.5 flex items-center justify-center overflow-hidden">
+                                                                <img
+                                                                    src={getVehicleImage(v.label)}
+                                                                    alt={v.label}
+                                                                    loading="lazy"
+                                                                    decoding="async"
+                                                                    className="w-full h-full object-contain"
+                                                                />
+                                                            </div>
                                                             <div className="mt-2">
                                                                 <p className="text-xs font-extrabold text-brand-dark leading-tight">
                                                                     {v.label}
